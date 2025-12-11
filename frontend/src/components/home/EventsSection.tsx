@@ -2,7 +2,17 @@
 
 import { Calendar, MapPin, Clock, ArrowRight } from "lucide-react";
 
-const events = [
+interface Event {
+  title: string;
+  date: string;
+  time: string;
+  location: string;
+  detail: string;
+  category: 'Worship' | 'Outreach' | 'Training';
+  image: string;
+}
+
+const events: Event[] = [
   {
     title: "Prayer & Worship Night",
     date: "Fri, Feb 21, 2024",
@@ -32,7 +42,7 @@ const events = [
   },
 ];
 
-const categoryColors = {
+const categoryColors: Record<'Worship' | 'Outreach' | 'Training', string> = {
   Worship: "bg-purple-500/20 text-purple-300 border-purple-500/30",
   Outreach: "bg-green-500/20 text-green-300 border-green-500/30",
   Training: "bg-blue-500/20 text-blue-300 border-blue-500/30",

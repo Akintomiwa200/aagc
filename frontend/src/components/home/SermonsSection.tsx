@@ -2,7 +2,18 @@
 
 import { Play, Download, Share2, Calendar, User, Clock } from "lucide-react";
 
-const sermons = [
+interface Sermon {
+  title: string;
+  preacher: string;
+  date: string;
+  series: 'Unshakable Foundation' | 'Daily Bread' | 'Kingdom Builders' | 'Divine Encounters';
+  duration: string;
+  description: string;
+  plays: string;
+  image: string;
+}
+
+const sermons: Sermon[] = [
   {
     title: "Faith Under Pressure",
     preacher: "Pastor T. Daniels",
@@ -45,7 +56,7 @@ const sermons = [
   },
 ];
 
-const seriesColors = {
+const seriesColors: Record<Sermon['series'], string> = {
   "Unshakable Foundation": "bg-orange-500/20 text-orange-300 border-orange-500/30",
   "Daily Bread": "bg-blue-500/20 text-blue-300 border-blue-500/30",
   "Kingdom Builders": "bg-purple-500/20 text-purple-300 border-purple-500/30",

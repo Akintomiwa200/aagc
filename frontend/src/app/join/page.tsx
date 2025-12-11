@@ -3,8 +3,24 @@
 import { useState } from "react";
 import { User, Mail, Phone, MapPin, Calendar, Users, Heart, CheckCircle2, AlertCircle } from "lucide-react";
 
+type FormData = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  visitDate: string;
+  howDidYouHear: string;
+  ageGroup: string;
+  attendingWith: string[];
+  prayerRequest: string;
+  interests: string[];
+  wantFollowUp: boolean;
+};
+
 export default function FirstTimerForm() {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     firstName: '',
     lastName: '',
     email: '',
@@ -21,18 +37,23 @@ export default function FirstTimerForm() {
   });
 
   const [submitted, setSubmitted] = useState(false);
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value, type } = e.target;
+
     if (type === 'checkbox') {
+      const target = e.target as HTMLInputElement;
+      const checked = target.checked;
+      
       if (name === 'attendingWith' || name === 'interests') {
         setFormData(prev => ({
           ...prev,
-          [name]: checked 
-            ? [...prev[name], value]
-            : prev[name].filter(item => item !== value)
+          [name]: checked
+            ? [...(prev[name as keyof FormData] as string[]), target.value]
+            : (prev[name as keyof FormData] as string[]).filter((item: string) => item !== target.value)
         }));
       } else {
         setFormData(prev => ({ ...prev, [name]: checked }));
@@ -43,7 +64,7 @@ export default function FirstTimerForm() {
   };
 
   const validateForm = () => {
-    const newErrors = {};
+    const newErrors: Partial<Record<keyof FormData, string>> = {};
     if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
     if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
     if (!formData.email.trim()) newErrors.email = 'Email is required';
@@ -387,7 +408,7 @@ export default function FirstTimerForm() {
                 name="prayerRequest"
                 value={formData.prayerRequest}
                 onChange={handleChange}
-                rows="4"
+                rows={4}
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition resize-none"
                 placeholder="Share your prayer request with us..."
               />
