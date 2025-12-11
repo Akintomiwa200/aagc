@@ -18,7 +18,7 @@ export default function Home() {
     <div className="min-h-screen bg-night">
       <main className="mx-auto flex flex-col">
         <HeroSection />
-        <ChurchDetailsSection/>\
+        <ChurchDetailsSection/>
           <EventsSection />
           <SermonsSection />
           <GivingSection />
