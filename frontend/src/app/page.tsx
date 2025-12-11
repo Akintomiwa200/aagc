@@ -2,12 +2,11 @@
 
 'use client';
 
-import Navbar from "@/components/home/Navbar";
 import HeroSection from "@/components/home/HeroSection";
 // import MinistrySection from "@/components/home/MinistrySection";
 import EventsSection from "@/components/home/EventsSection";
 import SermonsSection from "@/components/home/SermonsSection";
-import Footer from "@/components/home/Footer";
+import Footer from "@/components/sections/Footer";
 import GivingSection from "@/components/home/GivingSection";
 import ChurchDetailsSection from '@/components/home/ChurchDetails';
 import Location from '@/components/home/Location';

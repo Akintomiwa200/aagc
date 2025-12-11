@@ -3,6 +3,10 @@
 :root {
   --background: #060813;
   --foreground: #e8ecff;
+  --link-color-light: #0d9488;      /* teal-600 */
+  --link-hover-light: #0f766e;      /* teal-700 */
+  --link-color-dark: #a7f3d0;       /* emerald-200 */
+  --link-hover-dark: #d1fae5;       /* emerald-100 */
 }
 
 @theme inline {
@@ -27,9 +31,55 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* Base link styles - default to dark mode (since your site is dark) */
 a {
-  color: inherit;
+  color: var(--link-color-dark); /* Default for dark background */
   text-decoration: none;
+  transition: all 0.2s ease-in-out;
+}
+
+a:hover {
+  color: var(--link-hover-dark); /* Default for dark background */
+  text-decoration: underline;
+}
+
+/* Light backgrounds - use when you have a light-colored component/section */
+.light-bg {
+  background-color: #ffffff;
+  color: #1a1a1a; /* Dark text for light background */
+}
+
+.light-bg a {
+  color: var(--link-color-light); /* teal-600 */
+}
+
+.light-bg a:hover {
+  color: var(--link-hover-light); /* teal-700 */
+  text-decoration: underline;
+}
+
+/* Dark backgrounds - this is your default, but can be explicitly set */
+.dark-bg {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+.dark-bg a {
+  color: var(--link-color-dark); /* emerald-200 */
+}
+
+.dark-bg a:hover {
+  color: var(--link-hover-dark); /* emerald-100 */
+  text-decoration: underline;
+}
+
+/* Helper classes for light/dark text */
+.text-light {
+  color: #ffffff !important;
+}
+
+.text-dark {
+  color: #1a1a1a !important;
 }
 
 .glass {
@@ -65,4 +115,25 @@ a {
 .dot-grid {
   background-size: 24px 24px;
   background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.22) 1px, transparent 0);
+}
+
+/* Specific component overrides */
+.card {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.card.light {
+  background: #ffffff;
+  color: #1a1a1a;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.card.light a {
+  color: var(--link-color-light);
+}
+
+.card.light a:hover {
+  color: var(--link-hover-light);
 }

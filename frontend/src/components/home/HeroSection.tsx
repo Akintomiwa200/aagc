@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { ArrowRight, HeartHandshake, Users, Flame, Church } from "lucide-react";
-import Navbar from "./Navbar";
+import Navbar from "../sections/Navbar";
 
 // Hero Slider Images (Church Atmosphere)
 const sliderImages = [

@@ -12,7 +12,7 @@ const GivingSection: FC = () => {
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-emerald-500 rounded-full blur-3xl"></div>
       </div>
 
-      <div className="max-w-7xl mx-auto relative z-10">
+      <div className="max-w-5xl mx-auto relative z-10">
         {/* Main Giving Card */}
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
           {/* Header Section with Image */}
@@ -52,10 +52,30 @@ const GivingSection: FC = () => {
             <div className="text-center space-y-4">
               <p className="text-lg text-gray-700 leading-relaxed max-w-3xl mx-auto">
                 Every gift makes a difference. Whether you're contributing to tithes and
-                offerings, supporting missions, or helping families in need, your
-                generosity impacts lives and spreads hope throughout our community and
-                beyond.
+                offerings, supporting missions, or helping families in need, your generosity
+                impacts lives and spreads hope throughout our community and beyond.
               </p>
+            </div>
+
+            {/* Stats Bar */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-6 border-y border-gray-200">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-green-600">$42,850</div>
+                <div className="text-sm text-gray-600 mt-1">Monthly Giving</div>
+                <div className="text-xs text-green-600 mt-1">↑ 12% from last month</div>
+              </div>
+
+              <div className="text-center">
+                <div className="text-3xl font-bold text-green-600">$8,200</div>
+                <div className="text-sm text-gray-600 mt-1">Missions Support</div>
+                <div className="text-xs text-green-600 mt-1">↑ 18% from last month</div>
+              </div>
+
+              <div className="text-center">
+                <div className="text-3xl font-bold text-green-600">$156,000</div>
+                <div className="text-sm text-gray-600 mt-1">Building Fund</div>
+                <div className="text-xs text-gray-600 mt-1">Target: $250,000</div>
+              </div>
             </div>
 
             {/* Security Notice */}
@@ -93,10 +113,10 @@ const GivingSection: FC = () => {
           <p>
             Questions about giving? Contact our finance team at{" "}
             <a
-              href="mailto:giving@aagc.com"
+              href="mailto:giving@aagc.org"
               className="text-green-600 hover:text-green-700 font-medium"
             >
-              giving@aagc.com
+              giving@aagc.org
             </a>
           </p>
         </div>
@@ -106,3 +126,4 @@ const GivingSection: FC = () => {
 };
 
 export default GivingSection;
+  

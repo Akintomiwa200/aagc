@@ -4,6 +4,17 @@ import Link from "next/link";
 import { Church, Facebook, Youtube, Instagram, Twitter, Mail, Phone, MapPin } from "lucide-react";
 
 export default function Footer() {
+
+  const navItems = [
+  { label: 'About Us', href: '/about' },
+  { label: 'Events', href: '/events' },
+  { label: 'Ministries', href: '/ministries' },
+  { label: 'Sermons', href: '/sermons' },
+  { label: 'Give', href: '/give' },
+  { label: 'Contact', href: '/contact' },
+];
+
+
   return (
     <footer className="relative bg-gray-50 overflow-hidden">
       {/* Large Background Logo/Text */}
@@ -74,16 +85,16 @@ export default function Footer() {
             <div>
               <h3 className="text-lg font-bold text-gray-900 mb-6">Quick Links</h3>
               <div className="grid grid-cols-2 gap-3">
-                {['About Us', 'Events', 'Ministries', 'Sermons', 'Give', 'Contact'].map((item) => (
-                  <Link 
-                    key={item}
-                    href="#" 
-                    className="text-gray-600 hover:text-green-600 transition-colors"
-                  >
-                    {item}
-                  </Link>
-                ))}
-              </div>
+  {navItems.map((item) => (
+    <Link 
+      key={item.label}
+      href={item.href}
+      className="text-gray-600 hover:text-green-600 transition-colors"
+    >
+      {item.label}
+    </Link>
+  ))}
+</div>
             </div>
 
             {/* Social & App Download Links */}
