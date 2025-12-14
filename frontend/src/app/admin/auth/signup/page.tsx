@@ -1,189 +1,366 @@
 'use client';
 
-import { motion } from "framer-motion";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import Link from "next/link";
-import { Eye, EyeOff, Lock, Mail, User } from "lucide-react";
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useRouter } from 'next/navigation';
+import { RegisterInput, registerSchema } from '@/lib/schemas/auth';
+import { useAuth } from '@/contexts/AuthContext';
+import { Church, Eye, EyeOff, Lock, Mail, User, AlertCircle, Shield } from 'lucide-react';
 
-const signupSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
-
-type SignupFormValues = z.infer<typeof signupSchema>;
-
-export default function AdminSignupPage() {
-  const router = useRouter();
+export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const router = useRouter();
+  const { register: registerUser, isLoading } = useAuth();
 
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
-  } = useForm<SignupFormValues>({
-    resolver: zodResolver(signupSchema),
+  } = useForm<RegisterInput>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      name: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      role: 'admin',
+    },
   });
 
-  const onSubmit = async (data: SignupFormValues) => {
-    setIsLoading(true);
-    try {
-      // TODO: Replace with actual API call
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: data.name,
-          email: data.email,
-          password: data.password,
-        }),
-      });
+  const password = watch('password');
 
-      if (response.ok) {
-        router.push('/admin/auth/login');
-      } else {
-        alert('Signup failed');
-      }
-    } catch (error) {
-      console.error('Signup error:', error);
-      alert('Signup failed. Please try again.');
-    } finally {
-      setIsLoading(false);
+  const onSubmit = async (data: RegisterInput) => {
+    try {
+      setError('');
+      await registerUser(data);
+    } catch (err) {
+      setError('Registration failed. Please try again.');
     }
   };
 
+  const getPasswordStrength = (password: string) => {
+    if (!password) return { score: 0, label: '', color: '' };
+    
+    let score = 0;
+    if (password.length >= 8) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[a-z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+    
+    const strengths = [
+      { label: 'Very Weak', color: 'bg-red-500' },
+      { label: 'Weak', color: 'bg-orange-500' },
+      { label: 'Fair', color: 'bg-yellow-500' },
+      { label: 'Good', color: 'bg-blue-500' },
+      { label: 'Strong', color: 'bg-green-500' },
+    ];
+    
+    return strengths[score];
+  };
+
+  const strength = getPasswordStrength(password);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-black via-purple-900/20 to-black p-6">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
-      >
-        <Card className="glass gradient-border">
-          <CardHeader className="space-y-1 text-center">
-            <CardTitle className="text-2xl font-bold text-white">Admin Signup</CardTitle>
-            <CardDescription className="text-white/70">
-              Create an admin account for AAGC Portal
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-white">Full Name</Label>
+    <div className="min-h-screen flex">
+      {/* Left side - Registration Form */}
+      <div className="flex-1 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-20 xl:px-24">
+        <div className="mx-auto w-full max-w-md">
+          <div className="text-center">
+            <Link href="/" className="inline-flex items-center justify-center gap-3 mb-8">
+              <div className="p-3 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl">
+                <Church className="h-8 w-8 text-white" />
+              </div>
+              <div className="text-left">
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Grace Chapel
+                </h1>
+                <p className="text-sm text-gray-500">Church Management System</p>
+              </div>
+            </Link>
+            <h2 className="text-3xl font-bold text-gray-900">Create Admin Account</h2>
+            <p className="mt-2 text-sm text-gray-600">
+              Register for church administration access
+            </p>
+          </div>
+
+          <div className="mt-8">
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-red-500" />
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                  Full Name
+                </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
-                  <Input
-                    id="name"
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    {...register('name')}
                     type="text"
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                     placeholder="John Doe"
-                    className="pl-10"
-                    {...register("name")}
                   />
                 </div>
                 {errors.name && (
-                  <p className="text-sm text-red-400">{errors.name.message}</p>
+                  <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-white">Email</Label>
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  Church Email
+                </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
-                  <Input
-                    id="email"
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Mail className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    {...register('email')}
                     type="email"
-                    placeholder="admin@aagc.org"
-                    className="pl-10"
-                    {...register("email")}
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                    placeholder="admin@gracechapel.org"
                   />
                 </div>
                 {errors.email && (
-                  <p className="text-sm text-red-400">{errors.email.message}</p>
+                  <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-white">Password</Label>
+              <div>
+                <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
+                  Admin Role
+                </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Shield className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <select
+                    {...register('role')}
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white appearance-none"
+                  >
+                    <option value="admin">Administrator</option>
+                    <option value="pastor">Pastor</option>
+                    <option value="moderator">Moderator</option>
+                    <option value="member">Member</option>
+                  </select>
+                </div>
+                {errors.role && (
+                  <p className="mt-1 text-sm text-red-600">{errors.role.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    {...register('password')}
+                    type={showPassword ? 'text' : 'password'}
+                    className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                     placeholder="••••••••"
-                    className="pl-10 pr-10"
-                    {...register("password")}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5 text-gray-400" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-gray-400" />
+                    )}
                   </button>
                 </div>
+                
+                {/* Password strength indicator */}
+                {password && (
+                  <div className="mt-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-gray-600">Password strength:</span>
+                      <span className="text-xs font-medium text-gray-900">{strength.label}</span>
+                    </div>
+                    <div className="h-1 w-full bg-gray-200 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full ${strength.color} transition-all duration-300`}
+                        style={{ width: `${(strength.score / 5) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-2 text-xs text-gray-600">
+                  Password must contain:
+                  <ul className="mt-1 space-y-1">
+                    <li className={`flex items-center gap-1 ${password?.length >= 8 ? 'text-green-600' : 'text-gray-400'}`}>
+                      <span>✓</span> At least 8 characters
+                    </li>
+                    <li className={`flex items-center gap-1 ${/[A-Z]/.test(password) ? 'text-green-600' : 'text-gray-400'}`}>
+                      <span>✓</span> One uppercase letter
+                    </li>
+                    <li className={`flex items-center gap-1 ${/[a-z]/.test(password) ? 'text-green-600' : 'text-gray-400'}`}>
+                      <span>✓</span> One lowercase letter
+                    </li>
+                    <li className={`flex items-center gap-1 ${/[0-9]/.test(password) ? 'text-green-600' : 'text-gray-400'}`}>
+                      <span>✓</span> One number
+                    </li>
+                    <li className={`flex items-center gap-1 ${/[^A-Za-z0-9]/.test(password) ? 'text-green-600' : 'text-gray-400'}`}>
+                      <span>✓</span> One special character
+                    </li>
+                  </ul>
+                </div>
+                
                 {errors.password && (
-                  <p className="text-sm text-red-400">{errors.password.message}</p>
+                  <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-white">Confirm Password</Label>
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                  Confirm Password
+                </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
-                  <Input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    {...register('confirmPassword')}
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                     placeholder="••••••••"
-                    className="pl-10 pr-10"
-                    {...register("confirmPassword")}
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   >
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-5 w-5 text-gray-400" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-gray-400" />
+                    )}
                   </button>
                 </div>
                 {errors.confirmPassword && (
-                  <p className="text-sm text-red-400">{errors.confirmPassword.message}</p>
+                  <p className="mt-1 text-sm text-red-600">{errors.confirmPassword.message}</p>
                 )}
               </div>
 
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isLoading}
-              >
-                {isLoading ? "Creating account..." : "Sign Up"}
-              </Button>
+              <div className="flex items-start">
+                <div className="flex items-center h-5">
+                  <input
+                    id="terms"
+                    type="checkbox"
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    required
+                  />
+                </div>
+                <div className="ml-3 text-sm">
+                  <label htmlFor="terms" className="text-gray-700">
+                    I agree to the{' '}
+                    <a href="/terms" className="text-blue-600 hover:text-blue-500">
+                      Terms of Service
+                    </a>{' '}
+                    and{' '}
+                    <a href="/privacy" className="text-blue-600 hover:text-blue-500">
+                      Privacy Policy
+                    </a>
+                  </label>
+                </div>
+              </div>
 
-              <div className="text-center text-sm text-white/60">
-                Already have an account?{' '}
-                <Link href="/admin/auth/login" className="text-brand-400 hover:text-brand-300">
-                  Sign in
-                </Link>
+              <div>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  {isLoading ? 'Creating account...' : 'Create Admin Account'}
+                </button>
               </div>
             </form>
-          </CardContent>
-        </Card>
-      </motion.div>
+
+            <div className="mt-6">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">Already have an account?</span>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <Link
+                  href="/admin/login"
+                  className="w-full flex justify-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition"
+                >
+                  Sign in instead
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right side - Hero Image/Content */}
+      <div className="hidden lg:block relative flex-1">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
+          <div className="absolute inset-0 bg-black opacity-20" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center text-white p-12">
+              <div className="inline-flex items-center justify-center p-6 bg-white/10 backdrop-blur-sm rounded-3xl mb-8">
+                <Shield className="h-20 w-20" />
+              </div>
+              <h2 className="text-4xl font-bold mb-4">Admin Features</h2>
+              <div className="text-left max-w-md mx-auto space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-white/10 rounded-lg">
+                    <Users className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold">Member Management</h4>
+                    <p className="text-sm text-white/70">Track and manage all church members</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-white/10 rounded-lg">
+                    <Calendar className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold">Event Planning</h4>
+                    <p className="text-sm text-white/70">Schedule and manage all church events</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-white/10 rounded-lg">
+                    <DollarSign className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold">Donation Tracking</h4>
+                    <p className="text-sm text-white/70">Monitor contributions and generate reports</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
-

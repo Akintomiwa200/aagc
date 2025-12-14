@@ -4,8 +4,10 @@ import { Clock, Users, Flame, Shield } from "lucide-react";
 
 export default function ChurchDetailsSection() {
   return (
-    <section className="relative bg-gray-50 py-20 px-6 lg:px-16 overflow-hidden">
+    <section className="relative py-20 px-6 lg:px-16 overflow-hidden">
       {/* Decorative Background */}
+      <div className="absolute inset-0 opacity-10 dark:opacity-5 dot-grid"></div>
+     
       <div className="absolute top-0 right-0 w-96 h-96 opacity-10 pointer-events-none">
         <svg viewBox="0 0 200 200" className="w-full h-full">
           <path
@@ -96,15 +98,15 @@ export default function ChurchDetailsSection() {
           </div>
 
           {/* End of Month Vigil */}
-          <div className="bg-gradient-to-br from-stone-100 to-stone-200 rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-shadow">
+          <div className=" rounded-3xl p-8 shadow-2xl hover:shadow-2xl transition-shadow">
             <div className="space-y-4">
               <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
-                <Shield className="w-6 h-6 text-green-600" />
+                <Shield className="w-6 h-6 text-green-200" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900">
+              <h3 className="text-2xl font-bold ">
                 End-of-Month Vigil
               </h3>
-              <p className="text-gray-700 leading-relaxed">
+              <p className=" leading-relaxed">
                 9:00 PM – 4:00 AM  
                 <br />
                 A night of intense prayer, worship, and prophetic declarations.

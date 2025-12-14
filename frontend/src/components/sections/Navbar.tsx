@@ -31,7 +31,7 @@ const Navbar: React.FC = () => {
       // Homepage: transparent background, white text
       return {
         bg: isScrolled 
-          ? "bg-white/90 backdrop-blur-md shadow-lg" 
+          ? "bg-gray-500/90 backdrop-blur-md shadow-lg" 
           : "bg-transparent",
         textColor: isScrolled ? "text-gray-900" : "text-white",
         logoBg: isScrolled ? "bg-green-700" : "bg-green-700",

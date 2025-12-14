@@ -86,8 +86,10 @@ const seriesColors: Record<SeriesName, string> = {
 
 export default function SermonsSection() {
   return (
-    <section className="relative bg-white py-20 px-6 lg:px-16 overflow-hidden">
+    <section className="relative py-20 px-6 lg:px-16 overflow-hidden">
       {/* Decorative Background */}
+      <div className="absolute inset-0 opacity-10 dark:opacity-5 dot-grid"></div>
+     
       <div className="absolute inset-0 opacity-5">
         <div className="absolute top-20 right-0 w-96 h-96 bg-purple-500 rounded-full blur-3xl"></div>
         <div className="absolute bottom-20 left-0 w-96 h-96 bg-orange-500 rounded-full blur-3xl"></div>
@@ -96,9 +98,9 @@ export default function SermonsSection() {
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Header */}
         <div className="text-center mb-16 space-y-4">
-          <div className="inline-flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-full border border-gray-200">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200">
             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span className="text-sm font-medium tracking-wide text-gray-600 uppercase">
+            <span className="text-sm font-medium tracking-wide uppercase">
               Teaching & Preaching
             </span>
           </div>
@@ -120,7 +122,7 @@ export default function SermonsSection() {
           {sermons.map((sermon, idx) => (
             <div
               key={sermon.title}
-              className="group bg-gray-50 rounded-3xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-1"
+              className="group rounded-3xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-1"
               style={{
                 animation: `fadeInUp 0.6s ease-out ${idx * 0.1}s both`,
               }}
