@@ -20,3 +20,5 @@ export class Event {
 
 export const EventSchema = SchemaFactory.createForClass(Event);
 
+
+

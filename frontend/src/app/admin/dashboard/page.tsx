@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import ProtectedRoute from '@/components/admin/ProtectedRoute';
 import { 
   Users, 
   Calendar, 
@@ -60,7 +59,6 @@ const recentActivities = [
 
 export default function AdminDashboard() {
   return (
-    <ProtectedRoute requiredRole={['admin', 'pastor', 'moderator']}>
       <div>
         {/* Header */}
         <div className="mb-8">
@@ -159,6 +157,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
-    </ProtectedRoute>
+    
   );
 }

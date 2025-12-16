@@ -11,3 +11,5 @@ import { Event, EventSchema } from './schemas/event.schema';
 })
 export class EventsModule {}
 
+
+

@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Menu, Bell, Search, ChevronDown, User } from 'lucide-react';
+import { Bell, Search, User, Settings, LogOut, Menu } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import Link from 'next/link';
 
 interface AdminHeaderProps {
   onMenuClick: () => void;
@@ -23,7 +24,7 @@ export default function AdminHeader({ onMenuClick }: AdminHeaderProps) {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
+    <header className="sticky top-0 z-40 border-b border-gray-200">
       <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
         {/* Mobile menu button */}
         <button
@@ -37,14 +38,14 @@ export default function AdminHeader({ onMenuClick }: AdminHeaderProps) {
         <div className="flex-1 max-w-lg mx-4">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
+              <Search className="h-5 w-5 " />
             </div>
             <input
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search members, events, prayers..."
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
         </div>
@@ -90,9 +91,13 @@ export default function AdminHeader({ onMenuClick }: AdminHeaderProps) {
                     ))}
                   </div>
                   <div className="p-3 border-t border-gray-200">
-                    <button className="text-sm text-blue-600 hover:text-blue-800 w-full text-center">
+                    <Link 
+                      href="/admin/notifications" 
+                      className="text-sm text-blue-600 hover:text-blue-800 w-full text-center block"
+                      onClick={() => setShowNotifications(false)}
+                    >
                       View all notifications
-                    </button>
+                    </Link>
                   </div>
                 </div>
               </>
@@ -111,10 +116,9 @@ export default function AdminHeader({ onMenuClick }: AdminHeaderProps) {
                 </span>
               </div>
               <div className="hidden md:block text-left">
-                <p className="text-sm font-medium text-gray-900">{user?.name}</p>
+                <p className="text-sm font-medium ">{user?.name}</p>
                 <p className="text-xs text-gray-500">{user?.role}</p>
               </div>
-              <ChevronDown className="h-5 w-5 text-gray-500" />
             </button>
 
             {/* Profile dropdown menu */}
@@ -139,27 +143,33 @@ export default function AdminHeader({ onMenuClick }: AdminHeaderProps) {
                     </div>
                   </div>
                   <div className="py-2">
-                    <a
+                    <Link
                       href="/admin/profile"
                       className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setShowProfileMenu(false)}
                     >
                       <User className="h-4 w-4" />
                       My Profile
-                    </a>
-                    <a
+                    </Link>
+                    <Link
                       href="/admin/settings"
                       className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setShowProfileMenu(false)}
                     >
                       <Settings className="h-4 w-4" />
                       Settings
-                    </a>
+                    </Link>
                   </div>
                   <div className="border-t border-gray-200 py-2">
                     <button
-                      onClick={logout}
+                      onClick={() => {
+                        logout();
+                        setShowProfileMenu(false);
+                      }}
                       className="flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full"
                     >
-                      <span>Sign out</span>
+                      <LogOut className="h-4 w-4" />
+                      Sign out
                     </button>
                   </div>
                 </div>

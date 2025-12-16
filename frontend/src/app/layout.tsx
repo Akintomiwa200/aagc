@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AAGC Portal",
+  title: "Apostolic Army Global Church | Home of the Supernatural",
   description: "A beautiful digital home for worship, community, and admin at AAGC.",
 };
 
