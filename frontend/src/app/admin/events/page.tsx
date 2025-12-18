@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Calendar, Plus, Edit2, Trash2, Users, MapPin, Clock, Image as ImageIcon, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,59 +9,86 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { useSocket } from '@/contexts/SocketContext';
 
 interface Event {
     id: string;
+    _id?: string;
     title: string;
     description: string;
     date: string;
-    time: string;
-    location: string;
+    time?: string;
+    location?: string;
     image?: string;
     capacity?: number;
-    registrations: number;
+    registrations?: number;
     registrationDeadline?: string;
-    status: 'upcoming' | 'ongoing' | 'completed';
+    status?: 'upcoming' | 'ongoing' | 'completed';
+    type?: string;
 }
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 export default function EventsPage() {
     const [showForm, setShowForm] = useState(false);
-    const [events, setEvents] = useState<Event[]>([
-        {
-            id: '1',
-            title: 'Sunday Worship Service',
-            description: 'Join us for a powerful worship experience and inspiring message',
-            date: '2024-12-15',
-            time: '10:00 AM',
-            location: 'Main Sanctuary',
-            capacity: 500,
-            registrations: 234,
-            status: 'upcoming'
-        },
-        {
-            id: '2',
-            title: 'Youth Conference 2024',
-            description: 'Three days of worship, teaching, and fellowship for young people',
-            date: '2024-12-20',
-            time: '6:00 PM',
-            location: 'Conference Center',
-            capacity: 200,
-            registrations: 156,
-            registrationDeadline: '2024-12-18',
-            status: 'upcoming'
-        },
-        {
-            id: '3',
-            title: 'Christmas Carol Service',
-            description: 'Celebrate the birth of Jesus with carols and special performances',
-            date: '2024-12-24',
-            time: '7:00 PM',
-            location: 'Main Sanctuary',
-            capacity: 600,
-            registrations: 412,
-            status: 'upcoming'
+    const [events, setEvents] = useState<Event[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const { socket, isConnected } = useSocket();
+
+    const fetchEvents = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await fetch(`${API_BASE_URL}/events`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            setEvents(data.map((e: any) => ({
+                id: e._id || e.id,
+                ...e,
+            })));
+        } catch (err: any) {
+            setError(err.message || 'Failed to fetch events.');
+        } finally {
+            setLoading(false);
         }
-    ]);
+    }, []);
+
+    useEffect(() => {
+        fetchEvents();
+
+        if (socket) {
+            socket.on('event-created', (data: Event) => {
+                const eventId = data._id || data.id || '';
+                setEvents(prev => [{
+                    ...data,
+                    id: eventId,
+                }, ...prev]);
+            });
+
+            socket.on('event-updated', (data: Event) => {
+                const eventId = data._id || data.id || '';
+                setEvents(prev => prev.map(e => 
+                    (e.id === eventId) ? {
+                        ...data,
+                        id: eventId,
+                    } : e
+                ));
+            });
+
+            socket.on('event-deleted', (data: { eventId: string }) => {
+                setEvents(prev => prev.filter(e => e.id !== data.eventId));
+            });
+
+            return () => {
+                socket.off('event-created');
+                socket.off('event-updated');
+                socket.off('event-deleted');
+            };
+        }
+    }, [socket, fetchEvents]);
 
     const [formData, setFormData] = useState({
         title: '',
@@ -71,47 +98,87 @@ export default function EventsPage() {
         location: '',
         image: '',
         capacity: '',
-        registrationDeadline: ''
+        registrationDeadline: '',
+        status: 'upcoming' as Event['status'],
+        type: ''
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const newEvent: Event = {
-            id: Date.now().toString(),
-            ...formData,
-            capacity: formData.capacity ? parseInt(formData.capacity) : undefined,
-            registrations: 0,
-            status: 'upcoming'
-        };
-        setEvents([newEvent, ...events]);
-        setFormData({
-            title: '',
-            description: '',
-            date: '',
-            time: '',
-            location: '',
-            image: '',
-            capacity: '',
-            registrationDeadline: ''
-        });
-        setShowForm(false);
+        try {
+            const response = await fetch(`${API_BASE_URL}/events`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...formData,
+                    capacity: formData.capacity ? parseInt(formData.capacity) : undefined,
+                }),
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            // Socket event will update the state
+            setFormData({
+                title: '',
+                description: '',
+                date: '',
+                time: '',
+                location: '',
+                image: '',
+                capacity: '',
+                registrationDeadline: '',
+                status: 'upcoming',
+                type: ''
+            });
+            setShowForm(false);
+        } catch (err: any) {
+            setError(err.message || 'Failed to create event.');
+        }
     };
 
-    const handleDelete = (id: string) => {
-        setEvents(events.filter(e => e.id !== id));
+    const handleDelete = async (id: string) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/events/${id}`, {
+                method: 'DELETE',
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            // Socket event will update the state
+        } catch (err: any) {
+            setError(err.message || 'Failed to delete event.');
+        }
     };
 
-    const duplicateEvent = (event: Event) => {
-        const duplicated: Event = {
-            ...event,
-            id: Date.now().toString(),
-            title: `${event.title} (Copy)`,
-            registrations: 0
-        };
-        setEvents([duplicated, ...events]);
+    const duplicateEvent = async (event: Event) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/events`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...event,
+                    title: `${event.title} (Copy)`,
+                    registrations: 0,
+                }),
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            // Socket event will update the state
+        } catch (err: any) {
+            setError(err.message || 'Failed to duplicate event.');
+        }
     };
 
-    const upcomingEvents = events.filter(e => e.status === 'upcoming');
+    if (loading) {
+        return <div className="text-white text-center py-10">Loading events...</div>;
+    }
+
+    if (error) {
+        return <div className="text-red-500 text-center py-10">Error: {error}</div>;
+    }
+
+    const upcomingEvents = events.filter(e => !e.status || e.status === 'upcoming');
     const pastEvents = events.filter(e => e.status === 'completed');
 
     return (
@@ -185,7 +252,6 @@ export default function EventsPage() {
                                             type="time"
                                             value={formData.time}
                                             onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                                            required
                                             className="bg-gray-800/50 border-gray-700 text-white"
                                         />
                                     </div>
@@ -195,7 +261,6 @@ export default function EventsPage() {
                                             id="location"
                                             value={formData.location}
                                             onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                            required
                                             className="bg-gray-800/50 border-gray-700 text-white"
                                         />
                                     </div>
@@ -294,14 +359,18 @@ export default function EventsPage() {
                                                             <Calendar className="h-4 w-4" />
                                                             {new Date(event.date).toLocaleDateString()}
                                                         </div>
-                                                        <div className="flex items-center gap-1">
-                                                            <Clock className="h-4 w-4" />
-                                                            {event.time}
-                                                        </div>
-                                                        <div className="flex items-center gap-1">
-                                                            <MapPin className="h-4 w-4" />
-                                                            {event.location}
-                                                        </div>
+                                                        {event.time && (
+                                                            <div className="flex items-center gap-1">
+                                                                <Clock className="h-4 w-4" />
+                                                                {event.time}
+                                                            </div>
+                                                        )}
+                                                        {event.location && (
+                                                            <div className="flex items-center gap-1">
+                                                                <MapPin className="h-4 w-4" />
+                                                                {event.location}
+                                                            </div>
+                                                        )}
                                                     </div>
 
                                                     {event.capacity && (
@@ -309,16 +378,16 @@ export default function EventsPage() {
                                                             <div className="flex items-center justify-between text-sm mb-1">
                                                                 <span className="text-gray-400">
                                                                     <Users className="h-4 w-4 inline mr-1" />
-                                                                    {event.registrations} / {event.capacity} registered
+                                                                    {event.registrations || 0} / {event.capacity} registered
                                                                 </span>
                                                                 <span className="text-gray-400">
-                                                                    {Math.round((event.registrations / event.capacity) * 100)}%
+                                                                    {Math.round(((event.registrations || 0) / event.capacity) * 100)}%
                                                                 </span>
                                                             </div>
                                                             <div className="w-full bg-gray-800 rounded-full h-2">
                                                                 <div
                                                                     className="bg-gradient-to-r from-blue-600 to-purple-600 h-2 rounded-full"
-                                                                    style={{ width: `${Math.min((event.registrations / event.capacity) * 100, 100)}%` }}
+                                                                    style={{ width: `${Math.min(((event.registrations || 0) / event.capacity) * 100, 100)}%` }}
                                                                 />
                                                             </div>
                                                         </div>

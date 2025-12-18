@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { MessageSquare, Search, Mail, Reply, Trash2, CheckCircle, Clock, User } from 'lucide-react';
+import { MessageSquare, Search, Mail, Reply, Trash2, CheckCircle, Clock, User, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 interface Message {
     id: string;

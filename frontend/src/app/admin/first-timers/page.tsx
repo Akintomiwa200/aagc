@@ -198,28 +198,28 @@ export default function FirstTimersPage() {
         </div>
         <div className="flex gap-2">
           <Button
-            variant={filter === 'all' ? 'default' : 'outline'}
+            variant={filter === 'all' ? 'solid' : 'outline'}
             onClick={() => setFilter('all')}
             className={filter === 'all' ? 'bg-gradient-to-r from-blue-600 to-purple-600' : 'border-gray-700'}
           >
             All
           </Button>
           <Button
-            variant={filter === 'pending' ? 'default' : 'outline'}
+            variant={filter === 'pending' ? 'solid' : 'outline'}
             onClick={() => setFilter('pending')}
             className={filter === 'pending' ? 'bg-yellow-600' : 'border-gray-700'}
           >
             Pending
           </Button>
           <Button
-            variant={filter === 'contacted' ? 'default' : 'outline'}
+            variant={filter === 'contacted' ? 'solid' : 'outline'}
             onClick={() => setFilter('contacted')}
             className={filter === 'contacted' ? 'bg-blue-600' : 'border-gray-700'}
           >
             Contacted
           </Button>
           <Button
-            variant={filter === 'completed' ? 'default' : 'outline'}
+            variant={filter === 'completed' ? 'solid' : 'outline'}
             onClick={() => setFilter('completed')}
             className={filter === 'completed' ? 'bg-green-600' : 'border-gray-700'}
           >

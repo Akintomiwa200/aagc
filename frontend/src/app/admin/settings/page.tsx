@@ -62,7 +62,13 @@ export default function SettingsPage() {
     phone: user?.phone || '',
     location: user?.location || ''
   });
-  const [securityData, setSecurityData] = useState({
+  const [securityData, setSecurityData] = useState<{
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+    twoFactorEnabled: boolean;
+    backupCodes: string[];
+  }>({
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',

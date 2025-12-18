@@ -93,33 +93,46 @@ const growthData = [
 ];
 
 // Custom SVG Line Chart Component (No external library)
-const GrowthLineChart = ({ data, width = 600, height = 300 }) => {
+interface ChartData {
+  month: string;
+  members: number;
+  attendance: number;
+  donations: number;
+}
+
+interface GrowthLineChartProps {
+  data: ChartData[];
+  width?: number;
+  height?: number;
+}
+
+const GrowthLineChart = ({ data, width = 600, height = 300 }: GrowthLineChartProps) => {
   const margin = { top: 20, right: 30, bottom: 40, left: 50 };
   const chartWidth = width - margin.left - margin.right;
   const chartHeight = height - margin.top - margin.bottom;
 
   // Calculate scales
-  const months = data.map(d => d.month);
-  const maxMembers = Math.max(...data.map(d => d.members));
-  const maxAttendance = Math.max(...data.map(d => d.attendance));
-  const maxDonations = Math.max(...data.map(d => d.donations));
+  const months = data.map((d: ChartData) => d.month);
+  const maxMembers = Math.max(...data.map((d: ChartData) => d.members));
+  const maxAttendance = Math.max(...data.map((d: ChartData) => d.attendance));
+  const maxDonations = Math.max(...data.map((d: ChartData) => d.donations));
   const maxValue = Math.max(maxMembers, maxAttendance, maxDonations * 0.002); // Scale donations
   
-  const xScale = (index) => margin.left + (index * chartWidth) / (months.length - 1);
-  const yScale = (value) => margin.top + chartHeight - (value / maxValue) * chartHeight;
+  const xScale = (index: number) => margin.left + (index * chartWidth) / (months.length - 1);
+  const yScale = (value: number) => margin.top + chartHeight - (value / maxValue) * chartHeight;
 
   // Create line path for members
-  const membersLine = data.map((d, i) => 
+  const membersLine = data.map((d: ChartData, i: number) => 
     `${i === 0 ? 'M' : 'L'} ${xScale(i)} ${yScale(d.members)}`
   ).join(' ');
 
   // Create line path for attendance
-  const attendanceLine = data.map((d, i) => 
+  const attendanceLine = data.map((d: ChartData, i: number) => 
     `${i === 0 ? 'M' : 'L'} ${xScale(i)} ${yScale(d.attendance)}`
   ).join(' ');
 
   // Create line path for donations (scaled)
-  const donationsLine = data.map((d, i) => 
+  const donationsLine = data.map((d: ChartData, i: number) => 
     `${i === 0 ? 'M' : 'L'} ${xScale(i)} ${yScale(d.donations * 0.002)}`
   ).join(' ');
 
@@ -213,7 +226,7 @@ const GrowthLineChart = ({ data, width = 600, height = 300 }) => {
       />
 
       {/* Data points */}
-      {data.map((d, i) => (
+      {data.map((d: ChartData, i: number) => (
         <g key={i}>
           <circle
             cx={xScale(i)}
@@ -260,18 +273,29 @@ const GrowthLineChart = ({ data, width = 600, height = 300 }) => {
 };
 
 // Custom Bar Chart Component for demographics
-const DemographicsBarChart = ({ data, width = 400, height = 200 }) => {
+interface DemographicsItem {
+  label: string;
+  value: number;
+}
+
+interface DemographicsBarChartProps {
+  data: DemographicsItem[];
+  width?: number;
+  height?: number;
+}
+
+const DemographicsBarChart = ({ data, width = 400, height = 200 }: DemographicsBarChartProps) => {
   const margin = { top: 20, right: 20, bottom: 40, left: 40 };
   const chartWidth = width - margin.left - margin.right;
   const chartHeight = height - margin.top - margin.bottom;
   
-  const maxValue = Math.max(...data.map(d => d.value));
+  const maxValue = Math.max(...data.map((d: DemographicsItem) => d.value));
   const barWidth = (chartWidth / data.length) * 0.7;
   
   return (
     <svg width={width} height={height}>
       {/* Bars */}
-      {data.map((item, i) => {
+      {data.map((item: DemographicsItem, i: number) => {
         const x = margin.left + (i * chartWidth) / data.length;
         const barHeight = (item.value / maxValue) * chartHeight;
         const y = margin.top + chartHeight - barHeight;
@@ -362,7 +386,7 @@ export default function EnhancedAdminDashboard() {
   useEffect(() => {
     if (!socket || !isConnected) return;
 
-    socket.on('initial-data', (data: { prayerStats: any }) => {
+    socket.on('initial-data', (data: { prayerStats: { total: number; pending: number; ongoing: number; answered: number } }) => {
       if (data.prayerStats) {
         setPrayerStats(data.prayerStats);
       }

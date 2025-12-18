@@ -209,7 +209,7 @@ export default function ReportsPage() {
                                                                 {Object.entries(report.data).map(([key, value]) => (
                                                                     <div key={key} className="flex items-center gap-1">
                                                                         <TrendingUp className="h-4 w-4" />
-                                                                        <span className="capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}: {typeof value === 'number' && key.includes('total') ? `$${value.toLocaleString()}` : value}</span>
+                                                                        <span className="capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}: {typeof value === 'number' && key.includes('total') ? `$${value.toLocaleString()}` : String(value)}</span>
                                                                     </div>
                                                                 ))}
                                                             </div>

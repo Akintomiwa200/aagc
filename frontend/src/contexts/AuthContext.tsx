@@ -10,6 +10,9 @@ interface User {
   role: 'admin' | 'editor' | 'viewer';
   avatar?: string;
   lastLogin?: string;
+  bio?: string;
+  phone?: string;
+  location?: string;
 }
 
 interface AuthContextType {
