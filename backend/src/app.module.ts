@@ -7,6 +7,9 @@ import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { EventsModule } from './modules/events/events.module';
 import { SermonsModule } from './modules/sermons/sermons.module';
+import { PrayersModule } from './modules/prayers/prayers.module';
+import { WebSocketModule } from './modules/websocket/websocket.module';
+import { DonationsModule } from './modules/donations/donations.module';
 
 @Module({
   imports: [
@@ -16,6 +19,9 @@ import { SermonsModule } from './modules/sermons/sermons.module';
     AuthModule,
     EventsModule,
     SermonsModule,
+    PrayersModule,
+    DonationsModule,
+    WebSocketModule,
   ],
   controllers: [AppController],
   providers: [AppService],

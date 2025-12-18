@@ -8,14 +8,44 @@ export class User {
   @Prop({ required: true, unique: true, lowercase: true, trim: true })
   email: string;
 
-  @Prop({ required: true })
-  password: string;
+  @Prop()
+  password?: string;
 
-  @Prop({ required: true, trim: true })
-  fullName: string;
+  @Prop({ trim: true })
+  name?: string;
+
+  @Prop({ trim: true })
+  fullName?: string;
+
+  @Prop()
+  avatar?: string;
 
   @Prop({ enum: ['admin', 'staff', 'member'], default: 'member' })
   role: 'admin' | 'staff' | 'member';
+
+  @Prop({ enum: ['local', 'google', 'apple'], default: 'local' })
+  provider?: string;
+
+  @Prop({ default: 0 })
+  points?: number;
+
+  @Prop({ default: 0 })
+  streak?: number;
+
+  @Prop()
+  lastActiveDate?: string;
+
+  @Prop({ type: [String], default: [] })
+  badges?: string[];
+
+  @Prop()
+  bio?: string;
+
+  @Prop()
+  location?: string;
+
+  @Prop()
+  joinedDate?: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

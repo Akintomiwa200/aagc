@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useSocket } from '@/contexts/SocketContext';
 import { 
   Users, 
   Calendar, 
@@ -58,7 +59,8 @@ const stats = [
     changeType: 'decrease', 
     icon: Heart,
     color: 'bg-red-500',
-    detail: 'Answered: 128 | Pending: 28'
+    detail: 'Answered: 128 | Pending: 28',
+    dynamic: true, // Mark as dynamic
   },
   { 
     name: 'Active Volunteers', 
@@ -343,9 +345,66 @@ const upcomingEvents = [
   { id: 4, title: 'Christmas Celebration', date: 'Dec 24, 5:00 PM', location: 'Main Sanctuary', attendees: 500 },
 ];
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:3001/api';
+
 export default function EnhancedAdminDashboard() {
   const [timeRange, setTimeRange] = useState('6months');
   const [notificationCount, setNotificationCount] = useState(3);
+  const [prayerStats, setPrayerStats] = useState({ total: 0, pending: 0, ongoing: 0, answered: 0 });
+  const { socket, isConnected } = useSocket();
+
+  // Fetch prayer stats
+  useEffect(() => {
+    fetchPrayerStats();
+  }, []);
+
+  // Set up real-time listeners
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    socket.on('initial-data', (data: { prayerStats: any }) => {
+      if (data.prayerStats) {
+        setPrayerStats(data.prayerStats);
+      }
+    });
+
+    socket.on('prayer-created', (data: { stats: any }) => {
+      if (data.stats) {
+        setPrayerStats(data.stats);
+      }
+    });
+
+    socket.on('prayer-updated', (data: { stats: any }) => {
+      if (data.stats) {
+        setPrayerStats(data.stats);
+      }
+    });
+
+    socket.on('prayer-deleted', (data: { stats: any }) => {
+      if (data.stats) {
+        setPrayerStats(data.stats);
+      }
+    });
+
+    return () => {
+      socket.off('initial-data');
+      socket.off('prayer-created');
+      socket.off('prayer-updated');
+      socket.off('prayer-deleted');
+    };
+  }, [socket, isConnected]);
+
+  const fetchPrayerStats = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/prayers/stats`);
+      if (response.ok) {
+        const data = await response.json();
+        setPrayerStats(data);
+      }
+    } catch (error) {
+      console.error('Error fetching prayer stats:', error);
+    }
+  };
 
   return (
     <div className="min-h-screen p-4 md:p-6">

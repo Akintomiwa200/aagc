@@ -10,8 +10,21 @@ export class UsersService {
   constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
 
   async create(dto: CreateUserDto) {
-    const hashed = await bcrypt.hash(dto.password, 10);
-    const created = new this.userModel({ ...dto, password: hashed });
+    const userData: any = { ...dto };
+    
+    // Only hash password if provided (OAuth users don't have passwords)
+    if (dto.password) {
+      userData.password = await bcrypt.hash(dto.password, 10);
+    }
+    
+    // Set name from fullName or name field
+    if (dto.fullName) {
+      userData.name = dto.fullName;
+    } else if (dto.name) {
+      userData.name = dto.name;
+    }
+    
+    const created = new this.userModel(userData);
     return created.save();
   }
 
@@ -25,6 +38,12 @@ export class UsersService {
 
   async getProfile(id: string) {
     const user = await this.userModel.findById(id).select('-password').lean();
+    if (!user) throw new NotFoundException('User not found');
+    return user;
+  }
+
+  async update(id: string, updates: Partial<CreateUserDto>) {
+    const user = await this.userModel.findByIdAndUpdate(id, updates, { new: true }).select('-password').lean();
     if (!user) throw new NotFoundException('User not found');
     return user;
   }

@@ -1,0 +1,8 @@
+{
+  "name": "Apostolic Army Global",
+  "description": "A lightweight, mobile-first church application featuring devotionals, event registration, prayer requests, and community updates. Built with React and Tailwind CSS.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

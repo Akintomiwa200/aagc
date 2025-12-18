@@ -1,334 +1,713 @@
-# AAGC Church Portal
+# Apostolic Army Global Church (AAGC) Platform
 
-> A modern, full-featured church management and community engagement platform built with Next.js and React.
+<div align="center">
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Next.js](https://img.shields.io/badge/Next.js-14+-black)
-![React](https://img.shields.io/badge/React-18+-blue)
-![TypeScript](https://img.shields.io/badge/TypeScript-5+-blue)
+![Node Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)
+![TypeScript](https://img.shields.io/badge/TypeScript-5+-blue.svg)
+![Next.js](https://img.shields.io/badge/Next.js-16+-black)
+![NestJS](https://img.shields.io/badge/NestJS-11+-red.svg)
+![React](https://img.shields.io/badge/React-19+-blue.svg)
 
-## 📖 Table of Contents
+**A comprehensive, real-time church management and community engagement platform**
 
-- [Overview](#overview)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Getting Started](#getting-started)
-- [Project Structure](#project-structure)
-- [Components](#components)
-- [Customization](#customization)
-- [Deployment](#deployment)
-- [Contributing](#contributing)
-- [License](#license)
+[Features](#-features) • [Quick Start](#-quick-start) • [Documentation](#-documentation) • [API Reference](#-api-reference) • [Contributing](#-contributing) • [License](#-license)
+
+</div>
+
+---
+
+## 📋 Table of Contents
+
+- [Overview](#-overview)
+- [Features](#-features)
+- [Architecture](#-architecture)
+- [Tech Stack](#-tech-stack)
+- [Quick Start](#-quick-start)
+- [Project Structure](#-project-structure)
+- [Configuration](#-configuration)
+- [API Reference](#-api-reference)
+- [Real-Time Features](#-real-time-features)
+- [Development](#-development)
+- [Testing](#-testing)
+- [Deployment](#-deployment)
+- [Security](#-security)
+- [Contributing](#-contributing)
+- [Troubleshooting](#-troubleshooting)
+- [License](#-license)
+- [Support](#-support)
+
+---
 
 ## 🎯 Overview
 
-AAGC (Apostolic Army Global Church) Portal is a comprehensive digital platform designed to enhance church community engagement, streamline administrative tasks, and provide an immersive online experience for members and visitors. The platform features a modern, responsive design with smooth animations and intuitive user interfaces.
+AAGC Platform is a full-stack, real-time church management system designed to enhance community engagement, streamline administrative tasks, and provide an immersive digital experience for members, visitors, and administrators.
 
-### Purpose
+### Key Capabilities
 
-This portal serves as a central hub for:
-- **Worship Services**: Live streaming and sermon archives
-- **Community Building**: Events, ministries, and small groups
-- **Digital Giving**: Secure online donations
-- **Member Management**: First-timer registration and follow-up
-- **Communication**: Announcements, prayer requests, and updates
+- **Real-Time Updates**: WebSocket-powered live updates across all platforms
+- **Multi-Platform**: Web admin dashboard, public website, and mobile app
+- **OAuth Authentication**: Google and Apple Sign-In support
+- **Comprehensive Management**: Members, events, sermons, prayers, donations, and more
+- **Modern Stack**: Built with NestJS, Next.js, React, TypeScript, and MongoDB
+
+### Use Cases
+
+- **Church Administrators**: Manage members, events, sermons, and donations
+- **Church Members**: Access sermons, events, submit prayer requests, give online
+- **Visitors**: Register as first-timers, explore events, watch sermons
+- **Mobile Users**: Full-featured mobile app with offline capabilities
+
+---
 
 ## ✨ Features
 
-### 🏠 Hero Section with Image Slider
-- Auto-playing background image carousel
-- Engaging call-to-action buttons
-- Real-time statistics dashboard
-- Responsive design with mobile optimization
+### 🏠 Public Website
+- **Hero Section**: Auto-playing image carousel with engaging CTAs
+- **Event Management**: Featured events with registration and RSVP
+- **Sermon Library**: Video/audio playback with search and filtering
+- **Online Giving**: Secure donation processing with multiple options
+- **First Timer Registration**: Comprehensive registration form with follow-up
+- **Responsive Design**: Mobile-first, accessible, and SEO-optimized
 
-### 📅 Event Management
-- Featured event showcases
-- Event registration and RSVP
-- Calendar integration
-- Location mapping
+### 👨‍💼 Admin Dashboard
+- **Real-Time Dashboard**: Live statistics and activity feed
+- **Member Management**: Complete member database with profiles
+- **Prayer Requests**: Real-time prayer wall with status tracking
+- **Event Management**: Create, edit, and manage church events
+- **Sermon Management**: Upload, organize, and publish sermons
+- **Donation Tracking**: Financial reports and donation history
+- **Gallery Management**: Photo and media library
+- **Reports & Analytics**: Comprehensive reporting system
+- **Settings**: Church information, notifications, and preferences
 
-### 🎙️ Sermon Library
-- Video/audio sermon playback
-- Downloadable content
-- Series organization
-- Search and filter functionality
+### 📱 Mobile App
+- **Native Experience**: Progressive Web App (PWA) with offline support
+- **Real-Time Sync**: Live updates for prayers, events, and notifications
+- **Social Features**: Friends, friend requests, and community engagement
+- **Gamification**: XP points, badges, streaks, and leaderboards
+- **AI Features**: Prophetic prayer generation and image creation
+- **Devotional**: Daily devotionals with Bible reading plans
+- **Notes**: Personal notes and journaling
+- **Live Meetings**: Real-time meeting participation
 
-### 💝 Online Giving
-- Secure donation processing
-- Multiple giving options
-- Real-time giving statistics
-- SSL-encrypted transactions
+### 🔐 Authentication & Security
+- **OAuth Integration**: Google and Apple Sign-In
+- **JWT Tokens**: Secure token-based authentication
+- **Role-Based Access**: Admin, staff, and member roles
+- **Password Hashing**: bcrypt encryption
+- **CORS Protection**: Configured for secure cross-origin requests
 
-### 📝 First Timer Registration
-- Comprehensive registration form
-- Form validation
-- Interest tracking
-- Prayer request submission
-- Automated follow-up system
+### ⚡ Real-Time Features
+- **Live Updates**: Prayer requests, events, and notifications
+- **WebSocket Gateway**: Socket.IO for bidirectional communication
+- **Dashboard Stats**: Real-time statistics updates
+- **Activity Feed**: Live activity stream
+- **Notifications**: Push notifications support
 
-### 🎨 Modern UI/UX
-- Clean, professional design
-- Smooth animations and transitions
-- Mobile-first responsive layout
-- Accessibility compliant
-- Dark mode support (optional)
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Client Applications                     │
+├──────────────┬──────────────┬──────────────────────────────┤
+│   Frontend   │   Mobile     │      Admin Dashboard         │
+│   (Next.js)  │   (React)    │      (Next.js)               │
+└──────┬───────┴──────┬───────┴──────────────┬───────────────┘
+       │              │                      │
+       │  REST API    │  REST API            │  REST API
+       │  WebSocket   │  WebSocket           │  WebSocket
+       └──────┬───────┴──────────┬───────────┘
+              │                  │
+       ┌──────▼──────────────────▼──────┐
+       │      Backend API (NestJS)       │
+       │  ┌──────────────────────────┐  │
+       │  │   WebSocket Gateway      │  │
+       │  │   (Socket.IO)             │  │
+       │  └──────────────────────────┘  │
+       │  ┌──────────────────────────┐  │
+       │  │   REST Controllers        │  │
+       │  │   - Auth                  │  │
+       │  │   - Prayers               │  │
+       │  │   - Events                │  │
+       │  │   - Sermons               │  │
+       │  │   - Donations             │  │
+       │  │   - Users                 │  │
+       │  └──────────────────────────┘  │
+       └──────────────┬─────────────────┘
+                      │
+              ┌───────▼────────┐
+              │   MongoDB       │
+              │   Database      │
+              └─────────────────┘
+```
+
+---
 
 ## 🛠️ Tech Stack
 
-### Frontend
-- **Framework**: Next.js 14+ (App Router)
-- **UI Library**: React 18+
-- **Styling**: Tailwind CSS 3+
-- **Icons**: Lucide React
-- **Animations**: Framer Motion
-- **Type Safety**: TypeScript
+### Backend
+- **Framework**: [NestJS](https://nestjs.com/) 11+
+- **Database**: [MongoDB](https://www.mongodb.com/) with Mongoose
+- **Real-Time**: [Socket.IO](https://socket.io/) 4.8+
+- **Authentication**: Passport.js with OAuth strategies
+- **Validation**: class-validator, class-transformer
+- **Security**: bcrypt, JWT (to be implemented)
 
-### Components
-- **shadcn/ui**: Accessible component library
-- **Custom Components**: Purpose-built church components
+### Frontend (Public & Admin)
+- **Framework**: [Next.js](https://nextjs.org/) 16+ (App Router)
+- **UI Library**: React 19+
+- **Styling**: Tailwind CSS 4+
+- **Components**: shadcn/ui, Radix UI
+- **Animations**: Framer Motion
+- **Forms**: React Hook Form with Zod
+- **Real-Time**: Socket.IO Client
+
+### Mobile
+- **Framework**: React 19+ with Vite
+- **Routing**: React Router DOM 7+
+- **Styling**: Tailwind CSS
+- **Icons**: Lucide React
+- **Real-Time**: Socket.IO Client
+- **AI**: Google Gemini API
 
 ### Development Tools
+- **Language**: TypeScript 5+
 - **Package Manager**: npm/yarn/pnpm
 - **Linting**: ESLint
 - **Formatting**: Prettier
-- **Version Control**: Git
+- **Testing**: Jest (backend), Vitest (frontend/mobile)
 
-## 🚀 Getting Started
+---
+
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 18.0 or higher
-- npm, yarn, or pnpm package manager
-- Git
+- **Node.js**: 18.0.0 or higher
+- **MongoDB**: 6.0 or higher (local or Atlas)
+- **npm/yarn/pnpm**: Package manager
+- **Git**: Version control
 
 ### Installation
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-org/aagc-portal.git
-   cd aagc-portal
+   git clone https://github.com/your-org/aagc-platform.git
+   cd aagc-platform
    ```
 
 2. **Install dependencies**
    ```bash
+   # Backend
+   cd backend
    npm install
-   # or
-   yarn install
-   # or
-   pnpm install
+   
+   # Frontend
+   cd ../frontend
+   npm install
+   
+   # Mobile
+   cd ../mobile
+   npm install
    ```
 
 3. **Set up environment variables**
-   ```bash
-   cp .env.example .env.local
-   ```
-
-   Edit `.env.local` with your configuration:
-   ```env
-   NEXT_PUBLIC_SITE_URL=http://localhost:3000
-   NEXT_PUBLIC_CHURCH_NAME="AAGC"
-   # Add your API keys and configuration here
-   ```
-
-4. **Run the development server**
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   # or
-   pnpm dev
-   ```
-
-5. **Open your browser**
    
-   Navigate to [http://localhost:3000](http://localhost:3000)
+   See [Configuration](#-configuration) section for detailed environment setup.
+
+4. **Start MongoDB**
+   ```bash
+   # Using Docker
+   docker run -d -p 27017:27017 --name mongodb mongo:latest
+   
+   # Or use MongoDB Atlas (cloud)
+   ```
+
+5. **Run development servers**
+   
+   **Terminal 1 - Backend:**
+   ```bash
+   cd backend
+   npm run start:dev
+   # Server runs on http://localhost:3001
+   ```
+   
+   **Terminal 2 - Frontend:**
+   ```bash
+   cd frontend
+   npm run dev
+   # App runs on http://localhost:3000
+   ```
+   
+   **Terminal 3 - Mobile:**
+   ```bash
+   cd mobile
+   npm run dev
+   # App runs on http://localhost:5173
+   ```
+
+6. **Access the applications**
+   - Public Website: http://localhost:3000
+   - Admin Dashboard: http://localhost:3000/admin
+   - Mobile App: http://localhost:5173
+   - API: http://localhost:3001/api
+
+---
 
 ## 📁 Project Structure
 
 ```
-aagc-portal/
-├── app/
-│   ├── page.tsx                 # Home page with hero slider
-│   ├── join/
-│   │   └── page.tsx            # First timer registration
-│   ├── events/
-│   │   └── page.tsx            # Events listing
-│   ├── sermons/
-│   │   └── page.tsx            # Sermon library
-│   └── layout.tsx              # Root layout
-├── components/
-│   ├── ui/                     # shadcn/ui components
-│   │   ├── button.tsx
-│   │   ├── card.tsx
-│   │   ├── input.tsx
-│   │   └── ...
-│   ├── sections/
-│   │   ├── Navbar.tsx          # Navigation component
-│   │   ├── HeroSection.tsx     # Hero with slider
-│   │   ├── EventsSection.tsx   # Events display
-│   │   ├── SermonsSection.tsx  # Sermon library
-│   │   ├── GivingSection.tsx   # Giving portal
-│   │   ├── ChurchDetails.tsx   # Church info
-│   │   └── Footer.tsx          # Footer component
-│   └── forms/
-│       └── FirstTimerForm.tsx  # Registration form
-├── lib/
-│   └── utils.ts                # Utility functions
-├── public/
-│   ├── images/                 # Image assets
-│   └── fonts/                  # Custom fonts
-├── styles/
-│   └── globals.css             # Global styles
-├── tailwind.config.ts          # Tailwind configuration
-├── next.config.js              # Next.js configuration
-└── package.json                # Dependencies
+aagc-platform/
+├── backend/                    # NestJS Backend API
+│   ├── src/
+│   │   ├── modules/           # Feature modules
+│   │   │   ├── auth/          # Authentication & OAuth
+│   │   │   ├── users/         # User management
+│   │   │   ├── prayers/       # Prayer requests
+│   │   │   ├── events/        # Events management
+│   │   │   ├── sermons/       # Sermon library
+│   │   │   ├── donations/     # Donations & giving
+│   │   │   └── websocket/     # Real-time gateway
+│   │   ├── app.module.ts      # Root module
+│   │   └── main.ts          # Entry point
+│   ├── test/                  # E2E tests
+│   ├── .env.example           # Environment template
+│   └── package.json
+│
+├── frontend/                  # Next.js Public Website & Admin
+│   ├── src/
+│   │   ├── app/               # App Router pages
+│   │   │   ├── admin/         # Admin dashboard
+│   │   │   ├── events/        # Public events
+│   │   │   ├── sermons/       # Public sermons
+│   │   │   └── ...
+│   │   ├── components/        # React components
+│   │   ├── contexts/          # React contexts (Auth, Socket)
+│   │   ├── lib/               # Utilities
+│   │   └── types/             # TypeScript types
+│   ├── public/                # Static assets
+│   ├── .env.example
+│   └── package.json
+│
+├── mobile/                    # React Mobile App
+│   ├── pages/                 # App pages
+│   ├── components/            # Reusable components
+│   ├── context/               # React contexts
+│   ├── hooks/                 # Custom hooks
+│   ├── services/              # API services
+│   ├── .env.example
+│   └── package.json
+│
+├── docs/                      # Documentation
+│   ├── api/                   # API documentation
+│   ├── deployment/            # Deployment guides
+│   └── development/           # Development guides
+│
+├── .gitignore                 # Git ignore rules
+├── LICENSE                    # MIT License
+├── CONTRIBUTING.md            # Contribution guidelines
+├── SECURITY.md                # Security policy
+├── CHANGELOG.md               # Version history
+└── README.md                  # This file
 ```
 
-## 🧩 Components
+---
 
-### Core Components
+## ⚙️ Configuration
 
-#### Navbar
-Responsive navigation with mobile menu support
-```tsx
-import Navbar from '@/components/sections/Navbar';
+### Backend Environment Variables
 
-<Navbar />
+Create `backend/.env`:
+
+```env
+# Server Configuration
+PORT=3001
+NODE_ENV=development
+
+# Database
+MONGO_URI=mongodb://localhost:27017/aagc
+# Or MongoDB Atlas:
+# MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/aagc
+
+# Frontend URL (for CORS)
+FRONTEND_URL=http://localhost:3000
+
+# OAuth - Google
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_CALLBACK_URL=http://localhost:3001/api/auth/google/callback
+
+# OAuth - Apple
+APPLE_CLIENT_ID=your-apple-client-id
+APPLE_TEAM_ID=your-apple-team-id
+APPLE_KEY_ID=your-apple-key-id
+APPLE_PRIVATE_KEY_PATH=./path/to/private-key.p8
+
+# JWT (for production)
+JWT_SECRET=your-super-secret-jwt-key-change-in-production
+JWT_EXPIRES_IN=7d
 ```
 
-#### Hero Section
-Auto-playing image slider with CTA buttons
-```tsx
-import HeroSection from '@/components/sections/HeroSection';
+### Frontend Environment Variables
 
-<HeroSection />
+Create `frontend/.env.local`:
+
+```env
+# API Configuration
+NEXT_PUBLIC_API_URL=http://localhost:3001/api
+NEXT_PUBLIC_SOCKET_URL=http://localhost:3001
+
+# Site Configuration
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+NEXT_PUBLIC_CHURCH_NAME="Apostolic Army Global Church"
+NEXT_PUBLIC_CHURCH_EMAIL=info@aagc.org
+NEXT_PUBLIC_CHURCH_PHONE="+234 123 456 7890"
+
+# OAuth (if using client-side OAuth)
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id
 ```
 
-#### Events Section
-Display upcoming church events
-```tsx
-import EventsSection from '@/components/sections/EventsSection';
+### Mobile Environment Variables
 
-<EventsSection />
+Create `mobile/.env`:
+
+```env
+# API Configuration
+VITE_API_URL=http://localhost:3001/api
+VITE_SOCKET_URL=http://localhost:3001
+
+# Google Gemini AI (optional)
+VITE_GEMINI_API_KEY=your-gemini-api-key
 ```
 
-#### Sermons Section
-Sermon library with playback
-```tsx
-import SermonsSection from '@/components/sections/SermonsSection';
+---
 
-<SermonsSection />
+## 📡 API Reference
+
+### Base URL
+```
+http://localhost:3001/api
 ```
 
-#### Giving Section
-Secure online giving portal
-```tsx
-import GivingSection from '@/components/sections/GivingSection';
+### Authentication Endpoints
 
-<GivingSection />
+#### POST `/auth/login`
+Login with email and password.
+
+**Request:**
+```json
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
 ```
 
-#### First Timer Form
-Comprehensive registration form
-```tsx
-import FirstTimerForm from '@/components/forms/FirstTimerForm';
-
-<FirstTimerForm />
+**Response:**
+```json
+{
+  "token": "jwt-token",
+  "user": {
+    "id": "user-id",
+    "email": "user@example.com",
+    "name": "User Name",
+    "role": "admin"
+  }
+}
 ```
 
-## 🎨 Customization
+#### POST `/auth/oauth/mobile`
+OAuth login for mobile apps.
 
-### Branding
+**Request:**
+```json
+{
+  "provider": "google",
+  "token": "oauth-token",
+  "email": "user@example.com",
+  "name": "User Name",
+  "picture": "https://..."
+}
+```
 
-1. **Update church information** in `app/layout.tsx`:
-   ```tsx
-   export const metadata = {
-     title: 'Your Church Name',
-     description: 'Your church description',
-   }
-   ```
+#### GET `/auth/google`
+Initiate Google OAuth flow (web).
 
-2. **Change color scheme** in `tailwind.config.ts`:
-   ```ts
-   theme: {
-     extend: {
-       colors: {
-         primary: '#10B981', // Your primary color
-         secondary: '#3B82F6', // Your secondary color
-       }
-     }
-   }
-   ```
+#### GET `/auth/apple`
+Initiate Apple OAuth flow (web).
 
-3. **Replace images**:
-   - Add your church images to `/public/images/`
-   - Update image paths in components
+### Prayer Endpoints
 
-### Content
+#### GET `/prayers`
+Get all prayer requests.
 
-- **Hero Section**: Edit content in `components/sections/HeroSection.tsx`
-- **Events**: Update event data in `components/sections/EventsSection.tsx`
-- **Sermons**: Modify sermon list in `components/sections/SermonsSection.tsx`
-- **Footer**: Customize links and info in `components/sections/Footer.tsx`
+#### GET `/prayers/stats`
+Get prayer statistics.
+
+**Response:**
+```json
+{
+  "total": 150,
+  "pending": 45,
+  "ongoing": 60,
+  "answered": 45
+}
+```
+
+#### POST `/prayers`
+Create a new prayer request.
+
+**Request:**
+```json
+{
+  "name": "John Doe",
+  "request": "Prayer request text",
+  "email": "john@example.com",
+  "isAnonymous": false
+}
+```
+
+#### PUT `/prayers/:id/status`
+Update prayer status.
+
+**Request:**
+```json
+{
+  "status": "answered"
+}
+```
+
+#### DELETE `/prayers/:id`
+Delete a prayer request.
+
+### Event Endpoints
+
+#### GET `/events`
+Get all events.
+
+#### GET `/events/:id`
+Get a specific event.
+
+#### POST `/events`
+Create a new event.
+
+### Sermon Endpoints
+
+#### GET `/sermons`
+Get all sermons.
+
+#### GET `/sermons/:id`
+Get a specific sermon.
+
+### Donation Endpoints
+
+#### POST `/donations`
+Create a donation.
+
+**Request:**
+```json
+{
+  "userId": "user-id",
+  "type": "Tithe",
+  "amount": 100.00,
+  "paymentMethod": "card"
+}
+```
+
+#### GET `/donations?userId=user-id`
+Get user's donation history.
+
+### User Endpoints
+
+#### GET `/users/:id`
+Get user profile.
+
+#### PUT `/users/:id`
+Update user profile.
+
+---
+
+## ⚡ Real-Time Features
+
+### WebSocket Events
+
+The platform uses Socket.IO for real-time communication.
+
+#### Client → Server Events
+
+- `join-room`: Join a specific room (e.g., 'prayers', 'events')
+- `leave-room`: Leave a room
+
+#### Server → Client Events
+
+- `initial-data`: Sent on connection with initial data
+- `prayer-created`: New prayer request created
+- `prayer-updated`: Prayer request updated
+- `prayer-deleted`: Prayer request deleted
+- `event-created`: New event created
+- `event-updated`: Event updated
+- `dashboard-update`: Dashboard statistics updated
+
+### Example Usage
+
+**Frontend/Mobile:**
+```typescript
+import { useSocket } from '@/contexts/SocketContext';
+
+const { socket, isConnected } = useSocket();
+
+useEffect(() => {
+  if (!socket || !isConnected) return;
+
+  socket.on('prayer-created', (data) => {
+    console.log('New prayer:', data.prayer);
+    // Update UI
+  });
+
+  return () => {
+    socket.off('prayer-created');
+  };
+}, [socket, isConnected]);
+```
+
+---
+
+## 💻 Development
+
+### Code Style
+
+- **TypeScript**: Strict mode enabled
+- **ESLint**: Configured with NestJS and Next.js rules
+- **Prettier**: Code formatting
+- **Conventional Commits**: Commit message format
+
+### Running in Development
+
+```bash
+# Backend with hot reload
+cd backend && npm run start:dev
+
+# Frontend with hot reload
+cd frontend && npm run dev
+
+# Mobile with hot reload
+cd mobile && npm run dev
+```
+
+### Building for Production
+
+```bash
+# Backend
+cd backend && npm run build && npm run start:prod
+
+# Frontend
+cd frontend && npm run build && npm start
+
+# Mobile
+cd mobile && npm run build
+```
+
+---
+
+## 🧪 Testing
+
+### Backend Tests
+
+```bash
+cd backend
+
+# Unit tests
+npm run test
+
+# E2E tests
+npm run test:e2e
+
+# Coverage
+npm run test:cov
+```
+
+### Frontend Tests
+
+```bash
+cd frontend
+npm run test
+```
+
+---
 
 ## 🚢 Deployment
 
-### Vercel (Recommended)
+### Backend Deployment
 
-1. Push your code to GitHub
-2. Import project to [Vercel](https://vercel.com)
+#### Using PM2
+
+```bash
+npm run build
+pm2 start dist/main.js --name aagc-backend
+```
+
+#### Using Docker
+
+```dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+RUN npm run build
+CMD ["npm", "run", "start:prod"]
+```
+
+### Frontend Deployment
+
+#### Vercel (Recommended)
+
+1. Push code to GitHub
+2. Import project to Vercel
 3. Configure environment variables
 4. Deploy
 
-```bash
-npm run build
-vercel --prod
-```
+#### Other Platforms
 
-### Other Platforms
-
-The app can be deployed to any platform supporting Next.js:
 - **Netlify**: Full Next.js support
 - **AWS Amplify**: Serverless deployment
-- **Digital Ocean**: Docker deployment
-- **Self-hosted**: PM2 or Docker
+- **Digital Ocean**: App Platform
+- **Self-hosted**: Docker or PM2
 
-Build for production:
-```bash
-npm run build
-npm start
-```
+### Mobile Deployment
 
-## 🔐 Environment Variables
+Build as PWA and deploy to:
+- **Vercel/Netlify**: Static hosting
+- **App Stores**: Wrap as native app with Capacitor/Cordova
 
-Create a `.env.local` file:
+---
 
-```env
-# Site Configuration
-NEXT_PUBLIC_SITE_URL=https://yourdomain.com
-NEXT_PUBLIC_CHURCH_NAME="Your Church Name"
-NEXT_PUBLIC_CHURCH_EMAIL=info@yourchurch.com
-NEXT_PUBLIC_CHURCH_PHONE="+234 123 456 7890"
+## 🔒 Security
 
-# Analytics (Optional)
-NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
+### Security Best Practices
 
-# API Keys (if needed)
-# STRIPE_PUBLIC_KEY=pk_test_...
-# STRIPE_SECRET_KEY=sk_test_...
-```
+1. **Environment Variables**: Never commit `.env` files
+2. **JWT Tokens**: Use strong secrets, set expiration
+3. **Password Hashing**: Always use bcrypt
+4. **CORS**: Configure allowed origins
+5. **Rate Limiting**: Implement rate limiting (recommended)
+6. **HTTPS**: Always use HTTPS in production
+7. **Input Validation**: Validate all inputs
+8. **SQL Injection**: Use parameterized queries (MongoDB handles this)
 
-## 📱 Browser Support
+### Reporting Security Issues
 
-- Chrome (latest)
-- Firefox (latest)
-- Safari (latest)
-- Edge (latest)
-- Mobile browsers (iOS Safari, Chrome Mobile)
+See [SECURITY.md](SECURITY.md) for security reporting guidelines.
+
+---
 
 ## 🤝 Contributing
 
-We welcome contributions! Please follow these steps:
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+### Quick Contribution Guide
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -336,41 +715,91 @@ We welcome contributions! Please follow these steps:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-### Coding Standards
+### Code of Conduct
 
-- Use TypeScript for type safety
-- Follow the existing code style
-- Write meaningful commit messages
-- Add comments for complex logic
-- Test responsive design on multiple devices
+Please be respectful and follow our code of conduct.
+
+---
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+#### MongoDB Connection Error
+```bash
+# Check MongoDB is running
+mongosh
+
+# Or restart MongoDB
+docker restart mongodb
+```
+
+#### Port Already in Use
+```bash
+# Find process using port
+lsof -i :3001
+
+# Kill process
+kill -9 <PID>
+```
+
+#### Module Not Found
+```bash
+# Clear node_modules and reinstall
+rm -rf node_modules package-lock.json
+npm install
+```
+
+#### WebSocket Connection Failed
+- Check CORS configuration
+- Verify Socket.IO URL
+- Check firewall settings
+
+---
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+---
+
 ## 👥 Team
 
 - **Project Lead**: [Your Name]
-- **Development**: [Your Team]
+- **Backend Development**: [Team Members]
+- **Frontend Development**: [Team Members]
+- **Mobile Development**: [Team Members]
 - **Design**: [Designer Name]
+
+---
 
 ## 📞 Support
 
-For questions or support:
-- **Email**: support@yourchurch.com
-- **Website**: https://yourchurch.com
-- **GitHub Issues**: [Create an issue](https://github.com/your-org/aagc-portal/issues)
+- **Email**: support@aagc.org
+- **Website**: https://aagc.org
+- **GitHub Issues**: [Create an issue](https://github.com/your-org/aagc-platform/issues)
+- **Documentation**: [Full Documentation](https://docs.aagc.org)
+
+---
 
 ## 🙏 Acknowledgments
 
+- [NestJS](https://nestjs.com/) - Progressive Node.js framework
 - [Next.js](https://nextjs.org/) - React framework
+- [MongoDB](https://www.mongodb.com/) - Database
+- [Socket.IO](https://socket.io/) - Real-time engine
 - [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS
 - [shadcn/ui](https://ui.shadcn.com/) - Component library
 - [Lucide Icons](https://lucide.dev/) - Icon library
-- [Framer Motion](https://www.framer.com/motion/) - Animation library
 
 ---
+
+<div align="center">
 
 **Built with ❤️ for the Kingdom**
 
 *Last Updated: December 2024*
+
+[⬆ Back to Top](#-table-of-contents)
+
+</div>

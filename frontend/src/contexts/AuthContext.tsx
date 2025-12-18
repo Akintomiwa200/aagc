@@ -26,6 +26,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:3001/api';
+
 // Mock admin user for development
 const MOCK_ADMIN: User = {
   id: '1',
@@ -67,38 +70,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     setLoading(true);
-    
+
     try {
-      // TODO: Replace with actual API call
-      // const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/login`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email, password })
-      // });
-      // const data = await response.json();
-      
-      // Mock API response
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
-      
-      if (email === 'admin@aagc.org' && password === 'password123') {
-        const userData: User = {
-          id: '1',
-          email,
-          name: 'Church Administrator',
-          role: 'admin',
-          avatar: 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=400&q=80',
-          lastLogin: new Date().toISOString()
-        };
-        
-        setUser(userData);
-        localStorage.setItem('admin_user', JSON.stringify(userData));
-        localStorage.setItem('admin_token', 'mock_jwt_token_here');
-        
-        return { success: true, message: 'Login successful!' };
-      } else {
-        return { success: false, message: 'Invalid credentials' };
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        const message = data?.message || 'Invalid credentials';
+        return { success: false, message };
       }
-    } catch (error) {
+
+      const userData: User = {
+        id: data.user.id?.toString() ?? data.user._id ?? 'unknown',
+        email: data.user.email,
+        name: data.user.name ?? 'Church Administrator',
+        role: (data.user.role as User['role']) ?? 'admin',
+        avatar: data.user.avatar,
+        lastLogin: new Date().toISOString(),
+      };
+
+      setUser(userData);
+      localStorage.setItem('admin_user', JSON.stringify(userData));
+      localStorage.setItem('admin_token', data.token || '');
+
+      return { success: true, message: 'Login successful!' };
+    } catch {
       return { success: false, message: 'Login failed. Please try again.' };
     } finally {
       setLoading(false);
@@ -107,37 +108,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signup = async (email: string, password: string, name: string) => {
     setLoading(true);
-    
+
     try {
-      // TODO: Replace with actual API call
-      // const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/signup`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email, password, name })
-      // });
-      
-      // Mock API response
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For demo purposes, only allow specific domain
-      if (!email.includes('@aagc.org')) {
-        return { success: false, message: 'Only @aagc.org emails allowed for admin access' };
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, name }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        const message = data?.message || 'Signup failed. Please try again.';
+        return { success: false, message };
       }
-      
+
       const userData: User = {
-        id: Date.now().toString(),
-        email,
-        name,
-        role: 'viewer', // New users start as viewers
-        lastLogin: new Date().toISOString()
+        id: data.id?.toString() ?? data._id ?? 'unknown',
+        email: data.email,
+        name: data.name ?? name,
+        role: (data.role as User['role']) ?? 'viewer',
+        lastLogin: new Date().toISOString(),
       };
-      
+
       setUser(userData);
       localStorage.setItem('admin_user', JSON.stringify(userData));
-      localStorage.setItem('admin_token', 'mock_jwt_token_here');
-      
+      localStorage.setItem('admin_token', data.token || '');
+
       return { success: true, message: 'Account created successfully!' };
-    } catch (error) {
+    } catch {
       return { success: false, message: 'Signup failed. Please try again.' };
     } finally {
       setLoading(false);

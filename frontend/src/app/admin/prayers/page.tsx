@@ -1,63 +1,161 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Heart, Filter, Download, Trash2, CheckCircle, Clock, Search } from 'lucide-react';
+import { Heart, Filter, Download, Trash2, CheckCircle, Clock, Search, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { useSocket } from '@/contexts/SocketContext';
 
 interface PrayerRequest {
-    id: string;
+    _id: string;
+    id?: string;
     name: string;
     email?: string;
     phone?: string;
     request: string;
-    date: string;
+    createdAt?: string;
+    date?: string;
     status: 'pending' | 'ongoing' | 'answered';
     isAnonymous: boolean;
 }
 
+interface PrayerStats {
+    total: number;
+    pending: number;
+    ongoing: number;
+    answered: number;
+}
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:3001/api';
+
 export default function PrayersPage() {
     const [filter, setFilter] = useState<'all' | 'pending' | 'ongoing' | 'answered'>('all');
     const [searchTerm, setSearchTerm] = useState('');
-    const [prayers, setPrayers] = useState<PrayerRequest[]>([
-        {
-            id: '1',
-            name: 'John Smith',
-            email: 'john@example.com',
-            phone: '+1234567890',
-            request: 'Please pray for my mother who is recovering from surgery. She needs strength and healing.',
-            date: '2024-12-10',
-            status: 'ongoing',
-            isAnonymous: false
-        },
-        {
-            id: '2',
-            name: 'Anonymous',
-            request: 'Pray for guidance in my career decision. I am at a crossroads and need divine direction.',
-            date: '2024-12-09',
-            status: 'pending',
-            isAnonymous: true
-        },
-        {
-            id: '3',
-            name: 'Sarah Johnson',
-            email: 'sarah@example.com',
-            request: 'Thank God! My son got the job he was praying for. Praise the Lord!',
-            date: '2024-12-08',
-            status: 'answered',
-            isAnonymous: false
-        }
-    ]);
+    const [prayers, setPrayers] = useState<PrayerRequest[]>([]);
+    const [stats, setStats] = useState<PrayerStats>({ total: 0, pending: 0, ongoing: 0, answered: 0 });
+    const [loading, setLoading] = useState(true);
+    const [updating, setUpdating] = useState<string | null>(null);
+    const { socket, isConnected } = useSocket();
 
-    const handleDelete = (id: string) => {
-        setPrayers(prayers.filter(p => p.id !== id));
+    // Fetch initial data
+    useEffect(() => {
+        fetchPrayers();
+        fetchStats();
+    }, []);
+
+    // Set up real-time listeners
+    useEffect(() => {
+        if (!socket || !isConnected) return;
+
+        socket.on('initial-data', (data: { prayers: PrayerRequest[], prayerStats: PrayerStats }) => {
+            if (data.prayers) {
+                setPrayers(data.prayers.map(normalizePrayer));
+            }
+            if (data.prayerStats) {
+                setStats(data.prayerStats);
+            }
+        });
+
+        socket.on('prayer-created', (data: { prayer: PrayerRequest, stats: PrayerStats }) => {
+            setPrayers(prev => [normalizePrayer(data.prayer), ...prev]);
+            setStats(data.stats);
+        });
+
+        socket.on('prayer-updated', (data: { prayer: PrayerRequest, stats: PrayerStats }) => {
+            setPrayers(prev => prev.map(p => 
+                p.id === data.prayer._id || p._id === data.prayer._id 
+                    ? normalizePrayer(data.prayer) 
+                    : p
+            ));
+            setStats(data.stats);
+        });
+
+        socket.on('prayer-deleted', (data: { prayerId: string, stats: PrayerStats }) => {
+            setPrayers(prev => prev.filter(p => p.id !== data.prayerId && p._id !== data.prayerId));
+            setStats(data.stats);
+        });
+
+        return () => {
+            socket.off('initial-data');
+            socket.off('prayer-created');
+            socket.off('prayer-updated');
+            socket.off('prayer-deleted');
+        };
+    }, [socket, isConnected]);
+
+    const normalizePrayer = (prayer: PrayerRequest): PrayerRequest => {
+        return {
+            ...prayer,
+            id: prayer._id || prayer.id || '',
+            date: prayer.createdAt || prayer.date || new Date().toISOString(),
+        };
     };
 
-    const updateStatus = (id: string, status: PrayerRequest['status']) => {
-        setPrayers(prayers.map(p => p.id === id ? { ...p, status } : p));
+    const fetchPrayers = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/prayers`);
+            if (response.ok) {
+                const data = await response.json();
+                setPrayers(data.map(normalizePrayer));
+            }
+        } catch (error) {
+            console.error('Error fetching prayers:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchStats = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/prayers/stats`);
+            if (response.ok) {
+                const data = await response.json();
+                setStats(data);
+            }
+        } catch (error) {
+            console.error('Error fetching stats:', error);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this prayer request?')) return;
+        
+        setUpdating(id);
+        try {
+            const response = await fetch(`${API_BASE_URL}/prayers/${id}`, {
+                method: 'DELETE',
+            });
+            if (response.ok) {
+                // Real-time update will handle the state change
+            }
+        } catch (error) {
+            console.error('Error deleting prayer:', error);
+            alert('Failed to delete prayer request');
+        } finally {
+            setUpdating(null);
+        }
+    };
+
+    const updateStatus = async (id: string, status: PrayerRequest['status']) => {
+        setUpdating(id);
+        try {
+            const response = await fetch(`${API_BASE_URL}/prayers/${id}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status }),
+            });
+            if (response.ok) {
+                // Real-time update will handle the state change
+            }
+        } catch (error) {
+            console.error('Error updating status:', error);
+            alert('Failed to update prayer status');
+        } finally {
+            setUpdating(null);
+        }
     };
 
     const filteredPrayers = prayers.filter(prayer => {
@@ -68,7 +166,6 @@ export default function PrayersPage() {
     });
 
     const exportToCSV = () => {
-        // Simple CSV export functionality
         const csv = [
             ['Name', 'Email', 'Phone', 'Request', 'Date', 'Status'],
             ...prayers.map(p => [
@@ -76,7 +173,7 @@ export default function PrayersPage() {
                 p.email || '',
                 p.phone || '',
                 p.request,
-                p.date,
+                p.date ? new Date(p.date).toLocaleDateString() : '',
                 p.status
             ])
         ].map(row => row.join(',')).join('\n');
@@ -102,13 +199,26 @@ export default function PrayersPage() {
         }
     };
 
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold text-white">Prayer Requests</h1>
-                    <p className="text-gray-400 mt-1">Manage and track prayer requests</p>
+                    <p className="text-gray-400 mt-1">
+                        Manage and track prayer requests
+                        {isConnected && (
+                            <span className="ml-2 text-green-400 text-sm">● Live</span>
+                        )}
+                    </p>
                 </div>
                 <Button
                     onClick={exportToCSV}
@@ -127,7 +237,7 @@ export default function PrayersPage() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-gray-400 text-sm">Total</p>
-                                <p className="text-2xl font-bold text-white">{prayers.length}</p>
+                                <p className="text-2xl font-bold text-white">{stats.total}</p>
                             </div>
                             <Heart className="h-8 w-8 text-purple-400" />
                         </div>
@@ -138,9 +248,7 @@ export default function PrayersPage() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-gray-400 text-sm">Pending</p>
-                                <p className="text-2xl font-bold text-yellow-300">
-                                    {prayers.filter(p => p.status === 'pending').length}
-                                </p>
+                                <p className="text-2xl font-bold text-yellow-300">{stats.pending}</p>
                             </div>
                             <Clock className="h-8 w-8 text-yellow-400" />
                         </div>
@@ -151,9 +259,7 @@ export default function PrayersPage() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-gray-400 text-sm">Ongoing</p>
-                                <p className="text-2xl font-bold text-blue-300">
-                                    {prayers.filter(p => p.status === 'ongoing').length}
-                                </p>
+                                <p className="text-2xl font-bold text-blue-300">{stats.ongoing}</p>
                             </div>
                             <Heart className="h-8 w-8 text-blue-400" />
                         </div>
@@ -164,9 +270,7 @@ export default function PrayersPage() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-gray-400 text-sm">Answered</p>
-                                <p className="text-2xl font-bold text-green-300">
-                                    {prayers.filter(p => p.status === 'answered').length}
-                                </p>
+                                <p className="text-2xl font-bold text-green-300">{stats.answered}</p>
                             </div>
                             <CheckCircle className="h-8 w-8 text-green-400" />
                         </div>
@@ -221,7 +325,7 @@ export default function PrayersPage() {
             <div className="grid gap-4">
                 {filteredPrayers.map((prayer, index) => (
                     <motion.div
-                        key={prayer.id}
+                        key={prayer.id || prayer._id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.05 }}
@@ -242,7 +346,7 @@ export default function PrayersPage() {
                                                 </Badge>
                                             </div>
                                             <p className="text-gray-400 text-sm mt-1">
-                                                {new Date(prayer.date).toLocaleDateString()}
+                                                {prayer.date ? new Date(prayer.date).toLocaleDateString() : 'N/A'}
                                             </p>
                                             {!prayer.isAnonymous && (prayer.email || prayer.phone) && (
                                                 <div className="flex gap-4 mt-2 text-sm text-gray-400">
@@ -254,10 +358,15 @@ export default function PrayersPage() {
                                         <Button
                                             size="sm"
                                             variant="outline"
-                                            onClick={() => handleDelete(prayer.id)}
+                                            onClick={() => handleDelete(prayer.id || prayer._id)}
+                                            disabled={updating === (prayer.id || prayer._id)}
                                             className="border-red-900/50 text-red-400 hover:bg-red-900/20"
                                         >
-                                            <Trash2 className="h-4 w-4" />
+                                            {updating === (prayer.id || prayer._id) ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <Trash2 className="h-4 w-4" />
+                                            )}
                                         </Button>
                                     </div>
 
@@ -269,8 +378,8 @@ export default function PrayersPage() {
                                         <Button
                                             size="sm"
                                             variant="outline"
-                                            onClick={() => updateStatus(prayer.id, 'pending')}
-                                            disabled={prayer.status === 'pending'}
+                                            onClick={() => updateStatus(prayer.id || prayer._id, 'pending')}
+                                            disabled={prayer.status === 'pending' || updating === (prayer.id || prayer._id)}
                                             className="border-gray-700"
                                         >
                                             Mark Pending
@@ -278,8 +387,8 @@ export default function PrayersPage() {
                                         <Button
                                             size="sm"
                                             variant="outline"
-                                            onClick={() => updateStatus(prayer.id, 'ongoing')}
-                                            disabled={prayer.status === 'ongoing'}
+                                            onClick={() => updateStatus(prayer.id || prayer._id, 'ongoing')}
+                                            disabled={prayer.status === 'ongoing' || updating === (prayer.id || prayer._id)}
                                             className="border-gray-700"
                                         >
                                             Mark Ongoing
@@ -287,8 +396,8 @@ export default function PrayersPage() {
                                         <Button
                                             size="sm"
                                             variant="outline"
-                                            onClick={() => updateStatus(prayer.id, 'answered')}
-                                            disabled={prayer.status === 'answered'}
+                                            onClick={() => updateStatus(prayer.id || prayer._id, 'answered')}
+                                            disabled={prayer.status === 'answered' || updating === (prayer.id || prayer._id)}
                                             className="border-gray-700"
                                         >
                                             Mark Answered
