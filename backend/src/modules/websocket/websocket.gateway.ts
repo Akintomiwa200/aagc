@@ -11,6 +11,7 @@ import { Server, Socket } from 'socket.io';
 import { Logger, Inject, forwardRef } from '@nestjs/common';
 import { PrayersService } from '../prayers/prayers.service';
 import { EventsService } from '../events/events.service';
+import { SermonsService } from '../sermons/sermons.service';
 import { UsersService } from '../users/users.service';
 
 @WebSocketGateway({
@@ -30,7 +31,10 @@ export class WebSocketGateway implements OnGatewayConnection, OnGatewayDisconnec
   constructor(
     @Inject(forwardRef(() => PrayersService))
     private readonly prayersService: PrayersService,
+    @Inject(forwardRef(() => EventsService))
     private readonly eventsService: EventsService,
+    @Inject(forwardRef(() => SermonsService))
+    private readonly sermonsService: SermonsService,
     private readonly usersService: UsersService,
   ) {}
 
@@ -49,15 +53,17 @@ export class WebSocketGateway implements OnGatewayConnection, OnGatewayDisconnec
 
   private async sendInitialData(client: Socket) {
     try {
-      const [prayers, events, stats] = await Promise.all([
+      const [prayers, events, sermons, stats] = await Promise.all([
         this.prayersService.findAll(),
         this.eventsService.findAll(),
+        this.sermonsService.findAll(),
         this.prayersService.getStats(),
       ]);
 
       client.emit('initial-data', {
         prayers,
         events,
+        sermons,
         prayerStats: stats,
       });
     } catch (error) {
@@ -110,5 +116,52 @@ export class WebSocketGateway implements OnGatewayConnection, OnGatewayDisconnec
   async emitEventDeleted(eventId: string) {
     this.server.emit('event-deleted', { eventId });
   }
-}
 
+  // Sermon-related events
+  async emitSermonCreated(sermon: any) {
+    this.server.emit('sermon-created', sermon);
+  }
+
+  async emitSermonUpdated(sermon: any) {
+    this.server.emit('sermon-updated', sermon);
+  }
+
+  async emitSermonDeleted(sermonId: string) {
+    this.server.emit('sermon-deleted', { sermonId });
+  }
+
+  // Member-related events
+  async emitMemberCreated(member: any) {
+    this.server.emit('member-created', member);
+  }
+
+  async emitMemberUpdated(member: any) {
+    this.server.emit('member-updated', member);
+  }
+
+  async emitMemberDeleted(memberId: string) {
+    this.server.emit('member-deleted', { memberId });
+  }
+
+  // Donation-related events
+  async emitDonationCreated(donation: any) {
+    this.server.emit('donation-created', donation);
+  }
+
+  async emitDonationUpdated(donation: any) {
+    this.server.emit('donation-updated', donation);
+  }
+
+  // Gallery-related events
+  async emitGalleryImageCreated(image: any) {
+    this.server.emit('gallery-image-created', image);
+  }
+
+  async emitGalleryImageUpdated(image: any) {
+    this.server.emit('gallery-image-updated', image);
+  }
+
+  async emitGalleryImageDeleted(imageId: string) {
+    this.server.emit('gallery-image-deleted', { imageId });
+  }
+}

@@ -15,7 +15,28 @@ export class Event {
   date: string;
 
   @Prop()
+  time?: string;
+
+  @Prop()
   location?: string;
+
+  @Prop()
+  image?: string;
+
+  @Prop()
+  capacity?: number;
+
+  @Prop({ default: 0 })
+  registrations?: number;
+
+  @Prop()
+  registrationDeadline?: string;
+
+  @Prop({ default: 'upcoming' })
+  status?: 'upcoming' | 'ongoing' | 'completed';
+
+  @Prop()
+  type?: string;
 }
 
 export const EventSchema = SchemaFactory.createForClass(Event);

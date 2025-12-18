@@ -1,14 +1,21 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Delete, Inject, forwardRef } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { WebSocketGateway } from '../websocket/websocket.gateway';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    @Inject(forwardRef(() => WebSocketGateway))
+    private readonly websocketGateway: WebSocketGateway,
+  ) {}
 
   @Post()
-  create(@Body() dto: CreateUserDto) {
-    return this.usersService.create(dto);
+  async create(@Body() dto: CreateUserDto) {
+    const user = await this.usersService.create(dto);
+    await this.websocketGateway.emitMemberCreated(user);
+    return user;
   }
 
   @Get()
@@ -19,6 +26,20 @@ export class UsersController {
   @Get(':id')
   profile(@Param('id') id: string) {
     return this.usersService.getProfile(id);
+  }
+
+  @Put(':id')
+  async update(@Param('id') id: string, @Body() dto: Partial<CreateUserDto>) {
+    const user = await this.usersService.update(id, dto);
+    await this.websocketGateway.emitMemberUpdated(user);
+    return user;
+  }
+
+  @Delete(':id')
+  async delete(@Param('id') id: string) {
+    await this.usersService.delete(id);
+    await this.websocketGateway.emitMemberDeleted(id);
+    return { message: 'User deleted successfully' };
   }
 }
 

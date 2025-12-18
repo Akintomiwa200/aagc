@@ -45,7 +45,19 @@ export class User {
   location?: string;
 
   @Prop()
+  phone?: string;
+
+  @Prop()
+  address?: string;
+
+  @Prop()
   joinedDate?: string;
+
+  @Prop({ default: 'active' })
+  status?: 'active' | 'inactive';
+
+  @Prop({ type: [String], default: [] })
+  groups?: string[];
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

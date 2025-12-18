@@ -1,8 +1,29 @@
 {
-  "name": "apostolic-army-global",
+  "name": "@aagc/mobile",
+  "version": "1.0.0",
+  "description": "AAGC Platform Mobile App - Progressive Web App for church members",
+  "author": "Apostolic Army Global Church",
   "private": true,
-  "version": "0.0.0",
+  "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/aagc-platform.git",
+    "directory": "mobile"
+  },
+  "keywords": [
+    "react",
+    "pwa",
+    "mobile",
+    "church",
+    "community",
+    "real-time",
+    "gamification"
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",

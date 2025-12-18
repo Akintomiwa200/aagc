@@ -1,10 +1,28 @@
 {
-  "name": "backend",
-  "version": "0.0.1",
-  "description": "",
-  "author": "",
+  "name": "@aagc/backend",
+  "version": "1.0.0",
+  "description": "AAGC Platform Backend API - NestJS-based RESTful API with real-time WebSocket support",
+  "author": "Apostolic Army Global Church",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/aagc-platform.git",
+    "directory": "backend"
+  },
+  "keywords": [
+    "nestjs",
+    "api",
+    "church",
+    "management",
+    "websocket",
+    "real-time",
+    "mongodb"
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",

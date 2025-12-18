@@ -32,6 +32,25 @@ export class CreateUserDto {
   @IsString()
   location?: string;
 
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
+  @IsString()
+  joinedDate?: string;
+
+  @IsOptional()
+  @IsIn(['active', 'inactive'])
+  status?: 'active' | 'inactive';
+
+  @IsOptional()
+  groups?: string[];
+
   @IsIn(['admin', 'staff', 'member'])
   role: 'admin' | 'staff' | 'member' = 'member';
 }
