@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useSocket } from '@/contexts/SocketContext';
+import { apiService } from '@/lib/api';
 
 interface Event {
     id: string;
@@ -70,7 +71,7 @@ export default function EventsPage() {
 
             socket.on('event-updated', (data: Event) => {
                 const eventId = data._id || data.id || '';
-                setEvents(prev => prev.map(e => 
+                setEvents(prev => prev.map(e =>
                     (e.id === eventId) ? {
                         ...data,
                         id: eventId,
@@ -106,17 +107,10 @@ export default function EventsPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const response = await fetch(`${API_BASE_URL}/events`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ...formData,
-                    capacity: formData.capacity ? parseInt(formData.capacity) : undefined,
-                }),
+            await apiService.createEvent({
+                ...formData,
+                capacity: formData.capacity ? parseInt(formData.capacity) : undefined,
             });
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
             // Socket event will update the state
             setFormData({
                 title: '',
@@ -138,12 +132,7 @@ export default function EventsPage() {
 
     const handleDelete = async (id: string) => {
         try {
-            const response = await fetch(`${API_BASE_URL}/events/${id}`, {
-                method: 'DELETE',
-            });
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            await apiService.deleteEvent(id);
             // Socket event will update the state
         } catch (err: any) {
             setError(err.message || 'Failed to delete event.');
@@ -152,18 +141,11 @@ export default function EventsPage() {
 
     const duplicateEvent = async (event: Event) => {
         try {
-            const response = await fetch(`${API_BASE_URL}/events`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ...event,
-                    title: `${event.title} (Copy)`,
-                    registrations: 0,
-                }),
+            await apiService.createEvent({
+                ...event,
+                title: `${event.title} (Copy)`,
+                registrations: 0,
             });
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
             // Socket event will update the state
         } catch (err: any) {
             setError(err.message || 'Failed to duplicate event.');

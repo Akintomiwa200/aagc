@@ -6,7 +6,10 @@ import { BarChart, Download, Calendar, TrendingUp, Users, DollarSign, Heart, Mus
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { apiService } from '@/lib/api';
+import { useEffect, useCallback } from 'react';
 
 interface Report {
     id: string;
@@ -21,43 +24,51 @@ export default function ReportsPage() {
     const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
-    const [reports, setReports] = useState<Report[]>([
-        {
-            id: '1',
-            title: 'Monthly Donations Report',
-            type: 'donations',
-            period: 'December 2024',
-            generatedDate: '2024-12-10',
-            data: { total: 45230, count: 156 }
-        },
-        {
-            id: '2',
-            title: 'Member Growth Report',
-            type: 'members',
-            period: 'Q4 2024',
-            generatedDate: '2024-12-01',
-            data: { newMembers: 45, total: 1245 }
-        },
-        {
-            id: '3',
-            title: 'Event Attendance Report',
-            type: 'events',
-            period: 'November 2024',
-            generatedDate: '2024-11-30',
-            data: { events: 12, attendance: 2340 }
-        }
-    ]);
+    const [reports, setReports] = useState<Report[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const generateReport = (type: Report['type']) => {
-        const newReport: Report = {
-            id: Date.now().toString(),
-            title: `${type.charAt(0).toUpperCase() + type.slice(1)} Report`,
-            type,
-            period: selectedPeriod,
-            generatedDate: new Date().toISOString().split('T')[0],
-            data: {}
-        };
-        setReports([newReport, ...reports]);
+    const fetchReports = useCallback(async () => {
+        try {
+            setLoading(true);
+            const data = await apiService.getReports();
+            setReports(data.map((r: any) => ({
+                id: r._id || r.id,
+                title: r.title,
+                type: r.type,
+                period: r.period,
+                generatedDate: r.createdAt || r.generatedDate,
+                data: r.data
+            })));
+        } catch (error) {
+            console.error('Failed to fetch reports:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchReports();
+    }, [fetchReports]);
+
+    const generateReport = async (type: Report['type']) => {
+        try {
+            const dateRange = startDate && endDate ? { start: startDate, end: endDate } : undefined;
+            const newReportData = await apiService.generateReport(type, selectedPeriod, dateRange);
+
+            // Assuming API returns the generated report object
+            const newReport: Report = {
+                id: newReportData._id || newReportData.id,
+                title: newReportData.title,
+                type: newReportData.type,
+                period: newReportData.period,
+                generatedDate: newReportData.createdAt || new Date().toISOString(),
+                data: newReportData.data
+            };
+
+            setReports(prev => [newReport, ...prev]);
+        } catch (error) {
+            console.error('Failed to generate report:', error);
+        }
     };
 
     const exportReport = (report: Report) => {

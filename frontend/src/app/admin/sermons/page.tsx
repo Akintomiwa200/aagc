@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { apiService } from '@/lib/api';
+import { useEffect, useCallback } from 'react';
 
 interface Sermon {
     id: string;
@@ -26,30 +28,35 @@ interface Sermon {
 export default function SermonsPage() {
     const [showUploadForm, setShowUploadForm] = useState(false);
     const [uploadType, setUploadType] = useState<'video' | 'audio'>('video');
-    const [sermons, setSermons] = useState<Sermon[]>([
-        {
-            id: '1',
-            title: 'The Power of Faith',
-            speaker: 'Pastor John Doe',
-            date: '2024-12-08',
-            type: 'video',
-            url: 'https://youtube.com/watch?v=example',
-            scripture: 'Hebrews 11:1',
-            description: 'A powerful message about faith and trust in God',
-            duration: '45:30'
-        },
-        {
-            id: '2',
-            title: 'Walking in Love',
-            speaker: 'Pastor Jane Smith',
-            date: '2024-12-01',
-            type: 'audio',
-            url: '/sermons/audio/walking-in-love.mp3',
-            scripture: '1 Corinthians 13',
-            description: 'Understanding the depth of God\'s love',
-            duration: '38:15'
+    const [sermons, setSermons] = useState<Sermon[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchSermons = useCallback(async () => {
+        try {
+            setLoading(true);
+            const data = await apiService.getSermons();
+            setSermons(data.map((s: any) => ({
+                id: s._id || s.id,
+                title: s.title,
+                speaker: s.speaker,
+                date: s.date,
+                type: s.type || 'video',
+                url: s.url,
+                scripture: s.scripture,
+                description: s.description,
+                thumbnail: s.thumbnail,
+                duration: s.duration
+            })));
+        } catch (err) {
+            console.error('Failed to fetch sermons:', err);
+        } finally {
+            setLoading(false);
         }
-    ]);
+    }, []);
+
+    useEffect(() => {
+        fetchSermons();
+    }, [fetchSermons]);
 
     const [formData, setFormData] = useState({
         title: '',
@@ -61,28 +68,38 @@ export default function SermonsPage() {
         thumbnail: ''
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const newSermon: Sermon = {
-            id: Date.now().toString(),
-            ...formData,
-            type: uploadType
-        };
-        setSermons([newSermon, ...sermons]);
-        setFormData({
-            title: '',
-            speaker: '',
-            date: '',
-            scripture: '',
-            description: '',
-            url: '',
-            thumbnail: ''
-        });
-        setShowUploadForm(false);
+        try {
+            await apiService.createSermon({
+                ...formData,
+                type: uploadType
+            });
+            fetchSermons();
+            setFormData({
+                title: '',
+                speaker: '',
+                date: '',
+                scripture: '',
+                description: '',
+                url: '',
+                thumbnail: ''
+            });
+            setShowUploadForm(false);
+        } catch (err) {
+            console.error('Failed to create sermon:', err);
+        }
     };
 
-    const handleDelete = (id: string) => {
-        setSermons(sermons.filter(s => s.id !== id));
+    const handleDelete = async (id: string) => {
+        if (confirm('Are you sure you want to delete this sermon?')) {
+            try {
+                await apiService.deleteSermon(id);
+                setSermons(sermons.filter(s => s.id !== id));
+            } catch (err) {
+                console.error('Failed to delete sermon:', err);
+            }
+        }
     };
 
     return (
@@ -120,8 +137,8 @@ export default function SermonsPage() {
                                         type="button"
                                         onClick={() => setUploadType('video')}
                                         className={`flex-1 p-4 rounded-lg border-2 transition ${uploadType === 'video'
-                                                ? 'border-blue-500 bg-blue-500/10'
-                                                : 'border-gray-700 bg-gray-800/50'
+                                            ? 'border-blue-500 bg-blue-500/10'
+                                            : 'border-gray-700 bg-gray-800/50'
                                             }`}
                                     >
                                         <Video className="h-6 w-6 mx-auto mb-2 text-blue-400" />
@@ -131,8 +148,8 @@ export default function SermonsPage() {
                                         type="button"
                                         onClick={() => setUploadType('audio')}
                                         className={`flex-1 p-4 rounded-lg border-2 transition ${uploadType === 'audio'
-                                                ? 'border-purple-500 bg-purple-500/10'
-                                                : 'border-gray-700 bg-gray-800/50'
+                                            ? 'border-purple-500 bg-purple-500/10'
+                                            : 'border-gray-700 bg-gray-800/50'
                                             }`}
                                     >
                                         <Music className="h-6 w-6 mx-auto mb-2 text-purple-400" />

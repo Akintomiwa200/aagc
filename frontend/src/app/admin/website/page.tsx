@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { apiService } from '@/lib/api';
+import { useEffect, useCallback } from 'react';
 
 interface WebsiteSettings {
     siteName: string;
@@ -27,13 +29,13 @@ interface WebsiteSettings {
 
 export default function WebsitePage() {
     const [settings, setSettings] = useState<WebsiteSettings>({
-        siteName: 'Grace Chapel',
-        siteDescription: 'A place of worship and community',
+        siteName: '',
+        siteDescription: '',
         logoUrl: '',
         faviconUrl: '',
         primaryColor: '#3b82f6',
         secondaryColor: '#8b5cf6',
-        footerText: '© 2024 Grace Chapel. All rights reserved.',
+        footerText: '',
         socialLinks: {
             facebook: '',
             twitter: '',
@@ -42,11 +44,36 @@ export default function WebsitePage() {
         }
     });
 
+    const [loading, setLoading] = useState(true);
+
+    const fetchSettings = useCallback(async () => {
+        try {
+            setLoading(true);
+            const data = await apiService.getWebsiteSettings();
+            if (data) {
+                setSettings(data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch website settings:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchSettings();
+    }, [fetchSettings]);
+
     const [activeTab, setActiveTab] = useState<'general' | 'appearance' | 'social'>('general');
 
-    const handleSave = () => {
-        // Save settings logic here
-        console.log('Saving settings:', settings);
+    const handleSave = async () => {
+        try {
+            await apiService.updateWebsiteSettings(settings);
+            alert('Settings saved successfully!');
+        } catch (error) {
+            console.error('Failed to save settings:', error);
+            alert('Failed to save settings.');
+        }
     };
 
     const previewSite = () => {
@@ -84,33 +111,30 @@ export default function WebsitePage() {
             <div className="flex gap-2 border-b border-gray-800">
                 <button
                     onClick={() => setActiveTab('general')}
-                    className={`px-4 py-2 font-medium transition ${
-                        activeTab === 'general'
-                            ? 'text-white border-b-2 border-blue-500'
-                            : 'text-gray-400 hover:text-white'
-                    }`}
+                    className={`px-4 py-2 font-medium transition ${activeTab === 'general'
+                        ? 'text-white border-b-2 border-blue-500'
+                        : 'text-gray-400 hover:text-white'
+                        }`}
                 >
                     <Settings className="h-4 w-4 inline mr-2" />
                     General
                 </button>
                 <button
                     onClick={() => setActiveTab('appearance')}
-                    className={`px-4 py-2 font-medium transition ${
-                        activeTab === 'appearance'
-                            ? 'text-white border-b-2 border-blue-500'
-                            : 'text-gray-400 hover:text-white'
-                    }`}
+                    className={`px-4 py-2 font-medium transition ${activeTab === 'appearance'
+                        ? 'text-white border-b-2 border-blue-500'
+                        : 'text-gray-400 hover:text-white'
+                        }`}
                 >
                     <Palette className="h-4 w-4 inline mr-2" />
                     Appearance
                 </button>
                 <button
                     onClick={() => setActiveTab('social')}
-                    className={`px-4 py-2 font-medium transition ${
-                        activeTab === 'social'
-                            ? 'text-white border-b-2 border-blue-500'
-                            : 'text-gray-400 hover:text-white'
-                    }`}
+                    className={`px-4 py-2 font-medium transition ${activeTab === 'social'
+                        ? 'text-white border-b-2 border-blue-500'
+                        : 'text-gray-400 hover:text-white'
+                        }`}
                 >
                     <Link2 className="h-4 w-4 inline mr-2" />
                     Social Links

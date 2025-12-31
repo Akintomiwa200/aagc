@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { apiService } from '@/lib/api';
+import { useEffect, useCallback } from 'react';
 
 interface Devotional {
     id: string;
@@ -23,26 +25,33 @@ interface Devotional {
 
 export default function DevotionalsPage() {
     const [showForm, setShowForm] = useState(false);
-    const [devotionals, setDevotionals] = useState<Devotional[]>([
-        {
-            id: '1',
-            title: 'Walking in Faith Daily',
-            author: 'Pastor John Doe',
-            date: '2024-12-11',
-            scripture: 'Proverbs 3:5-6',
-            content: 'Trust in the LORD with all your heart and lean not on your own understanding...',
-            status: 'published'
-        },
-        {
-            id: '2',
-            title: 'The Power of Prayer',
-            author: 'Pastor Jane Smith',
-            date: '2024-12-10',
-            scripture: 'Philippians 4:6-7',
-            content: 'Do not be anxious about anything, but in every situation, by prayer and petition...',
-            status: 'draft'
+    const [devotionals, setDevotionals] = useState<Devotional[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchDevotionals = useCallback(async () => {
+        try {
+            setLoading(true);
+            const data = await apiService.getDevotionals();
+            setDevotionals(data.map((d: any) => ({
+                id: d._id || d.id,
+                title: d.title,
+                author: d.author || 'Pastor',
+                date: d.date || d.createdAt,
+                scripture: d.scripture,
+                content: d.content,
+                featuredImage: d.featuredImage,
+                status: d.status || 'draft'
+            })));
+        } catch (error) {
+            console.error('Failed to fetch devotionals:', error);
+        } finally {
+            setLoading(false);
         }
-    ]);
+    }, []);
+
+    useEffect(() => {
+        fetchDevotionals();
+    }, [fetchDevotionals]);
 
     const [formData, setFormData] = useState({
         title: '',
@@ -54,35 +63,50 @@ export default function DevotionalsPage() {
         status: 'draft' as 'published' | 'draft'
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const newDevotional: Devotional = {
-            id: Date.now().toString(),
-            ...formData
-        };
-        setDevotionals([newDevotional, ...devotionals]);
-        setFormData({
-            title: '',
-            author: '',
-            date: '',
-            scripture: '',
-            content: '',
-            featuredImage: '',
-            status: 'draft'
-        });
-        setShowForm(false);
+        try {
+            await apiService.createDevotional(formData);
+            fetchDevotionals();
+            setFormData({
+                title: '',
+                author: '',
+                date: '',
+                scripture: '',
+                content: '',
+                featuredImage: '',
+                status: 'draft'
+            });
+            setShowForm(false);
+        } catch (error) {
+            console.error('Failed to create devotional:', error);
+        }
     };
 
-    const handleDelete = (id: string) => {
-        setDevotionals(devotionals.filter(d => d.id !== id));
+    const handleDelete = async (id: string) => {
+        if (confirm('Are you sure you want to delete this devotional?')) {
+            try {
+                await apiService.deleteDevotional(id);
+                setDevotionals(devotionals.filter(d => d.id !== id));
+            } catch (error) {
+                console.error('Failed to delete devotional:', error);
+            }
+        }
     };
 
-    const toggleStatus = (id: string) => {
-        setDevotionals(devotionals.map(d =>
-            d.id === id
-                ? { ...d, status: d.status === 'published' ? 'draft' : 'published' }
-                : d
-        ));
+    const toggleStatus = async (id: string) => {
+        const devotional = devotionals.find(d => d.id === id);
+        if (!devotional) return;
+
+        const newStatus = devotional.status === 'published' ? 'draft' : 'published';
+        try {
+            await apiService.updateDevotional(id, { status: newStatus });
+            setDevotionals(devotionals.map(d =>
+                d.id === id ? { ...d, status: newStatus } : d
+            ));
+        } catch (error) {
+            console.error('Failed to update devotional status:', error);
+        }
     };
 
     return (
@@ -190,8 +214,8 @@ export default function DevotionalsPage() {
                                             type="button"
                                             onClick={() => setFormData({ ...formData, status: 'draft' })}
                                             className={`px-4 py-2 rounded-lg transition ${formData.status === 'draft'
-                                                    ? 'bg-yellow-600 text-white'
-                                                    : 'bg-gray-800 text-gray-400'
+                                                ? 'bg-yellow-600 text-white'
+                                                : 'bg-gray-800 text-gray-400'
                                                 }`}
                                         >
                                             Draft
@@ -200,8 +224,8 @@ export default function DevotionalsPage() {
                                             type="button"
                                             onClick={() => setFormData({ ...formData, status: 'published' })}
                                             className={`px-4 py-2 rounded-lg transition ${formData.status === 'published'
-                                                    ? 'bg-green-600 text-white'
-                                                    : 'bg-gray-800 text-gray-400'
+                                                ? 'bg-green-600 text-white'
+                                                : 'bg-gray-800 text-gray-400'
                                                 }`}
                                         >
                                             Published

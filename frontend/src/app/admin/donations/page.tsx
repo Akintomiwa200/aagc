@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { apiService } from '@/lib/api';
+import { useEffect, useCallback } from 'react';
 
 interface Donation {
     id: string;
@@ -23,54 +25,38 @@ interface Donation {
 export default function DonationsPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [filter, setFilter] = useState<'all' | 'completed' | 'pending' | 'failed'>('all');
-    const [donations, setDonations] = useState<Donation[]>([
-        {
-            id: '1',
-            donorName: 'John Smith',
-            email: 'john@example.com',
-            amount: 500.00,
-            date: '2024-12-10',
-            method: 'online',
-            category: 'tithe',
-            status: 'completed',
-            transactionId: 'txn_123456789'
-        },
-        {
-            id: '2',
-            donorName: 'Jane Doe',
-            email: 'jane@example.com',
-            amount: 250.00,
-            date: '2024-12-09',
-            method: 'check',
-            category: 'offering',
-            status: 'completed'
-        },
-        {
-            id: '3',
-            donorName: 'Mike Johnson',
-            email: 'mike@example.com',
-            amount: 1000.00,
-            date: '2024-12-08',
-            method: 'bank_transfer',
-            category: 'building',
-            status: 'completed',
-            transactionId: 'txn_987654321'
-        },
-        {
-            id: '4',
-            donorName: 'Sarah Williams',
-            email: 'sarah@example.com',
-            amount: 100.00,
-            date: '2024-12-10',
-            method: 'online',
-            category: 'missions',
-            status: 'pending'
+    const [donations, setDonations] = useState<Donation[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchDonations = useCallback(async () => {
+        try {
+            setLoading(true);
+            const data = await apiService.getDonations();
+            setDonations(data.map((d: any) => ({
+                id: d._id || d.id,
+                donorName: d.donorName || d.user?.name || 'Anonymous',
+                email: d.email || d.user?.email,
+                amount: d.amount,
+                date: d.date || d.createdAt,
+                method: d.method,
+                category: d.category,
+                status: d.status,
+                transactionId: d.transactionId
+            })));
+        } catch (error) {
+            console.error('Failed to fetch donations:', error);
+        } finally {
+            setLoading(false);
         }
-    ]);
+    }, []);
+
+    useEffect(() => {
+        fetchDonations();
+    }, [fetchDonations]);
 
     const filteredDonations = donations.filter(donation => {
         const matchesFilter = filter === 'all' || donation.status === filter;
-        const matchesSearch = 
+        const matchesSearch =
             donation.donorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
             donation.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             donation.transactionId?.toLowerCase().includes(searchTerm.toLowerCase());

@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { apiService } from '@/lib/api';
+import { useEffect, useCallback } from 'react';
 
 interface Message {
     id: string;
@@ -27,56 +29,62 @@ export default function MessagesPage() {
     const [filter, setFilter] = useState<'all' | 'unread' | 'read' | 'replied'>('all');
     const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
     const [replyText, setReplyText] = useState('');
-    const [messages, setMessages] = useState<Message[]>([
-        {
-            id: '1',
-            name: 'John Smith',
-            email: 'john@example.com',
-            phone: '+1234567890',
-            subject: 'Question about Sunday Service',
-            message: 'Hello, I would like to know more about the upcoming Sunday service schedule.',
-            date: '2024-12-10',
-            status: 'unread',
-            category: 'general'
-        },
-        {
-            id: '2',
-            name: 'Sarah Johnson',
-            email: 'sarah@example.com',
-            subject: 'Prayer Request',
-            message: 'Please pray for my family during this difficult time.',
-            date: '2024-12-09',
-            status: 'read',
-            category: 'prayer'
-        },
-        {
-            id: '3',
-            name: 'Mike Davis',
-            email: 'mike@example.com',
-            phone: '+1234567892',
-            subject: 'Event Inquiry',
-            message: 'I am interested in volunteering for the Christmas event.',
-            date: '2024-12-08',
-            status: 'replied',
-            category: 'event'
-        }
-    ]);
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const handleDelete = (id: string) => {
-        setMessages(messages.filter(m => m.id !== id));
-        if (selectedMessage?.id === id) {
-            setSelectedMessage(null);
+    const fetchMessages = useCallback(async () => {
+        try {
+            setLoading(true);
+            const data = await apiService.getMessages();
+            setMessages(data.map((m: any) => ({
+                id: m._id || m.id,
+                name: m.name,
+                email: m.email,
+                phone: m.phone,
+                subject: m.subject,
+                message: m.message,
+                date: m.date || m.createdAt,
+                status: m.status || 'unread',
+                category: m.category || 'general'
+            })));
+        } catch (error) {
+            console.error('Failed to fetch messages:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchMessages();
+    }, [fetchMessages]);
+
+    const handleDelete = async (id: string) => {
+        if (confirm('Are you sure you want to delete this message?')) {
+            try {
+                await apiService.deleteMessage(id);
+                setMessages(messages.filter(m => m.id !== id));
+                if (selectedMessage?.id === id) {
+                    setSelectedMessage(null);
+                }
+            } catch (error) {
+                console.error('Failed to delete message:', error);
+            }
         }
     };
 
-    const markAsRead = (id: string) => {
-        setMessages(messages.map(m => m.id === id ? { ...m, status: 'read' } : m));
+    const markAsRead = async (id: string) => {
+        try {
+            await apiService.markMessageAsRead(id);
+            setMessages(messages.map(m => m.id === id ? { ...m, status: 'read' } : m));
+        } catch (error) {
+            console.error('Failed to mark message as read:', error);
+        }
     };
 
-    const markAsReplied = (id: string) => {
-        setMessages(messages.map(m => m.id === id ? { ...m, status: 'replied' } : m));
-        setSelectedMessage(null);
-        setReplyText('');
+    // markAsReplied integrated into sendReply and API response handling ideally
+    // Keeping a helper function if needed for optimistic updates or internal use
+    const updateMessageStatus = (id: string, status: Message['status']) => {
+        setMessages(messages.map(m => m.id === id ? { ...m, status } : m));
     };
 
     const handleReply = (message: Message) => {
@@ -84,15 +92,22 @@ export default function MessagesPage() {
         markAsRead(message.id);
     };
 
-    const sendReply = () => {
+    const sendReply = async () => {
         if (selectedMessage && replyText.trim()) {
-            markAsReplied(selectedMessage.id);
+            try {
+                await apiService.replyToMessage(selectedMessage.id, replyText);
+                updateMessageStatus(selectedMessage.id, 'replied'); // Optimistic or after success
+                setSelectedMessage(null);
+                setReplyText('');
+            } catch (error) {
+                console.error('Failed to send reply:', error);
+            }
         }
     };
 
     const filteredMessages = messages.filter(message => {
         const matchesFilter = filter === 'all' || message.status === filter;
-        const matchesSearch = 
+        const matchesSearch =
             message.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             message.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
             message.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -243,10 +258,9 @@ export default function MessagesPage() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.05 }}
                         >
-                            <Card 
-                                className={`glass border-gray-800 cursor-pointer hover:border-blue-500 transition ${
-                                    selectedMessage?.id === message.id ? 'border-blue-500' : ''
-                                }`}
+                            <Card
+                                className={`glass border-gray-800 cursor-pointer hover:border-blue-500 transition ${selectedMessage?.id === message.id ? 'border-blue-500' : ''
+                                    }`}
                                 onClick={() => handleReply(message)}
                             >
                                 <CardContent className="p-4">

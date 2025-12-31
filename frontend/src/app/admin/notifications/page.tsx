@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { apiService } from '@/lib/api';
+import { useEffect, useCallback } from 'react';
 
 interface Notification {
     id: string;
@@ -23,36 +25,33 @@ interface Notification {
 
 export default function NotificationsPage() {
     const [showForm, setShowForm] = useState(false);
-    const [notifications, setNotifications] = useState<Notification[]>([
-        {
-            id: '1',
-            title: 'Sunday Service Reminder',
-            message: 'Join us this Sunday at 10 AM for our weekly worship service.',
-            type: 'reminder',
-            target: 'all',
-            scheduledDate: '2024-12-15T09:00:00',
-            status: 'scheduled',
-            createdAt: '2024-12-10'
-        },
-        {
-            id: '2',
-            title: 'Christmas Event Announcement',
-            message: 'We are excited to announce our annual Christmas celebration on December 24th.',
-            type: 'event',
-            target: 'all',
-            status: 'sent',
-            createdAt: '2024-12-08'
-        },
-        {
-            id: '3',
-            title: 'Volunteer Meeting',
-            message: 'All volunteers are invited to a meeting this Wednesday at 7 PM.',
-            type: 'announcement',
-            target: 'volunteers',
-            status: 'sent',
-            createdAt: '2024-12-05'
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchNotifications = useCallback(async () => {
+        try {
+            setLoading(true);
+            const data = await apiService.getNotifications();
+            setNotifications(data.map((n: any) => ({
+                id: n._id || n.id,
+                title: n.title,
+                message: n.message,
+                type: n.type || 'general',
+                target: n.target || 'all',
+                scheduledDate: n.scheduledDate,
+                status: n.status || 'draft',
+                createdAt: n.createdAt
+            })));
+        } catch (error) {
+            console.error('Failed to fetch notifications:', error);
+        } finally {
+            setLoading(false);
         }
-    ]);
+    }, []);
+
+    useEffect(() => {
+        fetchNotifications();
+    }, [fetchNotifications]);
 
     const [formData, setFormData] = useState({
         title: '',
@@ -63,31 +62,40 @@ export default function NotificationsPage() {
         status: 'draft' as Notification['status']
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const newNotification: Notification = {
-            id: Date.now().toString(),
-            ...formData,
-            createdAt: new Date().toISOString().split('T')[0]
-        };
-        setNotifications([newNotification, ...notifications]);
-        setFormData({
-            title: '',
-            message: '',
-            type: 'general',
-            target: 'all',
-            scheduledDate: '',
-            status: 'draft'
-        });
-        setShowForm(false);
+        try {
+            await apiService.createNotification(formData);
+            fetchNotifications();
+            setFormData({
+                title: '',
+                message: '',
+                type: 'general',
+                target: 'all',
+                scheduledDate: '',
+                status: 'draft'
+            });
+            setShowForm(false);
+        } catch (error) {
+            console.error('Failed to create notification:', error);
+        }
     };
 
-    const handleDelete = (id: string) => {
-        setNotifications(notifications.filter(n => n.id !== id));
+    const handleDelete = async (id: string) => {
+        if (confirm('Are you sure you want to delete this notification?')) {
+            try {
+                await apiService.deleteNotification(id);
+                setNotifications(notifications.filter(n => n.id !== id));
+            } catch (error) {
+                console.error('Failed to delete notification:', error);
+            }
+        }
     };
 
-    const sendNotification = (id: string) => {
-        setNotifications(notifications.map(n => n.id === id ? { ...n, status: 'sent' } : n));
+    const sendNotification = async (id: string) => {
+        // Logic to manually trigger/send a notification if API supports it
+        // Otherwise, update status locally or via API update
+        console.log('Sending notification', id);
     };
 
     const getTypeColor = (type: string) => {
@@ -255,8 +263,8 @@ export default function NotificationsPage() {
                                             id="scheduledDate"
                                             type="datetime-local"
                                             value={formData.scheduledDate}
-                                            onChange={(e) => setFormData({ 
-                                                ...formData, 
+                                            onChange={(e) => setFormData({
+                                                ...formData,
                                                 scheduledDate: e.target.value,
                                                 status: e.target.value ? 'scheduled' : 'draft'
                                             })}

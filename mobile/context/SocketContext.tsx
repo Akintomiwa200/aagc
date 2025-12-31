@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
 interface SocketContextType {
   socket: Socket | null;
@@ -8,12 +10,18 @@ interface SocketContextType {
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
+// Get socket URL from environment or use default
+const SOCKET_URL = Constants.expoConfig?.extra?.socketUrl || 'http://localhost:3001';
 
 export function SocketProvider({ children }: { children: ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const token = localStorage.getItem('auth_token');
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Load auth token
+    AsyncStorage.getItem('auth_token').then(setToken).catch(console.error);
+  }, []);
 
   useEffect(() => {
     if (!token) {
@@ -74,4 +82,3 @@ export function useSocket() {
   }
   return context;
 }
-

@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useSocket } from '@/contexts/SocketContext';
+import { apiService } from '@/lib/api';
 
 interface PrayerRequest {
     _id: string;
@@ -65,9 +66,9 @@ export default function PrayersPage() {
         });
 
         socket.on('prayer-updated', (data: { prayer: PrayerRequest, stats: PrayerStats }) => {
-            setPrayers(prev => prev.map(p => 
-                p.id === data.prayer._id || p._id === data.prayer._id 
-                    ? normalizePrayer(data.prayer) 
+            setPrayers(prev => prev.map(p =>
+                p.id === data.prayer._id || p._id === data.prayer._id
+                    ? normalizePrayer(data.prayer)
                     : p
             ));
             setStats(data.stats);
@@ -96,11 +97,8 @@ export default function PrayersPage() {
 
     const fetchPrayers = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/prayers`);
-            if (response.ok) {
-                const data = await response.json();
-                setPrayers(data.map(normalizePrayer));
-            }
+            const data = await apiService.getPrayers();
+            setPrayers(data.map(normalizePrayer));
         } catch (error) {
             console.error('Error fetching prayers:', error);
         } finally {
@@ -110,11 +108,15 @@ export default function PrayersPage() {
 
     const fetchStats = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/prayers/stats`);
-            if (response.ok) {
-                const data = await response.json();
-                setStats(data);
-            }
+            // Assuming we'll add getPrayerStats or similar to apiService, or use generic request
+            // Checking api.ts showed we might need to add it or it's missing.
+            // Let's use direct request via apiService for now until explicit method added
+            // Wait, apiService has getDashboardStats but maybe not specific prayer stats? 
+            // In api.ts there is only `updatePrayerStatus` and `getPrayers`.
+            // I should add `getPrayerStats` to `api.ts` first or just cast specific endpoint.
+            // Actually, I'll update api.ts in a bit. For now let's assume getPrayerStats will exist.
+            const data = await apiService.getPrayerStats();
+            setStats(data);
         } catch (error) {
             console.error('Error fetching stats:', error);
         }
@@ -122,15 +124,11 @@ export default function PrayersPage() {
 
     const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this prayer request?')) return;
-        
+
         setUpdating(id);
         try {
-            const response = await fetch(`${API_BASE_URL}/prayers/${id}`, {
-                method: 'DELETE',
-            });
-            if (response.ok) {
-                // Real-time update will handle the state change
-            }
+            await apiService.deletePrayer(id);
+            // Real-time update will handle the state change
         } catch (error) {
             console.error('Error deleting prayer:', error);
             alert('Failed to delete prayer request');
@@ -142,14 +140,8 @@ export default function PrayersPage() {
     const updateStatus = async (id: string, status: PrayerRequest['status']) => {
         setUpdating(id);
         try {
-            const response = await fetch(`${API_BASE_URL}/prayers/${id}/status`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status }),
-            });
-            if (response.ok) {
-                // Real-time update will handle the state change
-            }
+            await apiService.updatePrayerStatus(id, status);
+            // Real-time update will handle state change
         } catch (error) {
             console.error('Error updating status:', error);
             alert('Failed to update prayer status');

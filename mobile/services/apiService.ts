@@ -1,34 +1,36 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const API_BASE_URL = 'http://localhost:3001/api'; // TODO: Use environment variable
+const SOCKET_URL = 'http://localhost:3001';
 
 class ApiService {
   private token: string | null = null;
 
-  setToken(token: string) {
+  async setToken(token: string) {
     this.token = token;
-    localStorage.setItem('auth_token', token);
+    await AsyncStorage.setItem('auth_token', token);
   }
 
-  getToken(): string | null {
+  async getToken(): Promise<string | null> {
     if (!this.token) {
-      this.token = localStorage.getItem('auth_token');
+      this.token = await AsyncStorage.getItem('auth_token');
     }
     return this.token;
   }
 
-  clearToken() {
+  async clearToken() {
     this.token = null;
-    localStorage.removeItem('auth_token');
+    await AsyncStorage.removeItem('auth_token');
   }
 
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const token = this.getToken();
-    const headers: HeadersInit = {
+    const token = await this.getToken();
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string>),
     };
 
     if (token) {
@@ -49,6 +51,28 @@ class ApiService {
   }
 
   // Auth
+  async login(email: string, password: string) { // Added
+    const response = await this.request<{ token: string; user: any }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    if (response.token) {
+      await this.setToken(response.token);
+    }
+    return response;
+  }
+
+  async register(name: string, email: string, password: string) { // Added
+    const response = await this.request<{ token: string; user: any }>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ name, email, password }),
+    });
+    if (response.token) {
+      await this.setToken(response.token);
+    }
+    return response;
+  }
+
   async mobileOAuth(provider: 'google' | 'apple', token: string, email?: string, name?: string, picture?: string) {
     return this.request<{ token: string; user: any }>('/auth/oauth/mobile', {
       method: 'POST',
@@ -110,9 +134,22 @@ class ApiService {
     return this.request<any>(`/sermons/${id}`);
   }
 
+  // Devotionals
+  async getDevotionals() {
+    return this.request<any[]>('/devotionals');
+  }
+
+  async getTodayDevotional() {
+    return this.request<any>('/devotionals/today');
+  }
+
   // User Profile
   async getUserProfile(id: string) {
     return this.request<any>(`/users/${id}`);
+  }
+
+  async getMe() {
+    return this.request<any>('/users/me');
   }
 
   async updateUserProfile(id: string, data: any) {
@@ -132,6 +169,82 @@ class ApiService {
 
   async getDonations(userId: string) {
     return this.request<any[]>(`/donations?userId=${userId}`);
+  }
+  // Friend requests
+  async getFriends() {
+    return this.request<any[]>('/friends');
+  }
+
+  async getFriendRequests() {
+    return this.request<any[]>('/friends/requests');
+  }
+
+  async sendFriendRequest(userId: string) {
+    return this.request<any>('/friends/request', {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    });
+  }
+
+  async respondToFriendRequest(requestId: string, status: 'accepted' | 'rejected') {
+    return this.request<any>(`/friends/requests/${requestId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  // Notifications
+  async getNotifications() {
+    return this.request<any[]>('/notifications');
+  }
+
+  async markNotificationRead(id: string) {
+    return this.request<any>(`/notifications/${id}/read`, {
+      method: 'PUT',
+    });
+  }
+
+  // First Timer / Connection Card
+  async submitConnectionCard(data: any) {
+    return this.request<any>('/connection-cards', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Live Stream
+  async getLiveStream() {
+    return this.request<any>('/livestream');
+  }
+
+  // Gallery
+  async getGalleryImages() {
+    return this.request<any[]>('/gallery');
+  }
+
+  // Notes
+  async getNotes() {
+    return this.request<any[]>('/notes');
+  }
+
+  async createNote(data: { title: string; content: string }) {
+    return this.request<any>('/notes', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateNote(id: string, data: { title: string; content: string }) {
+    return this.request<any>(`/notes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteNote(id: string) {
+    return this.request<void>(`/notes/${id}`, {
+      method: 'DELETE',
+    });
   }
 }
 

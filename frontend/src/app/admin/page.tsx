@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSocket } from '@/contexts/SocketContext';
-import { 
-  Users, 
-  Calendar, 
-  DollarSign, 
-  TrendingUp, 
+import {
+  Users,
+  Calendar,
+  DollarSign,
+  TrendingUp,
   Activity,
   MessageSquare,
   Heart,
@@ -22,60 +22,61 @@ import {
   Settings,
   UserPlus,
 } from 'lucide-react';
+import { apiService } from '@/lib/api';
 
 // Extended stats with more church-specific metrics
 const stats = [
-  { 
-    name: 'Total Members', 
-    value: '1,245', 
-    change: '+12.3%', 
-    changeType: 'increase', 
+  {
+    name: 'Total Members',
+    value: '1,245',
+    change: '+12.3%',
+    changeType: 'increase',
     icon: Users,
     color: 'bg-blue-500',
     detail: 'Active: 1,100 | New this month: 42'
   },
-  { 
-    name: 'Weekly Attendance', 
-    value: '850', 
-    change: '+5.2%', 
-    changeType: 'increase', 
+  {
+    name: 'Weekly Attendance',
+    value: '850',
+    change: '+5.2%',
+    changeType: 'increase',
     icon: Users,
     color: 'bg-green-500',
     detail: 'Avg. weekly growth: 3.1%'
   },
-  { 
-    name: 'Monthly Donations', 
-    value: '$45,230', 
-    change: '+8.5%', 
-    changeType: 'increase', 
+  {
+    name: 'Monthly Donations',
+    value: '$45,230',
+    change: '+8.5%',
+    changeType: 'increase',
     icon: DollarSign,
     color: 'bg-purple-500',
     detail: 'YTD: $398,450'
   },
-  { 
-    name: 'Prayer Requests', 
-    value: '156', 
-    change: '-3.2%', 
-    changeType: 'decrease', 
+  {
+    name: 'Prayer Requests',
+    value: '156',
+    change: '-3.2%',
+    changeType: 'decrease',
     icon: Heart,
     color: 'bg-red-500',
     detail: 'Answered: 128 | Pending: 28',
     dynamic: true, // Mark as dynamic
   },
-  { 
-    name: 'Active Volunteers', 
-    value: '87', 
-    change: '+4.8%', 
-    changeType: 'increase', 
+  {
+    name: 'Active Volunteers',
+    value: '87',
+    change: '+4.8%',
+    changeType: 'increase',
     icon: Users,
     color: 'bg-yellow-500',
     detail: 'Teams: 12 | Needs: 15'
   },
-  { 
-    name: 'Small Groups', 
-    value: '24', 
-    change: '+2.1%', 
-    changeType: 'increase', 
+  {
+    name: 'Small Groups',
+    value: '24',
+    change: '+2.1%',
+    changeType: 'increase',
     icon: Users,
     color: 'bg-indigo-500',
     detail: 'Active meetings this week: 18'
@@ -117,22 +118,22 @@ const GrowthLineChart = ({ data, width = 600, height = 300 }: GrowthLineChartPro
   const maxAttendance = Math.max(...data.map((d: ChartData) => d.attendance));
   const maxDonations = Math.max(...data.map((d: ChartData) => d.donations));
   const maxValue = Math.max(maxMembers, maxAttendance, maxDonations * 0.002); // Scale donations
-  
+
   const xScale = (index: number) => margin.left + (index * chartWidth) / (months.length - 1);
   const yScale = (value: number) => margin.top + chartHeight - (value / maxValue) * chartHeight;
 
   // Create line path for members
-  const membersLine = data.map((d: ChartData, i: number) => 
+  const membersLine = data.map((d: ChartData, i: number) =>
     `${i === 0 ? 'M' : 'L'} ${xScale(i)} ${yScale(d.members)}`
   ).join(' ');
 
   // Create line path for attendance
-  const attendanceLine = data.map((d: ChartData, i: number) => 
+  const attendanceLine = data.map((d: ChartData, i: number) =>
     `${i === 0 ? 'M' : 'L'} ${xScale(i)} ${yScale(d.attendance)}`
   ).join(' ');
 
   // Create line path for donations (scaled)
-  const donationsLine = data.map((d: ChartData, i: number) => 
+  const donationsLine = data.map((d: ChartData, i: number) =>
     `${i === 0 ? 'M' : 'L'} ${xScale(i)} ${yScale(d.donations * 0.002)}`
   ).join(' ');
 
@@ -170,7 +171,7 @@ const GrowthLineChart = ({ data, width = 600, height = 300 }: GrowthLineChartPro
         stroke="#6b7280"
         strokeWidth="2"
       />
-      
+
       {/* X-axis labels */}
       {months.map((month, i) => (
         <text
@@ -203,7 +204,7 @@ const GrowthLineChart = ({ data, width = 600, height = 300 }: GrowthLineChartPro
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      
+
       {/* Attendance line */}
       <path
         d={attendanceLine}
@@ -213,7 +214,7 @@ const GrowthLineChart = ({ data, width = 600, height = 300 }: GrowthLineChartPro
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      
+
       {/* Donations line (scaled) */}
       <path
         d={donationsLine}
@@ -288,10 +289,10 @@ const DemographicsBarChart = ({ data, width = 400, height = 200 }: DemographicsB
   const margin = { top: 20, right: 20, bottom: 40, left: 40 };
   const chartWidth = width - margin.left - margin.right;
   const chartHeight = height - margin.top - margin.bottom;
-  
+
   const maxValue = Math.max(...data.map((d: DemographicsItem) => d.value));
   const barWidth = (chartWidth / data.length) * 0.7;
-  
+
   return (
     <svg width={width} height={height}>
       {/* Bars */}
@@ -299,7 +300,7 @@ const DemographicsBarChart = ({ data, width = 400, height = 200 }: DemographicsB
         const x = margin.left + (i * chartWidth) / data.length;
         const barHeight = (item.value / maxValue) * chartHeight;
         const y = margin.top + chartHeight - barHeight;
-        
+
         return (
           <g key={i}>
             <rect
@@ -330,7 +331,7 @@ const DemographicsBarChart = ({ data, width = 400, height = 200 }: DemographicsB
           </g>
         );
       })}
-      
+
       {/* Y-axis */}
       <line
         x1={margin.left}
@@ -369,22 +370,73 @@ const upcomingEvents = [
   { id: 4, title: 'Christmas Celebration', date: 'Dec 24, 5:00 PM', location: 'Main Sanctuary', attendees: 500 },
 ];
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:3001/api';
-
 export default function EnhancedAdminDashboard() {
+  const { socket, isConnected } = useSocket();
   const [timeRange, setTimeRange] = useState('6months');
   const [notificationCount, setNotificationCount] = useState(3);
-  const [prayerStats, setPrayerStats] = useState({ total: 0, pending: 0, ongoing: 0, answered: 0 });
-  const { socket, isConnected } = useSocket();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Fetch prayer stats
+  // Stats state
+  const [dashboardStats, setDashboardStats] = useState<any[]>(stats); // Keep initial structure but will update values
+  const [chartData, setChartData] = useState<ChartData[]>(growthData);
+  const [activities, setActivities] = useState<any[]>(recentActivities);
+  const [prayerStats, setPrayerStats] = useState<any>(null);
+
+  // Fetch initial dashboard data
   useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const statsData = await apiService.getDashboardStats(); // Assume backend returns { stats, chartData, recentActivities } or similar
+
+        // If backend returns matching structure, update state. 
+        // For now, we'll map hypothetical response to existing structure or keep dummy fallbacks if empty
+        if (statsData) {
+          if (statsData.stats) {
+            // Update stats array based on name mapping or dynamic structure
+            const newStats = dashboardStats.map(s => {
+              const serverStat = statsData.stats.find((apiStat: any) => apiStat.name === s.name);
+              return serverStat ? { ...s, value: serverStat.value, change: serverStat.change } : s;
+            });
+            setDashboardStats(newStats);
+          }
+          if (statsData.chartData) setChartData(statsData.chartData);
+          if (statsData.recentActivities) setActivities(statsData.recentActivities);
+        }
+      } catch (err: any) {
+        console.error('Failed to fetch dashboard stats:', err);
+        setError('Failed to load dashboard data. Showing cached/offline data.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  // Fetch prayer stats (legacy separate fetch, consider merging into getDashboardStats)
+  useEffect(() => {
+    const fetchPrayerStats = async () => {
+      try {
+        const data = await apiService.getPrayerStats();
+        setPrayerStats(data);
+      } catch (error) {
+        console.error('Error fetching prayer stats:', error);
+      }
+    };
     fetchPrayerStats();
   }, []);
 
   // Set up real-time listeners
   useEffect(() => {
     if (!socket || !isConnected) return;
+
+    socket.on('dashboard-update', (data: any) => {
+      // Handle real-time dashboard updates (e.g. new user count)
+      console.log('Real-time dashboard update:', data);
+      // setDashboardStats(...)
+    });
 
     socket.on('initial-data', (data: { prayerStats: { total: number; pending: number; ongoing: number; answered: number } }) => {
       if (data.prayerStats) {
@@ -411,6 +463,7 @@ export default function EnhancedAdminDashboard() {
     });
 
     return () => {
+      socket.off('dashboard-update');
       socket.off('initial-data');
       socket.off('prayer-created');
       socket.off('prayer-updated');
@@ -418,17 +471,6 @@ export default function EnhancedAdminDashboard() {
     };
   }, [socket, isConnected]);
 
-  const fetchPrayerStats = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/prayers/stats`);
-      if (response.ok) {
-        const data = await response.json();
-        setPrayerStats(data);
-      }
-    } catch (error) {
-      console.error('Error fetching prayer stats:', error);
-    }
-  };
 
   return (
     <div className="min-h-screen p-4 md:p-6">
@@ -458,33 +500,40 @@ export default function EnhancedAdminDashboard() {
       </div>
 
       {/* Stats Grid - Enhanced with more metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div key={stat.name} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
-              <div className="flex items-center justify-between mb-3">
-                <div className={`p-2 ${stat.color} rounded-lg`}>
-                  <Icon className="h-5 w-5 text-white" />
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+            {dashboardStats.map((stat) => {
+              const Icon = stat.icon;
+              return (
+                <div key={stat.name} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className={`p-2 ${stat.color} rounded-lg`}>
+                      <Icon className="h-5 w-5 text-white" />
+                    </div>
+                    <div className={`flex items-center text-sm font-medium ${stat.changeType === 'increase' ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                      {stat.changeType === 'increase' ? (
+                        <ArrowUpRight className="h-4 w-4 mr-1" />
+                      ) : (
+                        <ArrowDownRight className="h-4 w-4 mr-1" />
+                      )}
+                      {stat.change}
+                    </div>
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900">{stat.value}</h3>
+                  <p className="text-sm font-medium text-gray-900 mt-1">{stat.name}</p>
+                  <p className="text-xs text-gray-500 mt-1">{stat.detail}</p>
                 </div>
-                <div className={`flex items-center text-sm font-medium ${
-                  stat.changeType === 'increase' ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {stat.changeType === 'increase' ? (
-                    <ArrowUpRight className="h-4 w-4 mr-1" />
-                  ) : (
-                    <ArrowDownRight className="h-4 w-4 mr-1" />
-                  )}
-                  {stat.change}
-                </div>
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900">{stat.value}</h3>
-              <p className="text-sm font-medium text-gray-900 mt-1">{stat.name}</p>
-              <p className="text-xs text-gray-500 mt-1">{stat.detail}</p>
-            </div>
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {/* Main Content Area */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -493,7 +542,7 @@ export default function EnhancedAdminDashboard() {
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-gray-900">Growth Overview</h2>
             <div className="flex items-center gap-3 mt-3 md:mt-0">
-              <select 
+              <select
                 value={timeRange}
                 onChange={(e) => setTimeRange(e.target.value)}
                 className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
@@ -510,7 +559,7 @@ export default function EnhancedAdminDashboard() {
             </div>
           </div>
           <div className="h-80">
-            <GrowthLineChart data={growthData} />
+            <GrowthLineChart data={chartData} />
           </div>
           <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-blue-50 p-4 rounded-lg">
@@ -546,21 +595,19 @@ export default function EnhancedAdminDashboard() {
               <span className="text-sm text-blue-600 cursor-pointer hover:text-blue-800">View All</span>
             </div>
             <div className="space-y-4 max-h-80 overflow-y-auto pr-2">
-              {recentActivities.map((activity) => (
+              {activities.map((activity) => (
                 <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition">
-                  <div className={`p-2 rounded-lg ${
-                    activity.priority === 'high' ? 'bg-red-100' :
+                  <div className={`p-2 rounded-lg ${activity.priority === 'high' ? 'bg-red-100' :
                     activity.priority === 'medium' ? 'bg-yellow-100' : 'bg-blue-100'
-                  }`}>
+                    }`}>
                     <Activity className="h-4 w-4 text-gray-600" />
                   </div>
                   <div className="flex-1">
                     <div className="flex justify-between items-start">
                       <p className="text-sm font-medium text-gray-900">{activity.user}</p>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        activity.priority === 'high' ? 'bg-red-100 text-red-800' :
+                      <span className={`text-xs px-2 py-1 rounded-full ${activity.priority === 'high' ? 'bg-red-100 text-red-800' :
                         activity.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'
-                      }`}>
+                        }`}>
                         {activity.priority}
                       </span>
                     </div>

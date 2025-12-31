@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Appearance, ColorSchemeName } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Theme = 'light' | 'dark';
 
@@ -10,25 +12,41 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setTheme] = useState<Theme>(() => {
-    try {
-      const savedTheme = window.localStorage.getItem('church_app_theme');
-      if (savedTheme === 'dark' || savedTheme === 'light') return savedTheme;
-      
-      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        return 'dark';
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    return 'light';
-  });
+  const [theme, setTheme] = useState<Theme>('light');
 
   useEffect(() => {
-    const root = window.document.documentElement;
-    root.classList.remove('light', 'dark');
-    root.classList.add(theme);
-    window.localStorage.setItem('church_app_theme', theme);
+    // Load saved theme or use system preference
+    const loadTheme = async () => {
+      try {
+        const savedTheme = await AsyncStorage.getItem('church_app_theme');
+        if (savedTheme === 'dark' || savedTheme === 'light') {
+          setTheme(savedTheme);
+        } else {
+          const colorScheme: ColorSchemeName = Appearance.getColorScheme();
+          setTheme(colorScheme === 'dark' ? 'dark' : 'light');
+        }
+      } catch (e) {
+        console.error('Error loading theme:', e);
+      }
+    };
+
+    loadTheme();
+
+    // Listen for system theme changes
+    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
+      AsyncStorage.getItem('church_app_theme').then((savedTheme) => {
+        if (!savedTheme) {
+          setTheme(colorScheme === 'dark' ? 'dark' : 'light');
+        }
+      });
+    });
+
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    // Save theme preference
+    AsyncStorage.setItem('church_app_theme', theme).catch(console.error);
   }, [theme]);
 
   const toggleTheme = () => {

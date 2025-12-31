@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { ArrowRight, HeartHandshake, Users, Flame, Church } from "lucide-react";
+import { ArrowRight, HeartHandshake, Users, Flame, Church, Video } from "lucide-react";
 import Navbar from "../sections/Navbar";
+import Link from "next/link";
+import { apiService } from "@/lib/api";
 
 // Hero Slider Images (Church Atmosphere)
 const sliderImages = [
@@ -14,11 +16,23 @@ const sliderImages = [
 
 export default function HeroWithSlider() {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [isLive, setIsLive] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % sliderImages.length);
     }, 5000);
+
+    // Check Live Stream Status
+    const checkLiveStream = async () => {
+      try {
+        const data = await apiService.getLiveStream();
+        setIsLive(data?.isLive || false);
+      } catch (error) {
+        console.error("Failed to check live stream", error);
+      }
+    };
+    checkLiveStream();
 
     return () => clearInterval(interval);
   }, []);
@@ -76,18 +90,31 @@ export default function HeroWithSlider() {
               </p>
 
               {/* CTA */}
-              <button className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-black px-8 py-4 rounded-full font-medium transition group">
-                Visit Our Church
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
+              <div className="flex flex-wrap gap-4">
+                {isLive ? (
+                  <Link href="/live" className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-full font-medium transition group animate-pulse">
+                    <Video className="w-5 h-5" />
+                    Watch Live Now
+                  </Link>
+                ) : (
+                  <Link href="/about" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-black px-8 py-4 rounded-full font-medium transition group">
+                    Visit Our Church
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                )}
+
+                <Link href="/sermons" className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-8 py-4 rounded-full font-medium transition border border-white/20">
+                  Latest Sermons
+                </Link>
+              </div>
             </div>
 
             {/* Right Ministry Feature Cards (No Numbers) */}
             <div className="grid grid-cols-2 gap-4 lg:gap-6">
-              
-             {/* Worship - RAISED */}
-<div className="bg-emerald-900/40 backdrop-blur-sm border border-emerald-700/30 rounded-3xl p-8 hover:bg-emerald-900/50 transition transform -translate-y-6">
-  <div className="flex justify-end mb-4">
+
+              {/* Worship - RAISED */}
+              <div className="bg-emerald-900/40 backdrop-blur-sm border border-emerald-700/30 rounded-3xl p-8 hover:bg-emerald-900/50 transition transform -translate-y-6">
+                <div className="flex justify-end mb-4">
                   <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
                     <Flame className="w-6 h-6 text-green-400" />
                   </div>
@@ -112,8 +139,8 @@ export default function HeroWithSlider() {
               </div>
 
               {/* Outreach - RAISED */}
-<div className="bg-amber-50/95 backdrop-blur-sm rounded-3xl p-8 hover:bg-white transition transform -translate-y-6">
- <div className="flex justify-end mb-4">
+              <div className="bg-amber-50/95 backdrop-blur-sm rounded-3xl p-8 hover:bg-white transition transform -translate-y-6">
+                <div className="flex justify-end mb-4">
                   <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
                     <HeartHandshake className="w-6 h-6 text-green-600" />
                   </div>
@@ -146,9 +173,8 @@ export default function HeroWithSlider() {
             <button
               key={idx}
               onClick={() => setCurrentSlide(idx)}
-              className={`h-2 rounded-full transition-all ${
-                currentSlide === idx ? 'w-8 bg-white' : 'w-2 bg-white/40'
-              }`}
+              className={`h-2 rounded-full transition-all ${currentSlide === idx ? 'w-8 bg-white' : 'w-2 bg-white/40'
+                }`}
               aria-label={`Go to slide ${idx + 1}`}
             />
           ))}

@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { apiService } from '@/lib/api';
+import { useEffect, useCallback } from 'react';
 
 interface FirstTimer {
   id: string;
@@ -24,55 +26,60 @@ interface FirstTimer {
 export default function FirstTimersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'contacted' | 'completed'>('all');
-  const [firstTimers, setFirstTimers] = useState<FirstTimer[]>([
-    {
-      id: '1',
-      name: 'Michael Brown',
-      email: 'michael@example.com',
-      phone: '+1234567890',
-      address: '123 Main St, City, State',
-      visitDate: '2024-12-10',
-      howDidYouHear: 'Friend invitation',
-      interests: ['Bible Study', 'Youth Ministry'],
-      followUpStatus: 'pending',
-      notes: 'Interested in joining small groups'
-    },
-    {
-      id: '2',
-      name: 'Emily Davis',
-      email: 'emily@example.com',
-      phone: '+0987654321',
-      visitDate: '2024-12-08',
-      howDidYouHear: 'Social Media',
-      interests: ['Worship Team', 'Children Ministry'],
-      followUpStatus: 'contacted',
-      notes: 'Called on 12/09, will visit again next Sunday'
-    },
-    {
-      id: '3',
-      name: 'David Wilson',
-      email: 'david@example.com',
-      phone: '+1122334455',
-      visitDate: '2024-12-03',
-      howDidYouHear: 'Website',
-      interests: ['Volunteer'],
-      followUpStatus: 'completed',
-      notes: 'Successfully integrated into church community'
-    }
-  ]);
+  const [firstTimers, setFirstTimers] = useState<FirstTimer[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleDelete = (id: string) => {
-    setFirstTimers(firstTimers.filter(ft => ft.id !== id));
+  const fetchFirstTimers = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await apiService.getFirstTimers();
+      setFirstTimers(data.map((ft: any) => ({
+        id: ft._id || ft.id,
+        name: ft.name,
+        email: ft.email,
+        phone: ft.phone,
+        address: ft.address,
+        visitDate: ft.visitDate || ft.createdAt,
+        howDidYouHear: ft.howDidYouHear,
+        interests: ft.interests,
+        followUpStatus: ft.followUpStatus || 'pending',
+        notes: ft.notes
+      })));
+    } catch (error) {
+      console.error('Failed to fetch first timers:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchFirstTimers();
+  }, [fetchFirstTimers]);
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Are you sure you want to delete this first timer record?')) {
+      try {
+        await apiService.deleteFirstTimer(id);
+        setFirstTimers(firstTimers.filter(ft => ft.id !== id));
+      } catch (error) {
+        console.error('Failed to delete first timer:', error);
+      }
+    }
   };
 
-  const updateStatus = (id: string, status: FirstTimer['followUpStatus']) => {
-    setFirstTimers(firstTimers.map(ft => ft.id === id ? { ...ft, followUpStatus: status } : ft));
+  const updateStatus = async (id: string, status: FirstTimer['followUpStatus']) => {
+    try {
+      await apiService.updateFirstTimerStatus(id, status);
+      setFirstTimers(firstTimers.map(ft => ft.id === id ? { ...ft, followUpStatus: status } : ft));
+    } catch (error) {
+      console.error('Failed to update status:', error);
+    }
   };
 
   const filteredFirstTimers = firstTimers.filter(ft => {
     const matchesFilter = filter === 'all' || ft.followUpStatus === filter;
     const matchesSearch = ft.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         ft.email.toLowerCase().includes(searchTerm.toLowerCase());
+      ft.email.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 

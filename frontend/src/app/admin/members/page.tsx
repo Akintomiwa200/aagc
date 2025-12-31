@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { apiService } from '@/lib/api';
+import { useEffect, useCallback } from 'react';
 
 interface Member {
     id: string;
@@ -24,39 +26,36 @@ interface Member {
 export default function MembersPage() {
     const [showForm, setShowForm] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const [members, setMembers] = useState<Member[]>([
-        {
-            id: '1',
-            name: 'John Doe',
-            email: 'john@example.com',
-            phone: '+1234567890',
-            address: '123 Main St, City, State',
-            joinDate: '2023-01-15',
-            role: 'member',
-            status: 'active',
-            groups: ['Worship Team', 'Youth Group']
-        },
-        {
-            id: '2',
-            name: 'Jane Smith',
-            email: 'jane@example.com',
-            phone: '+1234567891',
-            joinDate: '2022-06-20',
-            role: 'volunteer',
-            status: 'active',
-            groups: ['Children\'s Ministry']
-        },
-        {
-            id: '3',
-            name: 'Pastor Mark',
-            email: 'pastor@example.com',
-            phone: '+1234567892',
-            joinDate: '2020-03-10',
-            role: 'pastor',
-            status: 'active',
-            groups: ['Leadership']
+    const [members, setMembers] = useState<Member[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const fetchMembers = useCallback(async () => {
+        try {
+            setLoading(true);
+            const data = await apiService.getMembers();
+            setMembers(data.map((m: any) => ({
+                id: m._id || m.id,
+                name: m.name || m.fullName || 'Unknown',
+                email: m.email,
+                phone: m.phone,
+                address: m.address,
+                joinDate: m.createdAt || m.joinDate || new Date().toISOString(),
+                role: m.role || 'member',
+                status: m.active ? 'active' : 'inactive', // Mapping from backend model if needed
+                groups: m.groups || []
+            })));
+        } catch (err: any) {
+            console.error('Failed to fetch members:', err);
+            setError('Failed to load members');
+        } finally {
+            setLoading(false);
         }
-    ]);
+    }, []);
+
+    useEffect(() => {
+        fetchMembers();
+    }, [fetchMembers]);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -68,27 +67,36 @@ export default function MembersPage() {
         status: 'active' as Member['status']
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const newMember: Member = {
-            id: Date.now().toString(),
-            ...formData
-        };
-        setMembers([newMember, ...members]);
-        setFormData({
-            name: '',
-            email: '',
-            phone: '',
-            address: '',
-            joinDate: '',
-            role: 'member',
-            status: 'active'
-        });
-        setShowForm(false);
+        try {
+            await apiService.addMember(formData);
+            fetchMembers(); // Refresh list
+            setFormData({
+                name: '',
+                email: '',
+                phone: '',
+                address: '',
+                joinDate: '',
+                role: 'member',
+                status: 'active'
+            });
+            setShowForm(false);
+        } catch (err) {
+            console.error('Failed to add member:', err);
+            // Handle error (maybe set error state)
+        }
     };
 
-    const handleDelete = (id: string) => {
-        setMembers(members.filter(m => m.id !== id));
+    const handleDelete = async (id: string) => {
+        if (confirm('Are you sure you want to delete this member?')) {
+            try {
+                await apiService.deleteMember(id);
+                setMembers(members.filter(m => m.id !== id));
+            } catch (err) {
+                console.error('Failed to delete member:', err);
+            }
+        }
     };
 
     const filteredMembers = members.filter(member =>

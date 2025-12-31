@@ -1,19 +1,19 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  Upload, 
-  Image as ImageIcon, 
-  Users, 
-  Calendar, 
-  Church, 
-  Settings, 
-  Trash2, 
-  Edit, 
-  Eye, 
-  Star, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Upload,
+  Image as ImageIcon,
+  Users,
+  Calendar,
+  Church,
+  Settings,
+  Trash2,
+  Edit,
+  Eye,
+  Star,
+  CheckCircle,
+  XCircle,
   Download,
   FolderPlus,
   Filter,
@@ -33,6 +33,7 @@ import {
   MoreVertical
 } from 'lucide-react';
 import Image from 'next/image';
+import { apiService } from '@/lib/api';
 
 // Types for admin gallery management
 interface AdminImage {
@@ -118,107 +119,39 @@ export default function AdminGalleryPage() {
     featured: false,
   });
 
-  // Dummy data for admin
-  const [images, setImages] = useState<AdminImage[]>([
-    {
-      id: '1',
-      src: 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=800&q=80',
-      alt: 'Sunday Service Worship',
-      title: 'Sunday Morning Worship',
-      description: 'Our vibrant Sunday service with full congregation',
-      date: '2024-03-10',
-      category: 'main',
-      tags: ['worship', 'sunday', 'congregation'],
-      width: 800,
-      height: 600,
-      size: 450,
-      uploadedBy: 'Admin User',
-      uploadedAt: '2024-03-10 09:30:00',
-      status: 'published',
-      featured: true,
-      views: 1245,
-      downloads: 89,
-    },
-    {
-      id: '2',
-      src: 'https://images.unsplash.com/photo-1438232992991-995b7058bbb3?w=800&q=80',
-      alt: 'Prayer Meeting',
-      title: 'Wednesday Prayer Night',
-      description: 'Intimate prayer and worship evening',
-      date: '2024-03-06',
-      category: 'main',
-      tags: ['prayer', 'worship', 'midweek'],
-      width: 800,
-      height: 600,
-      size: 520,
-      uploadedBy: 'Admin User',
-      uploadedAt: '2024-03-06 15:45:00',
-      status: 'published',
-      featured: false,
-      views: 876,
-      downloads: 42,
-    },
-    {
-      id: '3',
-      src: 'https://images.unsplash.com/photo-1469571486292-0ba58a3f068b?w=800&q=80',
-      alt: 'Children Ministry',
-      title: 'Children Sunday School',
-      description: 'Interactive learning for children',
-      date: '2024-03-09',
-      category: 'department',
-      department: 'Children Ministry',
-      tags: ['children', 'sundayschool', 'learning'],
-      width: 800,
-      height: 600,
-      size: 380,
-      uploadedBy: 'Children Ministry',
-      uploadedAt: '2024-03-09 11:20:00',
-      status: 'pending',
-      featured: true,
-      views: 532,
-      downloads: 31,
-    },
-    {
-      id: '4',
-      src: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=800&q=80',
-      alt: 'Christmas Concert',
-      title: 'Christmas Concert 2023',
-      description: 'Annual Christmas musical celebration',
-      date: '2023-12-24',
-      category: 'event',
-      event: 'Christmas Concert 2023',
-      tags: ['christmas', 'concert', 'celebration'],
-      width: 800,
-      height: 600,
-      size: 620,
-      uploadedBy: 'Event Team',
-      uploadedAt: '2023-12-25 14:30:00',
-      status: 'published',
-      featured: true,
-      views: 2100,
-      downloads: 156,
-    },
-    {
-      id: '5',
-      src: 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=800&q=80',
-      alt: 'Senior Pastor',
-      title: 'Rev. John Daniels',
-      description: 'Senior Pastor portrait',
-      date: '2024-01-15',
-      category: 'pastorate',
-      pastor: 'Rev. John Daniels',
-      tags: ['pastor', 'leadership', 'portrait'],
-      width: 800,
-      height: 600,
-      size: 410,
-      uploadedBy: 'Admin User',
-      uploadedAt: '2024-01-15 10:15:00',
-      status: 'archived',
-      featured: false,
-      views: 345,
-      downloads: 12,
-    },
-  ]);
+  const [images, setImages] = useState<AdminImage[]>([]);
+
+  // Fetch images from API
+  const fetchImages = useCallback(async () => {
+    try {
+      const data = await apiService.getGalleryImages(filterCategory);
+      setImages(data.map((img: any) => ({
+        id: img._id || img.id,
+        src: img.url,
+        alt: img.title,
+        title: img.title,
+        description: img.description || '',
+        date: img.createdAt?.split('T')[0] || new Date().toISOString().split('T')[0],
+        category: img.category || 'main',
+        tags: img.tags || [],
+        width: img.width || 800,
+        height: img.height || 600,
+        size: img.size || 0,
+        uploadedBy: img.uploadedBy || 'Admin',
+        uploadedAt: img.createdAt || new Date().toISOString(),
+        status: img.status || 'published',
+        featured: img.featured || false,
+        views: img.views || 0,
+        downloads: img.downloads || 0,
+      })));
+    } catch (error) {
+      console.error('Failed to fetch images:', error);
+    }
+  }, [filterCategory]);
+
+  useEffect(() => {
+    fetchImages();
+  }, [fetchImages]);
 
   const categories: Category[] = [
     { id: '1', name: 'Main Gallery', slug: 'main', description: 'General church activities and services', imageCount: 45, color: 'bg-blue-500' },
@@ -263,81 +196,62 @@ export default function AdminGalleryPage() {
   // Handle file upload
   const handleFileUpload = useCallback(async (files: FileList) => {
     const newUploads: UploadProgress[] = [];
-    
+
     Array.from(files).forEach((file, index) => {
       const uploadId = `upload-${Date.now()}-${index}`;
-      
       newUploads.push({
         id: uploadId,
         file,
         progress: 0,
         status: 'uploading',
       });
-      
-      // Simulate upload progress
-      simulateUpload(uploadId, file);
+      // Start upload for each file
+      uploadFile(uploadId, file);
     });
-    
+
     setUploadProgress(prev => [...prev, ...newUploads]);
   }, []);
 
-  // Simulate upload progress (replace with actual API call)
-  const simulateUpload = (uploadId: string, file: File) => {
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 10;
-      setUploadProgress(prev => 
-        prev.map(upload => 
-          upload.id === uploadId 
-            ? { ...upload, progress: Math.min(progress, 100) }
-            : upload
-        )
-      );
-      
-      if (progress >= 100) {
-        clearInterval(interval);
-        
-        // Simulate success/error
-        const isSuccess = Math.random() > 0.2; // 80% success rate
-        setUploadProgress(prev =>
-          prev.map(upload =>
-            upload.id === uploadId
-              ? {
-                  ...upload,
-                  progress: 100,
-                  status: isSuccess ? 'success' : 'error',
-                  error: isSuccess ? undefined : 'Upload failed. Please try again.'
-                }
-              : upload
-          )
-        );
-        
-        // Add to images if successful
-        if (isSuccess) {
-          const newImage: AdminImage = {
-            id: `img-${Date.now()}`,
-            src: URL.createObjectURL(file),
-            alt: file.name,
-            title: file.name.replace(/\.[^/.]+$/, ""), // Remove extension
-            description: `Uploaded: ${new Date().toLocaleDateString()}`,
-            date: new Date().toISOString().split('T')[0],
-            category: 'main',
-            tags: ['uploaded', 'new'],
-            width: 800,
-            height: 600,
-            size: Math.round(file.size / 1024), // Convert to KB
-            uploadedBy: 'Admin User',
-            uploadedAt: new Date().toISOString(),
-            status: 'pending',
-            featured: false,
-            views: 0,
-            downloads: 0,
-          };
-          
-          setImages(prev => [newImage, ...prev]);
-        }
-      }
-    }, 200);
+  const uploadFile = async (uploadId: string, file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('category', 'main'); // Default category, update as needed from UI state
+      formData.append('title', file.name.replace(/\.[^/.]+$/, ""));
+
+      // Simulate progress
+      setUploadProgress(prev => prev.map(u => u.id === uploadId ? { ...u, progress: 50 } : u));
+
+      const result = await apiService.uploadGalleryImage(formData);
+
+      setUploadProgress(prev => prev.map(u => u.id === uploadId ? { ...u, progress: 100, status: 'success' } : u));
+
+      // Add new image to list
+      const newImage: AdminImage = {
+        id: result._id || result.id,
+        src: result.url,
+        alt: result.title,
+        title: result.title,
+        description: result.description || '',
+        date: result.createdAt?.split('T')[0] || new Date().toISOString().split('T')[0],
+        category: result.category || 'main',
+        tags: result.tags || [],
+        width: result.width || 800,
+        height: result.height || 600,
+        size: result.size || 0,
+        uploadedBy: result.uploadedBy || 'Admin',
+        uploadedAt: result.createdAt || new Date().toISOString(),
+        status: result.status || 'published',
+        featured: false,
+        views: 0,
+        downloads: 0,
+      };
+      setImages(prev => [newImage, ...prev]);
+
+    } catch (error) {
+      console.error('Upload failed:', error);
+      setUploadProgress(prev => prev.map(u => u.id === uploadId ? { ...u, status: 'error', error: 'Upload failed' } : u));
+    }
   };
 
   // Handle bulk actions
@@ -347,36 +261,36 @@ export default function AdminGalleryPage() {
         setImages(prev => prev.filter(img => !selectedImages.includes(img.id)));
         break;
       case 'publish':
-        setImages(prev => 
-          prev.map(img => 
-            selectedImages.includes(img.id) 
+        setImages(prev =>
+          prev.map(img =>
+            selectedImages.includes(img.id)
               ? { ...img, status: 'published' as const }
               : img
           )
         );
         break;
       case 'archive':
-        setImages(prev => 
-          prev.map(img => 
-            selectedImages.includes(img.id) 
+        setImages(prev =>
+          prev.map(img =>
+            selectedImages.includes(img.id)
               ? { ...img, status: 'archived' as const }
               : img
           )
         );
         break;
       case 'feature':
-        setImages(prev => 
-          prev.map(img => 
-            selectedImages.includes(img.id) 
+        setImages(prev =>
+          prev.map(img =>
+            selectedImages.includes(img.id)
               ? { ...img, featured: true }
               : img
           )
         );
         break;
       case 'unfeature':
-        setImages(prev => 
-          prev.map(img => 
-            selectedImages.includes(img.id) 
+        setImages(prev =>
+          prev.map(img =>
+            selectedImages.includes(img.id)
               ? { ...img, featured: false }
               : img
           )
@@ -388,25 +302,35 @@ export default function AdminGalleryPage() {
   };
 
   // Handle image deletion
-  const deleteImage = (id: string) => {
+  const deleteImage = async (id: string) => {
     if (confirm('Are you sure you want to delete this image?')) {
-      setImages(prev => prev.filter(img => img.id !== id));
+      try {
+        await apiService.deleteGalleryImage(id);
+        setImages(prev => prev.filter(img => img.id !== id));
+      } catch (error) {
+        console.error('Failed to delete image:', error);
+      }
     }
   };
 
   // Handle status change
-  const updateImageStatus = (id: string, status: AdminImage['status']) => {
-    setImages(prev => 
-      prev.map(img => 
-        img.id === id ? { ...img, status } : img
-      )
-    );
+  const updateImageStatus = async (id: string, status: AdminImage['status']) => {
+    try {
+      await apiService.updateGalleryImage(id, { status });
+      setImages(prev =>
+        prev.map(img =>
+          img.id === id ? { ...img, status } : img
+        )
+      );
+    } catch (error) {
+      console.error('Failed to update status:', error);
+    }
   };
 
   // Handle featured toggle
   const toggleFeatured = (id: string) => {
-    setImages(prev => 
-      prev.map(img => 
+    setImages(prev =>
+      prev.map(img =>
         img.id === id ? { ...img, featured: !img.featured } : img
       )
     );
@@ -414,14 +338,14 @@ export default function AdminGalleryPage() {
 
   // Filter images based on search and filters
   const filteredImages = images.filter(img => {
-    const matchesSearch = searchQuery === '' || 
+    const matchesSearch = searchQuery === '' ||
       img.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       img.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       img.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    
+
     const matchesCategory = filterCategory === 'all' || img.category === filterCategory;
     const matchesStatus = filterStatus === 'all' || img.status === filterStatus;
-    
+
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
@@ -440,7 +364,7 @@ export default function AdminGalleryPage() {
               <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Gallery Management</h1>
               <p className="text-gray-600 dark:text-gray-400 mt-1">Upload, organize, and manage church gallery content</p>
             </div>
-            
+
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setActiveTab('upload')}
@@ -449,7 +373,7 @@ export default function AdminGalleryPage() {
                 <Upload className="h-4 w-4" />
                 Upload Images
               </button>
-              
+
               <button className="inline-flex items-center gap-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 px-4 py-2 rounded-lg font-medium transition">
                 <Settings className="h-4 w-4" />
                 Settings
@@ -476,11 +400,10 @@ export default function AdminGalleryPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all ${
-                  activeTab === tab.id
-                    ? 'border-green-600 dark:border-emerald-500 text-green-700 dark:text-emerald-400 bg-green-50 dark:bg-emerald-900/20'
-                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300'
-                }`}
+                className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all ${activeTab === tab.id
+                  ? 'border-green-600 dark:border-emerald-500 text-green-700 dark:text-emerald-400 bg-green-50 dark:bg-emerald-900/20'
+                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300'
+                  }`}
               >
                 {tab.icon}
                 {tab.label}
@@ -582,7 +505,7 @@ export default function AdminGalleryPage() {
                     <Upload className="h-8 w-8 text-green-600 dark:text-emerald-400 mb-2" />
                     <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Upload New</span>
                   </button>
-                  
+
                   <button
                     onClick={() => setActiveTab('categories')}
                     className="flex flex-col items-center justify-center p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition"
@@ -590,7 +513,7 @@ export default function AdminGalleryPage() {
                     <FolderPlus className="h-8 w-8 text-blue-600 dark:text-blue-400 mb-2" />
                     <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Add Category</span>
                   </button>
-                  
+
                   <button
                     onClick={() => setActiveTab('manage')}
                     className="flex flex-col items-center justify-center p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition"
@@ -598,7 +521,7 @@ export default function AdminGalleryPage() {
                     <Settings className="h-8 w-8 text-purple-600 dark:text-purple-400 mb-2" />
                     <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Bulk Edit</span>
                   </button>
-                  
+
                   <button className="flex flex-col items-center justify-center p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/30 transition">
                     <Cloud className="h-8 w-8 text-amber-600 dark:text-amber-400 mb-2" />
                     <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Storage</span>
@@ -621,15 +544,14 @@ export default function AdminGalleryPage() {
                           {image.title}
                         </p>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${
-                            image.status === 'published' 
-                              ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
-                              : image.status === 'pending'
+                          <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${image.status === 'published'
+                            ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
+                            : image.status === 'pending'
                               ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400'
                               : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-400'
-                          }`}>
-                            {image.status === 'published' ? 'Published' : 
-                             image.status === 'pending' ? 'Pending' : 'Archived'}
+                            }`}>
+                            {image.status === 'published' ? 'Published' :
+                              image.status === 'pending' ? 'Pending' : 'Archived'}
                           </span>
                           <span className="text-xs text-gray-500 dark:text-gray-400">
                             {new Date(image.uploadedAt).toLocaleDateString()}
@@ -656,13 +578,13 @@ export default function AdminGalleryPage() {
                   View Details
                 </button>
               </div>
-              
+
               <div className="space-y-4">
                 {categories.map((category) => {
                   const categoryImages = images.filter(img => img.category === category.slug);
                   const categorySize = categoryImages.reduce((sum, img) => sum + img.size, 0);
                   const percentage = (categorySize / stats.storageUsed) * 100;
-                  
+
                   return (
                     <div key={category.id} className="space-y-2">
                       <div className="flex justify-between text-sm">
@@ -683,7 +605,7 @@ export default function AdminGalleryPage() {
                   );
                 })}
               </div>
-              
+
               <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
                 <div className="flex items-center justify-between">
                   <div>
@@ -713,14 +635,14 @@ export default function AdminGalleryPage() {
                 <div className="w-20 h-20 bg-green-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Upload className="h-10 w-10 text-green-600 dark:text-emerald-400" />
                 </div>
-                
+
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
                   Upload Images
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400 mb-6">
                   Drag and drop your images here, or click to browse
                 </p>
-                
+
                 <input
                   type="file"
                   id="file-upload"
@@ -729,7 +651,7 @@ export default function AdminGalleryPage() {
                   className="hidden"
                   onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
                 />
-                
+
                 <label
                   htmlFor="file-upload"
                   className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-medium cursor-pointer transition"
@@ -737,7 +659,7 @@ export default function AdminGalleryPage() {
                   <Upload className="h-5 w-5" />
                   Select Images
                 </label>
-                
+
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
                   Supports JPG, PNG, WebP up to 10MB each
                 </p>
@@ -758,7 +680,7 @@ export default function AdminGalleryPage() {
                     Clear completed
                   </button>
                 </div>
-                
+
                 <div className="space-y-4">
                   {uploadProgress.map((upload) => (
                     <div key={upload.id} className="space-y-2">
@@ -776,21 +698,20 @@ export default function AdminGalleryPage() {
                             </p>
                           </div>
                         </div>
-                        
+
                         <div className="flex items-center gap-3">
                           <div className="w-32">
                             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                               <div
-                                className={`h-2 rounded-full ${
-                                  upload.status === 'success' ? 'bg-green-500' :
+                                className={`h-2 rounded-full ${upload.status === 'success' ? 'bg-green-500' :
                                   upload.status === 'error' ? 'bg-red-500' :
-                                  'bg-blue-500'
-                                }`}
+                                    'bg-blue-500'
+                                  }`}
                                 style={{ width: `${upload.progress}%` }}
                               />
                             </div>
                           </div>
-                          
+
                           <div className="w-20 text-right">
                             {upload.status === 'uploading' && (
                               <span className="text-sm text-blue-600 dark:text-blue-400">
@@ -806,7 +727,7 @@ export default function AdminGalleryPage() {
                           </div>
                         </div>
                       </div>
-                      
+
                       {upload.status === 'error' && upload.error && (
                         <p className="text-sm text-red-600 dark:text-red-400 pl-13">
                           {upload.error}
@@ -823,7 +744,7 @@ export default function AdminGalleryPage() {
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">
                 Image Details
               </h3>
-              
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -832,19 +753,19 @@ export default function AdminGalleryPage() {
                   <input
                     type="text"
                     value={uploadForm.title}
-                    onChange={(e) => setUploadForm({...uploadForm, title: e.target.value})}
+                    onChange={(e) => setUploadForm({ ...uploadForm, title: e.target.value })}
                     className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:focus:ring-emerald-500 focus:border-transparent"
                     placeholder="Enter image title"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Category
                   </label>
                   <select
                     value={uploadForm.category}
-                    onChange={(e) => setUploadForm({...uploadForm, category: e.target.value})}
+                    onChange={(e) => setUploadForm({ ...uploadForm, category: e.target.value })}
                     className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:focus:ring-emerald-500 focus:border-transparent"
                   >
                     <option value="main">Main Gallery</option>
@@ -854,20 +775,20 @@ export default function AdminGalleryPage() {
                     <option value="screens">Screens</option>
                   </select>
                 </div>
-                
+
                 <div className="lg:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Description
                   </label>
                   <textarea
                     value={uploadForm.description}
-                    onChange={(e) => setUploadForm({...uploadForm, description: e.target.value})}
+                    onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })}
                     rows={3}
                     className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:focus:ring-emerald-500 focus:border-transparent"
                     placeholder="Enter image description"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Tags (comma separated)
@@ -875,25 +796,25 @@ export default function AdminGalleryPage() {
                   <input
                     type="text"
                     value={uploadForm.tags}
-                    onChange={(e) => setUploadForm({...uploadForm, tags: e.target.value})}
+                    onChange={(e) => setUploadForm({ ...uploadForm, tags: e.target.value })}
                     className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:focus:ring-emerald-500 focus:border-transparent"
                     placeholder="worship, sunday, congregation"
                   />
                 </div>
-                
+
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     <input
                       type="checkbox"
                       checked={uploadForm.featured}
-                      onChange={(e) => setUploadForm({...uploadForm, featured: e.target.checked})}
+                      onChange={(e) => setUploadForm({ ...uploadForm, featured: e.target.checked })}
                       className="rounded border-gray-300 text-green-600 focus:ring-green-500"
                     />
                     Mark as Featured
                   </label>
                 </div>
               </div>
-              
+
               <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
                 <div className="flex justify-end gap-3">
                   <button
@@ -938,7 +859,7 @@ export default function AdminGalleryPage() {
                       className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:focus:ring-emerald-500 focus:border-transparent"
                     />
                   </div>
-                  
+
                   <select
                     value={filterCategory}
                     onChange={(e) => setFilterCategory(e.target.value)}
@@ -949,7 +870,7 @@ export default function AdminGalleryPage() {
                       <option key={cat.id} value={cat.slug}>{cat.name}</option>
                     ))}
                   </select>
-                  
+
                   <select
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value)}
@@ -961,7 +882,7 @@ export default function AdminGalleryPage() {
                     <option value="archived">Archived</option>
                   </select>
                 </div>
-                
+
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2">
                     <button
@@ -977,7 +898,7 @@ export default function AdminGalleryPage() {
                       <List className="h-4 w-4" />
                     </button>
                   </div>
-                  
+
                   {selectedImages.length > 0 && (
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-gray-600 dark:text-gray-400">
@@ -1037,11 +958,10 @@ export default function AdminGalleryPage() {
                 {filteredImages.map((image) => (
                   <div
                     key={image.id}
-                    className={`bg-white dark:bg-gray-800 rounded-xl overflow-hidden border ${
-                      selectedImages.includes(image.id)
-                        ? 'border-green-500 dark:border-emerald-500 ring-2 ring-green-500/20 dark:ring-emerald-500/20'
-                        : 'border-gray-200 dark:border-gray-700'
-                    }`}
+                    className={`bg-white dark:bg-gray-800 rounded-xl overflow-hidden border ${selectedImages.includes(image.id)
+                      ? 'border-green-500 dark:border-emerald-500 ring-2 ring-green-500/20 dark:ring-emerald-500/20'
+                      : 'border-gray-200 dark:border-gray-700'
+                      }`}
                   >
                     <div className="relative aspect-video">
                       <img
@@ -1049,7 +969,7 @@ export default function AdminGalleryPage() {
                         alt={image.alt}
                         className="w-full h-full object-cover"
                       />
-                      
+
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 hover:opacity-100 transition-opacity">
                         <div className="absolute bottom-3 left-3 right-3">
                           <div className="flex items-center justify-between">
@@ -1057,9 +977,8 @@ export default function AdminGalleryPage() {
                               onClick={() => toggleFeatured(image.id)}
                               className="p-1.5 bg-white/90 backdrop-blur-sm rounded-full hover:scale-110 transition-transform"
                             >
-                              <Star className={`h-4 w-4 ${
-                                image.featured ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400'
-                              }`} />
+                              <Star className={`h-4 w-4 ${image.featured ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400'
+                                }`} />
                             </button>
                             <button
                               onClick={() => window.open(image.src, '_blank')}
@@ -1070,7 +989,7 @@ export default function AdminGalleryPage() {
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="absolute top-3 left-3">
                         <input
                           type="checkbox"
@@ -1085,20 +1004,19 @@ export default function AdminGalleryPage() {
                           className="rounded border-gray-300 text-green-600 focus:ring-green-500"
                         />
                       </div>
-                      
+
                       <div className="absolute top-3 right-3">
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${
-                          image.status === 'published'
-                            ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
-                            : image.status === 'pending'
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${image.status === 'published'
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
+                          : image.status === 'pending'
                             ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400'
                             : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-400'
-                        }`}>
+                          }`}>
                           {image.status.charAt(0).toUpperCase() + image.status.slice(1)}
                         </span>
                       </div>
                     </div>
-                    
+
                     <div className="p-4">
                       <h4 className="font-medium text-gray-900 dark:text-gray-100 truncate mb-1">
                         {image.title}
@@ -1106,14 +1024,14 @@ export default function AdminGalleryPage() {
                       <p className="text-sm text-gray-600 dark:text-gray-400 truncate mb-3">
                         {image.description}
                       </p>
-                      
+
                       <div className="flex items-center justify-between">
                         <div className="text-xs text-gray-500 dark:text-gray-400">
                           {new Date(image.date).toLocaleDateString()}
                         </div>
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => {/* Edit functionality */}}
+                            onClick={() => {/* Edit functionality */ }}
                             className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                           >
                             <Edit className="h-3 w-3 text-gray-400" />
@@ -1217,9 +1135,8 @@ export default function AdminGalleryPage() {
                               className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                               title={image.featured ? 'Unfeature' : 'Feature'}
                             >
-                              <Star className={`h-4 w-4 ${
-                                image.featured ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400'
-                              }`} />
+                              <Star className={`h-4 w-4 ${image.featured ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400'
+                                }`} />
                             </button>
                             <button
                               onClick={() => window.open(image.src, '_blank')}
@@ -1508,7 +1425,7 @@ export default function AdminGalleryPage() {
             <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-sm text-gray-700 dark:text-gray-300">
-                <strong>Backend Integration:</strong> This admin panel uses dummy data. 
+                <strong>Backend Integration:</strong> This admin panel uses dummy data.
                 Connect to your backend by replacing API calls in the component with real endpoints.
               </p>
               <div className="flex flex-wrap gap-2 mt-2">

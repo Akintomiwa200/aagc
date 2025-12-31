@@ -1,8 +1,12 @@
 'use client';
 
-import { Calendar, MapPin, Clock, ArrowRight } from "lucide-react";
+import { Calendar, MapPin, Clock, ArrowRight, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import Link from 'next/link';
+import { apiService } from "@/lib/api";
 
 interface Event {
+  id: string;
   title: string;
   date: string;
   time: string;
@@ -12,43 +16,32 @@ interface Event {
   image: string;
 }
 
-const events: Event[] = [
-  {
-    title: "Prayer & Worship Night",
-    date: "Fri, Feb 21, 2024",
-    time: "7:00 PM - 9:00 PM",
-    location: "Main Sanctuary",
-    detail: "An evening of deep intercession, prophetic worship, and communion. All are welcome to encounter God's presence.",
-    category: "Worship",
-    image: "https://images.unsplash.com/photo-1438232992991-995b7058bbb3?w=800&q=80"
-  },
-  {
-    title: "City Care Outreach",
-    date: "Sat, Mar 01, 2024",
-    time: "8:00 AM - 2:00 PM",
-    location: "QVQ4+7V9, Bukuru 930101, Plateau",
-    detail: "Community outreach with food distribution, medical checks, and prayer ministry for families in need.",
-    category: "Outreach",
-    image: "https://images.unsplash.com/photo-1469571486292-0ba58a3f068b?w=800&q=80"
-  },
-  {
-    title: "Leaders Lab Conference",
-    date: "Sun, Mar 09, 2024",
-    time: "9:00 AM - 4:00 PM",
-    location: "AAGC Conference Center, Plateau",
-    detail: "Leadership development intensive for ministry leads, department heads, and emerging leaders.",
-    category: "Training",
-    image: "https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=800&q=80"
-  },
-];
-
 const categoryColors: Record<string, string> = {
   Worship: "bg-purple-500/20 text-purple-300 border-purple-500/30",
   Outreach: "bg-green-500/20 text-green-300 border-green-500/30",
   Training: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+  // Fallback
+  default: "bg-gray-500/20 text-gray-300 border-gray-500/30"
 };
 
 export default function EventsSection() {
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const data = await apiService.getEvents();
+        setEvents(data);
+      } catch (error) {
+        console.error("Failed to fetch events:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEvents();
+  }, []);
+
   return (
     <section className="relative bg-gray-50 py-20 px-6 lg:px-16 overflow-hidden">
       {/* Decorative Background */}
@@ -71,74 +64,79 @@ export default function EventsSection() {
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Join us for worship, fellowship, and service as we grow together in Christ.
           </p>
-
-          <button className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-full font-medium transition mt-4">
-            View Full Calendar
-            <Calendar className="h-4 w-4" />
-          </button>
         </div>
 
         {/* Events Grid */}
-        <div className="grid gap-6 lg:grid-cols-3">
-          {events.map((event, idx) => (
-            <div
-              key={event.title}
-              className="group bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2"
-              style={{
-                animation: `fadeInUp 0.6s ease-out ${idx * 0.1}s both`
-              }}
-            >
-              {/* Event Image */}
-              <div className="relative h-48 overflow-hidden">
-                <img 
-                  src={event.image} 
-                  alt={event.title}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-                
-                {/* Category Badge */}
-                <div className="absolute top-4 left-4">
-                  <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold backdrop-blur-md border ${categoryColors[event.category]}`}>
-                    {event.category}
-                  </span>
-                </div>
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+          </div>
+        ) : events.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-3xl shadow-sm">
+            <p className="text-gray-500">No upcoming events found.</p>
+          </div>
+        ) : (
+          <div className="grid gap-6 lg:grid-cols-3">
+            {events.map((event, idx) => (
+              <div
+                key={event.id || idx}
+                className="group bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2"
+                style={{
+                  animation: `fadeInUp 0.6s ease-out ${idx * 0.1}s both`
+                }}
+              >
+                {/* Event Image */}
+                <div className="relative h-48 overflow-hidden">
+                  <img
+                    src={event.image || "https://images.unsplash.com/photo-1438232992991-995b7058bbb3?w=800&q=80"}
+                    alt={event.title}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
 
-                {/* Calendar Icon */}
-                <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm p-2 rounded-lg">
-                  <Calendar className="h-5 w-5 text-gray-700" />
-                </div>
-              </div>
-
-              {/* Event Content */}
-              <div className="p-6 space-y-4">
-                <h3 className="text-xl font-bold text-gray-900 group-hover:text-green-600 transition-colors">
-                  {event.title}
-                </h3>
-
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Clock className="h-4 w-4 text-green-600" />
-                    <span>{event.date} • {event.time}</span>
+                  {/* Category Badge */}
+                  <div className="absolute top-4 left-4">
+                    <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold backdrop-blur-md border ${categoryColors[event.category] || categoryColors.default}`}>
+                      {event.category || 'Event'}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <MapPin className="h-4 w-4 text-green-600" />
-                    <span>{event.location}</span>
+
+                  {/* Calendar Icon */}
+                  <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm p-2 rounded-lg">
+                    <Calendar className="h-5 w-5 text-gray-700" />
                   </div>
                 </div>
 
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  {event.detail}
-                </p>
+                {/* Event Content */}
+                <div className="p-6 space-y-4">
+                  <h3 className="text-xl font-bold text-gray-900 group-hover:text-green-600 transition-colors line-clamp-1">
+                    {event.title}
+                  </h3>
 
-                <button className="w-full flex items-center justify-center gap-2 bg-gray-100 hover:bg-green-600 text-gray-700 hover:text-white py-3 rounded-xl font-medium transition-all group/btn">
-                  RSVP Now
-                  <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
-                </button>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Clock className="h-4 w-4 text-green-600" />
+                      <span>{event.date} • {event.time}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <MapPin className="h-4 w-4 text-green-600" />
+                      <span className="line-clamp-1">{event.location}</span>
+                    </div>
+                  </div>
+
+                  <p className="text-gray-600 text-sm leading-relaxed line-clamp-2">
+                    {event.detail}
+                  </p>
+
+                  <Link href={`/events/${event.id}`} className="w-full flex items-center justify-center gap-2 bg-gray-100 hover:bg-green-600 text-gray-700 hover:text-white py-3 rounded-xl font-medium transition-all group/btn">
+                    RSVP Now
+                    <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
+                  </Link>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* Additional Information */}
         <div className="mt-16 text-center">
