@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { apiService } from '../../services/apiService';
-import { useTheme } from '../../context/ThemeContext';
+import { apiService } from '@/services/apiService';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function DevotionalScreen() {
     const { theme } = useTheme();

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, Image, Dimensions } from 'react-native';
 import { Video, Users, MessageSquare, Send, Heart, Gift } from 'lucide-react-native';
-import { useTheme } from '../context/ThemeContext';
-import { apiService } from '../services/apiService';
+import { useTheme } from '@/context/ThemeContext';
+import { apiService } from '@/services/apiService';
 
 const { width } = Dimensions.get('window');
 

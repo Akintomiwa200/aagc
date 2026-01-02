@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import { Search, Play, Download, Share2, Clock, User } from 'lucide-react-native';
-import { useTheme } from '../context/ThemeContext';
-import { apiService } from '../services/apiService';
+import { useTheme } from '@/context/ThemeContext';
+import { apiService } from '@/services/apiService';
 
 export default function SermonsScreen() {
     const { theme } = useTheme();
@@ -198,10 +198,7 @@ export default function SermonsScreen() {
 
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-            <View style={styles.header}>
-                <Text style={styles.title}>Sermons</Text>
-                <Text style={styles.subtitle}>MESSAGES THAT TRANSFORM</Text>
-            </View>
+            {/* Header removed to use Native Drawer Header */}
 
             {/* Search Bar */}
             <View style={styles.searchContainer}>

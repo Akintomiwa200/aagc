@@ -11,7 +11,7 @@ interface SocketContextType {
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
 
 // Get socket URL from environment or use default
-const SOCKET_URL = Constants.expoConfig?.extra?.socketUrl || 'http://localhost:3001';
+const SOCKET_URL = Constants.expoConfig?.extra?.socketUrl || 'http://10.186.103.99:3001';
 
 export function SocketProvider({ children }: { children: ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null);

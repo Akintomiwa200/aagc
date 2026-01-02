@@ -1,14 +1,16 @@
 import { Tabs } from 'expo-router';
-import { Home, Calendar, BookOpen, Heart, User } from 'lucide-react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { TouchableOpacity } from 'react-native';
+import { useNavigation, DrawerActions } from '@react-navigation/native';
+import { Home, Calendar, BookOpen, Heart, User, Menu } from 'lucide-react-native';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function TabLayout() {
-    const { theme } = useTheme();
+    const { colors, isDark } = useTheme();
+    const navigation = useNavigation();
 
-    const isDark = theme === 'dark';
-    const activeColor = '#7C3AED'; // primary-600
-    const inactiveColor = isDark ? '#9CA3AF' : '#6B7280';
-    const backgroundColor = isDark ? '#000000' : '#FFFFFF';
+    const activeColor = colors.primary;
+    const inactiveColor = colors.secondary;
+    const backgroundColor = colors.card;
 
     return (
         <Tabs
@@ -35,6 +37,14 @@ export default function TabLayout() {
                 headerTitleStyle: {
                     fontWeight: 'bold',
                 },
+                headerLeft: () => (
+                    <TouchableOpacity
+                        onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
+                        style={{ marginLeft: 16 }}
+                    >
+                        <Menu color={isDark ? '#FFFFFF' : '#111827'} size={24} />
+                    </TouchableOpacity>
+                ),
             }}
         >
             <Tabs.Screen

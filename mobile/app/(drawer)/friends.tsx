@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import { Search, UserPlus, MoreVertical, MessageSquare } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { useTheme } from '../context/ThemeContext';
-import { apiService } from '../services/apiService';
+import { useTheme } from '@/context/ThemeContext';
+import { apiService } from '@/services/apiService';
 
 export default function FriendsScreen() {
     const { theme } = useTheme();

@@ -1,37 +1,89 @@
-import { useEffect } from 'react';
-import { Stack } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { View } from 'react-native';
+
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import { SocketProvider } from '../context/SocketContext';
+import CustomSplashScreen from '../components/CustomSplashScreen';
 
-// Prevent splash screen from auto-hiding
+// Prevent native splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
 
 function RootLayoutNav() {
-    const { theme } = useTheme();
+    const { colors, isDark } = useTheme();
+    const router = useRouter();
+    const segments = useSegments();
+
+    const [isAppReady, setIsAppReady] = useState(false);
+    const [showCustomSplash, setShowCustomSplash] = useState(true);
+    const [initialRoute, setInitialRoute] = useState<'onboarding' | 'login' | '(drawer)' | null>(null);
 
     useEffect(() => {
-        // Hide splash screen after a delay
-        const timer = setTimeout(() => {
-            SplashScreen.hideAsync();
-        }, 3000);
+        async function prepare() {
+            try {
+                // Check Auth / Onboarding status
+                const userSession = await AsyncStorage.getItem('church_app_user');
+                const hasSeenOnboarding = await AsyncStorage.getItem('hasSeenOnboarding');
 
-        return () => clearTimeout(timer);
+                if (userSession && userSession !== 'null') {
+                    setInitialRoute('(drawer)');
+                } else if (hasSeenOnboarding !== 'true') {
+                    setInitialRoute('onboarding');
+                } else {
+                    // Seen onboarding but not logged in -> Login
+                    setInitialRoute('login');
+                }
+            } catch (e) {
+                console.warn(e);
+                setInitialRoute('login'); // Fallback
+            } finally {
+                setIsAppReady(true);
+                // Hide the native splash screen immediately, our CustomSplash is rendered
+                await SplashScreen.hideAsync();
+            }
+        }
+
+        prepare();
     }, []);
 
+    const handleSplashAnimationComplete = () => {
+        setShowCustomSplash(false);
+        // Navigate to the determined route
+        if (initialRoute) {
+            router.replace(initialRoute);
+        }
+    };
+
+    if (!isAppReady) {
+        return null; // or a minimal native-like view if needed, but native splash covers this
+    }
+
     return (
-        <>
-            <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <StatusBar style={isDark ? 'light' : 'dark'} />
+
             <Stack
                 screenOptions={{
                     headerShown: false,
                     contentStyle: {
-                        backgroundColor: theme === 'dark' ? '#000000' : '#F9FAFB',
+                        backgroundColor: colors.background,
                     },
                 }}
             >
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                {/* 
+                  Define all screens here. 
+                  Expo Router will match the URL to the screen. 
+                */}
+                <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
+                <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                <Stack.Screen name="login" options={{ headerShown: false }} />
+                <Stack.Screen name="register" options={{ headerShown: false }} />
+
+                {/* Modals and other screens */}
                 <Stack.Screen
                     name="event/[id]"
                     options={{
@@ -41,74 +93,11 @@ function RootLayoutNav() {
                     }}
                 />
                 <Stack.Screen
-                    name="bible"
-                    options={{
-                        presentation: 'card',
-                        headerShown: true,
-                        headerTitle: 'Bible',
-                    }}
-                />
-                <Stack.Screen
-                    name="giving"
-                    options={{
-                        presentation: 'card',
-                        headerShown: true,
-                        headerTitle: 'Giving',
-                    }}
-                />
-                <Stack.Screen
-                    name="sermons"
-                    options={{
-                        presentation: 'card',
-                        headerShown: true,
-                        headerTitle: 'Sermons',
-                    }}
-                />
-                <Stack.Screen
-                    name="notes"
-                    options={{
-                        presentation: 'card',
-                        headerShown: true,
-                        headerTitle: 'Notes',
-                    }}
-                />
-                <Stack.Screen
-                    name="settings"
-                    options={{
-                        presentation: 'card',
-                        headerShown: true,
-                        headerTitle: 'Settings',
-                    }}
-                />
-                <Stack.Screen
-                    name="gallery"
-                    options={{
-                        presentation: 'card',
-                        headerShown: true,
-                        headerTitle: 'Gallery',
-                    }}
-                />
-                <Stack.Screen
-                    name="about"
-                    options={{
-                        presentation: 'card',
-                        headerShown: true,
-                        headerTitle: 'About',
-                    }}
-                />
-                <Stack.Screen
                     name="first-timer"
                     options={{
                         presentation: 'card',
                         headerShown: true,
                         headerTitle: 'First Timer',
-                    }}
-                />
-                <Stack.Screen
-                    name="live-meet"
-                    options={{
-                        presentation: 'fullScreenModal',
-                        headerShown: false,
                     }}
                 />
                 <Stack.Screen
@@ -128,14 +117,6 @@ function RootLayoutNav() {
                     }}
                 />
                 <Stack.Screen
-                    name="friends"
-                    options={{
-                        presentation: 'card',
-                        headerShown: true,
-                        headerTitle: 'Friends',
-                    }}
-                />
-                <Stack.Screen
                     name="friend-requests"
                     options={{
                         presentation: 'card',
@@ -143,22 +124,13 @@ function RootLayoutNav() {
                         headerTitle: 'Friend Requests',
                     }}
                 />
-                <Stack.Screen
-                    name="login"
-                    options={{
-                        presentation: 'card',
-                        headerShown: false,
-                    }}
-                />
-                <Stack.Screen
-                    name="register"
-                    options={{
-                        presentation: 'card',
-                        headerShown: false,
-                    }}
-                />
             </Stack>
-        </>
+
+            {/* Render Custom Splash Overlay if needed */}
+            {showCustomSplash && (
+                <CustomSplashScreen onAnimationComplete={handleSplashAnimationComplete} />
+            )}
+        </GestureHandlerRootView>
     );
 }
 

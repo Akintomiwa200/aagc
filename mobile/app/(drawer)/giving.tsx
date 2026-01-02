@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { DollarSign, CreditCard, Building2, History } from 'lucide-react-native';
-import { useTheme } from '../context/ThemeContext';
-import { apiService } from '../services/apiService';
+import { useTheme } from '@/context/ThemeContext';
+import { apiService } from '@/services/apiService';
 
 export default function GivingScreen() {
     const { theme } = useTheme();

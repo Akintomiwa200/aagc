@@ -16,25 +16,71 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.aagc.mobile"
+      "bundleIdentifier": "com.aagc.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app needs access to your camera to take photos for your profile and events.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to select images for your profile and events.",
+        "NSMicrophoneUsageDescription": "This app needs access to your microphone for live meetings and video calls.",
+        "NSLocationWhenInUseUsageDescription": "This app uses your location to show nearby events and church locations."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.aagc.mobile"
+      "package": "com.aagc.mobile",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow AAGC Platform to access your camera to take photos for your profile and events."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you share them with the community."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow AAGC Platform to use your location to show nearby events and church locations."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#d4af37"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
     },
-    "scheme": "aagc"
+    "scheme": "aagc",
+    "extra": {
+      "eas": {
+        "projectId": "your-project-id"
+      }
+    }
   }
 }

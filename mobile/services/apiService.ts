@@ -1,7 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
-const API_BASE_URL = 'http://localhost:3001/api'; // TODO: Use environment variable
-const SOCKET_URL = 'http://localhost:3001';
+const API_BASE_URL = Constants.expoConfig?.extra?.apiUrl
+  ? `${Constants.expoConfig.extra.apiUrl}/api`
+  : 'http://10.186.103.99:3001/api';
+const SOCKET_URL = Constants.expoConfig?.extra?.socketUrl || 'http://10.186.103.99:3001';
 
 class ApiService {
   private token: string | null = null;
@@ -74,10 +77,14 @@ class ApiService {
   }
 
   async mobileOAuth(provider: 'google' | 'apple', token: string, email?: string, name?: string, picture?: string) {
-    return this.request<{ token: string; user: any }>('/auth/oauth/mobile', {
+    const response = await this.request<{ token: string; user: any }>('/auth/oauth/mobile', {
       method: 'POST',
       body: JSON.stringify({ provider, token, email, name, picture }),
     });
+    if (response.token) {
+      await this.setToken(response.token);
+    }
+    return response;
   }
 
   // Prayers

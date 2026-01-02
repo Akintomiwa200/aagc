@@ -15,15 +15,15 @@ import Location from '@/components/home/Location';
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-night">
+    <div className="min-h-screen bg-black">
       <main className="mx-auto flex flex-col">
         <HeroSection />
         <ChurchDetailsSection/>
-          <EventsSection />
-          <SermonsSection />
-          <GivingSection />
-          <Location />
-       </main>
+        <EventsSection />
+        <SermonsSection />
+        <GivingSection />
+        <Location />
+      </main>
       
       <Footer />
     </div>

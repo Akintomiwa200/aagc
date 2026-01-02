@@ -23,77 +23,21 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { apiService } from '@/lib/api';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+} from 'recharts';
 
 // Extended stats with more church-specific metrics
-const stats = [
-  {
-    name: 'Total Members',
-    value: '1,245',
-    change: '+12.3%',
-    changeType: 'increase',
-    icon: Users,
-    color: 'bg-blue-500',
-    detail: 'Active: 1,100 | New this month: 42'
-  },
-  {
-    name: 'Weekly Attendance',
-    value: '850',
-    change: '+5.2%',
-    changeType: 'increase',
-    icon: Users,
-    color: 'bg-green-500',
-    detail: 'Avg. weekly growth: 3.1%'
-  },
-  {
-    name: 'Monthly Donations',
-    value: '$45,230',
-    change: '+8.5%',
-    changeType: 'increase',
-    icon: DollarSign,
-    color: 'bg-purple-500',
-    detail: 'YTD: $398,450'
-  },
-  {
-    name: 'Prayer Requests',
-    value: '156',
-    change: '-3.2%',
-    changeType: 'decrease',
-    icon: Heart,
-    color: 'bg-red-500',
-    detail: 'Answered: 128 | Pending: 28',
-    dynamic: true, // Mark as dynamic
-  },
-  {
-    name: 'Active Volunteers',
-    value: '87',
-    change: '+4.8%',
-    changeType: 'increase',
-    icon: Users,
-    color: 'bg-yellow-500',
-    detail: 'Teams: 12 | Needs: 15'
-  },
-  {
-    name: 'Small Groups',
-    value: '24',
-    change: '+2.1%',
-    changeType: 'increase',
-    icon: Users,
-    color: 'bg-indigo-500',
-    detail: 'Active meetings this week: 18'
-  },
-];
-
-// Growth data for the chart
-const growthData = [
-  { month: 'Jan', members: 1150, attendance: 780, donations: 38500 },
-  { month: 'Feb', members: 1175, attendance: 795, donations: 39200 },
-  { month: 'Mar', members: 1190, attendance: 810, donations: 40500 },
-  { month: 'Apr', members: 1205, attendance: 825, donations: 41200 },
-  { month: 'May', members: 1220, attendance: 830, donations: 42500 },
-  { month: 'Jun', members: 1245, attendance: 850, donations: 45230 },
-];
-
-// Custom SVG Line Chart Component (No external library)
+// Types for Dashboard Data
 interface ChartData {
   month: string;
   members: number;
@@ -101,312 +45,91 @@ interface ChartData {
   donations: number;
 }
 
-interface GrowthLineChartProps {
-  data: ChartData[];
-  width?: number;
-  height?: number;
-}
-
-const GrowthLineChart = ({ data, width = 600, height = 300 }: GrowthLineChartProps) => {
-  const margin = { top: 20, right: 30, bottom: 40, left: 50 };
-  const chartWidth = width - margin.left - margin.right;
-  const chartHeight = height - margin.top - margin.bottom;
-
-  // Calculate scales
-  const months = data.map((d: ChartData) => d.month);
-  const maxMembers = Math.max(...data.map((d: ChartData) => d.members));
-  const maxAttendance = Math.max(...data.map((d: ChartData) => d.attendance));
-  const maxDonations = Math.max(...data.map((d: ChartData) => d.donations));
-  const maxValue = Math.max(maxMembers, maxAttendance, maxDonations * 0.002); // Scale donations
-
-  const xScale = (index: number) => margin.left + (index * chartWidth) / (months.length - 1);
-  const yScale = (value: number) => margin.top + chartHeight - (value / maxValue) * chartHeight;
-
-  // Create line path for members
-  const membersLine = data.map((d: ChartData, i: number) =>
-    `${i === 0 ? 'M' : 'L'} ${xScale(i)} ${yScale(d.members)}`
-  ).join(' ');
-
-  // Create line path for attendance
-  const attendanceLine = data.map((d: ChartData, i: number) =>
-    `${i === 0 ? 'M' : 'L'} ${xScale(i)} ${yScale(d.attendance)}`
-  ).join(' ');
-
-  // Create line path for donations (scaled)
-  const donationsLine = data.map((d: ChartData, i: number) =>
-    `${i === 0 ? 'M' : 'L'} ${xScale(i)} ${yScale(d.donations * 0.002)}`
-  ).join(' ');
-
-  return (
-    <svg width={width} height={height} className="w-full">
-      {/* Grid lines */}
-      {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => (
-        <g key={i}>
-          <line
-            x1={margin.left}
-            y1={margin.top + chartHeight * ratio}
-            x2={margin.left + chartWidth}
-            y2={margin.top + chartHeight * ratio}
-            stroke="#e5e7eb"
-            strokeWidth="1"
-            strokeDasharray="5,5"
-          />
-          <text
-            x={margin.left - 10}
-            y={margin.top + chartHeight * ratio + 4}
-            textAnchor="end"
-            className="text-xs fill-gray-500"
-          >
-            {Math.round(maxValue * (1 - ratio))}
-          </text>
-        </g>
-      ))}
-
-      {/* X-axis */}
-      <line
-        x1={margin.left}
-        y1={margin.top + chartHeight}
-        x2={margin.left + chartWidth}
-        y2={margin.top + chartHeight}
-        stroke="#6b7280"
-        strokeWidth="2"
-      />
-
-      {/* X-axis labels */}
-      {months.map((month, i) => (
-        <text
-          key={i}
-          x={xScale(i)}
-          y={height - 10}
-          textAnchor="middle"
-          className="text-xs fill-gray-600"
-        >
-          {month}
-        </text>
-      ))}
-
-      {/* Y-axis */}
-      <line
-        x1={margin.left}
-        y1={margin.top}
-        x2={margin.left}
-        y2={margin.top + chartHeight}
-        stroke="#6b7280"
-        strokeWidth="2"
-      />
-
-      {/* Members line */}
-      <path
-        d={membersLine}
-        fill="none"
-        stroke="#3b82f6"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-
-      {/* Attendance line */}
-      <path
-        d={attendanceLine}
-        fill="none"
-        stroke="#10b981"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-
-      {/* Donations line (scaled) */}
-      <path
-        d={donationsLine}
-        fill="none"
-        stroke="#8b5cf6"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeDasharray="5,5"
-      />
-
-      {/* Data points */}
-      {data.map((d: ChartData, i: number) => (
-        <g key={i}>
-          <circle
-            cx={xScale(i)}
-            cy={yScale(d.members)}
-            r="4"
-            fill="#3b82f6"
-            className="hover:r-6 transition-all"
-          />
-          <circle
-            cx={xScale(i)}
-            cy={yScale(d.attendance)}
-            r="4"
-            fill="#10b981"
-            className="hover:r-6 transition-all"
-          />
-          <circle
-            cx={xScale(i)}
-            cy={yScale(d.donations * 0.002)}
-            r="4"
-            fill="#8b5cf6"
-            className="hover:r-6 transition-all"
-          />
-        </g>
-      ))}
-
-      {/* Legend */}
-      <g transform={`translate(${width - 180}, ${margin.top})`}>
-        <rect width="160" height="80" fill="white" stroke="#e5e7eb" rx="4" />
-        <g transform="translate(10, 20)">
-          <circle cx="8" cy="0" r="4" fill="#3b82f6" />
-          <text x="20" y="4" className="text-xs fill-gray-700">Members</text>
-        </g>
-        <g transform="translate(10, 40)">
-          <circle cx="8" cy="0" r="4" fill="#10b981" />
-          <text x="20" y="4" className="text-xs fill-gray-700">Attendance</text>
-        </g>
-        <g transform="translate(10, 60)">
-          <circle cx="8" cy="0" r="4" fill="#8b5cf6" />
-          <text x="20" y="4" className="text-xs fill-gray-700">Donations ($k)</text>
-        </g>
-      </g>
-    </svg>
-  );
-};
-
-// Custom Bar Chart Component for demographics
 interface DemographicsItem {
   label: string;
   value: number;
 }
 
-interface DemographicsBarChartProps {
-  data: DemographicsItem[];
-  width?: number;
-  height?: number;
+interface DashboardStat {
+  name: string;
+  value: string;
+  change: string;
+  changeType: 'increase' | 'decrease';
+  icon: any; // Lucide icon
+  color: string;
+  detail: string;
 }
 
-const DemographicsBarChart = ({ data, width = 400, height = 200 }: DemographicsBarChartProps) => {
-  const margin = { top: 20, right: 20, bottom: 40, left: 40 };
-  const chartWidth = width - margin.left - margin.right;
-  const chartHeight = height - margin.top - margin.bottom;
+interface RecentActivity {
+  id: number;
+  user: string;
+  action: string;
+  time: string;
+  type: string;
+  priority: 'high' | 'medium' | 'low';
+}
 
-  const maxValue = Math.max(...data.map((d: DemographicsItem) => d.value));
-  const barWidth = (chartWidth / data.length) * 0.7;
-
-  return (
-    <svg width={width} height={height}>
-      {/* Bars */}
-      {data.map((item: DemographicsItem, i: number) => {
-        const x = margin.left + (i * chartWidth) / data.length;
-        const barHeight = (item.value / maxValue) * chartHeight;
-        const y = margin.top + chartHeight - barHeight;
-
-        return (
-          <g key={i}>
-            <rect
-              x={x + 5}
-              y={y}
-              width={barWidth}
-              height={barHeight}
-              fill="#3b82f6"
-              rx="2"
-              className="hover:opacity-80 transition-opacity"
-            />
-            <text
-              x={x + barWidth / 2 + 5}
-              y={height - 5}
-              textAnchor="middle"
-              className="text-xs fill-gray-600"
-            >
-              {item.label}
-            </text>
-            <text
-              x={x + barWidth / 2 + 5}
-              y={y - 5}
-              textAnchor="middle"
-              className="text-xs fill-gray-700 font-medium"
-            >
-              {item.value}
-            </text>
-          </g>
-        );
-      })}
-
-      {/* Y-axis */}
-      <line
-        x1={margin.left}
-        y1={margin.top}
-        x2={margin.left}
-        y2={margin.top + chartHeight}
-        stroke="#6b7280"
-        strokeWidth="1"
-      />
-    </svg>
-  );
-};
-
-// Demographic data
-const demographicData = [
-  { label: '0-18', value: 220 },
-  { label: '19-35', value: 450 },
-  { label: '36-55', value: 320 },
-  { label: '56+', value: 255 },
-];
-
-const recentActivities = [
-  { id: 1, user: 'John Doe', action: 'Joined church membership', time: '10 min ago', type: 'member', priority: 'high' },
-  { id: 2, user: 'Sarah Smith', action: 'Made monthly donation: $500', time: '25 min ago', type: 'donation', priority: 'medium' },
-  { id: 3, user: 'Pastor Mark', action: 'Uploaded new sermon: "Faith in Action"', time: '1 hour ago', type: 'sermon', priority: 'high' },
-  { id: 4, user: 'Prayer Team', action: 'Answered prayer request #142', time: '2 hours ago', type: 'prayer', priority: 'medium' },
-  { id: 5, user: 'Event Team', action: 'Created new event: Youth Retreat', time: '3 hours ago', type: 'event', priority: 'high' },
-  { id: 6, user: 'Finance Team', action: 'Monthly financial report generated', time: '4 hours ago', type: 'finance', priority: 'low' },
-];
-
-// Upcoming events
-const upcomingEvents = [
-  { id: 1, title: 'Sunday Service', date: 'Today, 10:00 AM', location: 'Main Sanctuary', attendees: 245 },
-  { id: 2, title: 'Youth Group Meeting', date: 'Tomorrow, 6:00 PM', location: 'Youth Hall', attendees: 87 },
-  { id: 3, title: 'Bible Study', date: 'Dec 18, 7:00 PM', location: 'Room 201', attendees: 42 },
-  { id: 4, title: 'Christmas Celebration', date: 'Dec 24, 5:00 PM', location: 'Main Sanctuary', attendees: 500 },
-];
+interface UpcomingEvent {
+  id: number;
+  title: string;
+  date: string;
+  location: string;
+  attendees: number;
+}
 
 export default function EnhancedAdminDashboard() {
   const { socket, isConnected } = useSocket();
   const [timeRange, setTimeRange] = useState('6months');
-  const [notificationCount, setNotificationCount] = useState(3);
+  const [notificationCount, setNotificationCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Stats state
-  const [dashboardStats, setDashboardStats] = useState<any[]>(stats); // Keep initial structure but will update values
-  const [chartData, setChartData] = useState<ChartData[]>(growthData);
-  const [activities, setActivities] = useState<any[]>(recentActivities);
-  const [prayerStats, setPrayerStats] = useState<any>(null);
+  // State for all dynamic data
+  const [dashboardStats, setDashboardStats] = useState<DashboardStat[]>([]);
+  const [chartData, setChartData] = useState<ChartData[]>([]);
+  const [activities, setActivities] = useState<RecentActivity[]>([]);
+  const [demographics, setDemographics] = useState<DemographicsItem[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
+  const [prayerStats, setPrayerStats] = useState<any>(null); // Keep specific prayer stats if needed separately
 
   // Fetch initial dashboard data
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const statsData = await apiService.getDashboardStats(); // Assume backend returns { stats, chartData, recentActivities } or similar
+        setError(null);
+        const data = await apiService.getDashboardStats();
 
-        // If backend returns matching structure, update state. 
-        // For now, we'll map hypothetical response to existing structure or keep dummy fallbacks if empty
-        if (statsData) {
-          if (statsData.stats) {
-            // Update stats array based on name mapping or dynamic structure
-            const newStats = dashboardStats.map(s => {
-              const serverStat = statsData.stats.find((apiStat: any) => apiStat.name === s.name);
-              return serverStat ? { ...s, value: serverStat.value, change: serverStat.change } : s;
+        if (data) {
+          // Process stats to include icons and colors before setting state
+          let finalStats: DashboardStat[] = [];
+
+          if (data.stats) {
+            finalStats = data.stats.map((s: any) => {
+              let Icon = Users;
+              let color = 'bg-blue-500';
+              if (s.name.includes('Donations')) { Icon = DollarSign; color = 'bg-purple-500'; }
+              else if (s.name.includes('Attendance')) { Icon = Users; color = 'bg-green-500'; }
+              else if (s.name.includes('Prayer')) { Icon = Heart; color = 'bg-red-500'; }
+              else if (s.name.includes('Volunteers')) { Icon = Users; color = 'bg-yellow-500'; }
+              else if (s.name.includes('Groups')) { Icon = Users; color = 'bg-indigo-500'; }
+
+              // Only override if not provided by backend or if we want to enforce local styles
+              return { ...s, icon: Icon, color };
             });
-            setDashboardStats(newStats);
           }
-          if (statsData.chartData) setChartData(statsData.chartData);
-          if (statsData.recentActivities) setActivities(statsData.recentActivities);
+
+          // Single batch update if possible (React 18+ does this auto, but cleaner code)
+          setDashboardStats(finalStats);
+          setChartData(data.chartData || []);
+          setActivities(data.recentActivities || []);
+          setDemographics(data.demographics || []);
+          setUpcomingEvents(data.upcomingEvents || []);
+          setNotificationCount(data.notificationCount || 0);
         }
       } catch (err: any) {
         console.error('Failed to fetch dashboard stats:', err);
-        setError('Failed to load dashboard data. Showing cached/offline data.');
+        setError('Failed to load dashboard data. Please try again later.');
       } finally {
         setLoading(false);
       }
@@ -415,7 +138,7 @@ export default function EnhancedAdminDashboard() {
     fetchDashboardData();
   }, []);
 
-  // Fetch prayer stats (legacy separate fetch, consider merging into getDashboardStats)
+  // Fetch prayer stats (legacy separate fetch - consider consolidating)
   useEffect(() => {
     const fetchPrayerStats = async () => {
       try {
@@ -433,9 +156,26 @@ export default function EnhancedAdminDashboard() {
     if (!socket || !isConnected) return;
 
     socket.on('dashboard-update', (data: any) => {
-      // Handle real-time dashboard updates (e.g. new user count)
       console.log('Real-time dashboard update:', data);
-      // setDashboardStats(...)
+      // Update specific parts of state based on data.type or structure
+      // For simplicity, re-fetching or merging is common.
+      // Ideally, the event payload contains the updated stat or activity
+      if (data.type === 'stat_update') {
+        setDashboardStats(prev => prev.map(s => {
+          if (s.name === data.name) {
+            // Preserve client-side decorations (icon, color) while updating values
+            return { ...s, ...data.payload, icon: s.icon, color: s.color };
+          }
+          return s;
+        }));
+      } else if (data.type === 'new_activity') {
+        setActivities(prev => {
+          const newActivity = data.payload;
+          // Avoid duplicates if needed, though id check suggests unique
+          if (prev.some((a: RecentActivity) => a.id === newActivity.id)) return prev;
+          return [newActivity, ...prev].slice(0, 10);
+        });
+      }
     });
 
     socket.on('initial-data', (data: { prayerStats: { total: number; pending: number; ongoing: number; answered: number } }) => {
@@ -444,23 +184,14 @@ export default function EnhancedAdminDashboard() {
       }
     });
 
-    socket.on('prayer-created', (data: { stats: any }) => {
-      if (data.stats) {
-        setPrayerStats(data.stats);
-      }
-    });
+    // Listen for specific entity updates to keep stats fresh without full reload
+    const handleStatUpdate = (data: { stats: any }) => {
+      if (data.stats) setPrayerStats(data.stats);
+    };
 
-    socket.on('prayer-updated', (data: { stats: any }) => {
-      if (data.stats) {
-        setPrayerStats(data.stats);
-      }
-    });
-
-    socket.on('prayer-deleted', (data: { stats: any }) => {
-      if (data.stats) {
-        setPrayerStats(data.stats);
-      }
-    });
+    socket.on('prayer-created', handleStatUpdate);
+    socket.on('prayer-updated', handleStatUpdate);
+    socket.on('prayer-deleted', handleStatUpdate);
 
     return () => {
       socket.off('dashboard-update');
@@ -471,6 +202,31 @@ export default function EnhancedAdminDashboard() {
     };
   }, [socket, isConnected]);
 
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="bg-red-50 text-red-600 p-4 rounded-lg shadow max-w-md text-center">
+          <h3 className="font-bold text-lg mb-2">Error Loading Dashboard</h3>
+          <p>{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-4 md:p-6">
@@ -507,37 +263,41 @@ export default function EnhancedAdminDashboard() {
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
-            {dashboardStats.map((stat) => {
-              const Icon = stat.icon;
-              return (
-                <div key={stat.name} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className={`p-2 ${stat.color} rounded-lg`}>
-                      <Icon className="h-5 w-5 text-white" />
+            {dashboardStats.length === 0 ? (
+              <div className="col-span-full text-center py-8 text-gray-500">No stats available.</div>
+            ) : (
+              dashboardStats.map((stat) => {
+                const Icon = stat.icon || Activity;
+                return (
+                  <div key={stat.name} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className={`p-2 ${stat.color} rounded-lg`}>
+                        <Icon className="h-5 w-5 text-white" />
+                      </div>
+                      <div className={`flex items-center text-sm font-medium ${stat.changeType === 'increase' ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                        {stat.changeType === 'increase' ? (
+                          <ArrowUpRight className="h-4 w-4 mr-1" />
+                        ) : (
+                          <ArrowDownRight className="h-4 w-4 mr-1" />
+                        )}
+                        {stat.change}
+                      </div>
                     </div>
-                    <div className={`flex items-center text-sm font-medium ${stat.changeType === 'increase' ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                      {stat.changeType === 'increase' ? (
-                        <ArrowUpRight className="h-4 w-4 mr-1" />
-                      ) : (
-                        <ArrowDownRight className="h-4 w-4 mr-1" />
-                      )}
-                      {stat.change}
-                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900">{stat.value}</h3>
+                    <p className="text-sm font-medium text-gray-900 mt-1">{stat.name}</p>
+                    <p className="text-xs text-gray-500 mt-1">{stat.detail}</p>
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900">{stat.value}</h3>
-                  <p className="text-sm font-medium text-gray-900 mt-1">{stat.name}</p>
-                  <p className="text-xs text-gray-500 mt-1">{stat.detail}</p>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </>
       )}
 
       {/* Main Content Area */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Growth Chart - Now with real SVG chart */}
+        {/* Growth Chart - Now with Recharts */}
         <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-gray-900">Growth Overview</h2>
@@ -558,8 +318,26 @@ export default function EnhancedAdminDashboard() {
               </button>
             </div>
           </div>
-          <div className="h-80">
-            <GrowthLineChart data={chartData} />
+          <div className="h-80 w-full">
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                  <XAxis dataKey="month" stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
+                    itemStyle={{ fontSize: '12px' }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: '12px', marginTop: '10px' }} />
+                  <Line type="monotone" dataKey="members" name="Members" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="attendance" name="Attendance" stroke="#10b981" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="donations" name="Donations" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-gray-500">No chart data available</div>
+            )}
           </div>
           <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-blue-50 p-4 rounded-lg">
@@ -595,7 +373,7 @@ export default function EnhancedAdminDashboard() {
               <span className="text-sm text-blue-600 cursor-pointer hover:text-blue-800">View All</span>
             </div>
             <div className="space-y-4 max-h-80 overflow-y-auto pr-2">
-              {activities.map((activity) => (
+              {activities.length > 0 ? activities.map((activity) => (
                 <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition">
                   <div className={`p-2 rounded-lg ${activity.priority === 'high' ? 'bg-red-100' :
                     activity.priority === 'medium' ? 'bg-yellow-100' : 'bg-blue-100'
@@ -615,17 +393,32 @@ export default function EnhancedAdminDashboard() {
                     <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="text-center text-gray-500 py-4">No recent activities</div>
+              )}
             </div>
           </div>
 
-          {/* Demographics */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 py-6">
-            <h2 className="text-lg font-semibold text-gray-900 pl-12 mb-6">Demographics</h2>
-            <div className="lg:h-40">
-              <DemographicsBarChart data={demographicData} />
+          {/* Demographics - Using Recharts */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 py-6 px-4">
+            <h2 className="text-lg font-semibold text-gray-900 pl-2 mb-6">Demographics</h2>
+            <div className="h-48 w-full">
+              {demographics.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={demographics} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="label" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis hide />
+                    <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px' }} />
+                    <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-gray-500">No demographics data</div>
+              )}
             </div>
-            <div className="lg:mt-4 mt-12 px-8 grid grid-cols-2 gap-3">
+
+            <div className="mt-6 px-4 grid grid-cols-2 gap-3">
               <div className="text-center p-3 bg-blue-50 rounded-lg">
                 <p className="text-sm text-gray-600">Average Age</p>
                 <p className="text-xl font-bold">34.2</p>
@@ -651,7 +444,7 @@ export default function EnhancedAdminDashboard() {
             </button>
           </div>
           <div className="space-y-4">
-            {upcomingEvents.map((event) => (
+            {upcomingEvents.length > 0 ? upcomingEvents.map((event) => (
               <div key={event.id} className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg border border-gray-100 transition">
                 <div>
                   <h3 className="font-medium text-gray-900">{event.title}</h3>
@@ -671,7 +464,9 @@ export default function EnhancedAdminDashboard() {
                   <div className="text-sm text-gray-500">Attendees</div>
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="text-center text-gray-500 py-8">No upcoming events found</div>
+            )}
           </div>
         </div>
 
@@ -681,15 +476,19 @@ export default function EnhancedAdminDashboard() {
           <div className="space-y-4">
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <span className="text-gray-700">New Members This Month</span>
-              <span className="font-bold text-green-600">42</span>
+              <span className="font-bold text-green-600">
+                {dashboardStats.find(s => s.name === 'Total Members')?.detail.split(':')[2]?.trim() || '--'}
+              </span>
             </div>
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              {/* Placeholders until API provides granular quick stats */}
               <span className="text-gray-700">Volunteer Hours</span>
               <span className="font-bold text-blue-600">1,240</span>
             </div>
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <span className="text-gray-700">Prayer Requests</span>
-              <span className="font-bold text-red-600">156</span>
+              {/* Example dynamic data mapping */}
+              <span className="font-bold text-red-600">{prayerStats?.total || '--'}</span>
             </div>
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <span className="text-gray-700">Sermons Uploaded</span>

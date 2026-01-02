@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Modal, Alert } from 'react-native';
 import { Plus, Trash2, Save, X } from 'lucide-react-native';
-import { useTheme } from '../context/ThemeContext';
-import { apiService } from '../services/apiService';
+import { useTheme } from '@/context/ThemeContext';
+import { apiService } from '@/services/apiService';
 
 export default function NotesScreen() {
     const { theme } = useTheme();

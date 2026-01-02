@@ -2,8 +2,8 @@ import React from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { Link } from 'expo-router';
 import { Settings as SettingsIcon } from 'lucide-react-native';
-import { useTheme } from '../../context/ThemeContext';
-import { apiService } from '../../services/apiService';
+import { useTheme } from '@/context/ThemeContext';
+import { apiService } from '@/services/apiService';
 
 export default function ProfileScreen() {
     const { theme } = useTheme();

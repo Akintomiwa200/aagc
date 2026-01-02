@@ -18,10 +18,13 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001'
 export function SocketProvider({ children }: { children: ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  
+  // Get auth context - SocketProvider is wrapped by AuthProvider in layout
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
     if (!isAuthenticated) {
+      // Clean up existing socket if not authenticated
       if (socket) {
         socket.disconnect();
         setSocket(null);
@@ -60,6 +63,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       setSocket(null);
       setIsConnected(false);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
   const joinRoom = (room: string) => {

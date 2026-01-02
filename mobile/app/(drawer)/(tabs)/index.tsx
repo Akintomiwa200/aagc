@@ -1,9 +1,9 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Image, RefreshControl } from 'react-native';
 import { Link, Href } from 'expo-router';
 import { Gift, Users, Video, UserPlus } from 'lucide-react-native';
-import { useTheme } from '../../context/ThemeContext';
-import { apiService } from '../../services/apiService';
+import { useTheme } from '@/context/ThemeContext';
+import { apiService } from '@/services/apiService';
 
 type QuickLinkItem = {
     id: number;
@@ -16,19 +16,27 @@ type QuickLinkItem = {
 export default function HomeScreen() {
     const { theme } = useTheme();
     const isDark = theme === 'dark';
-    const [dailyDevotional, setDailyDevotional] = React.useState<any>(null);
+    const [dailyDevotional, setDailyDevotional] = useState<any>(null);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const fetchData = useCallback(async () => {
+        try {
+            const devotionalData = await apiService.getTodayDevotional();
+            setDailyDevotional(devotionalData);
+        } catch (error) {
+            console.log('Failed to fetch home data', error);
+        }
+    }, []);
 
     React.useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const devotionalData = await apiService.getTodayDevotional();
-                setDailyDevotional(devotionalData);
-            } catch (error) {
-                console.log('Failed to fetch home data', error);
-            }
-        };
         fetchData();
-    }, []);
+    }, [fetchData]);
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await fetchData();
+        setRefreshing(false);
+    }, [fetchData]);
 
     const quickLinks: QuickLinkItem[] = [
         { id: 1, name: 'Welcome', icon: UserPlus, color: '#7C3AED', link: '/first-timer' },
@@ -76,6 +84,7 @@ export default function HomeScreen() {
             borderRadius: 20,
             alignItems: 'center',
             justifyContent: 'center',
+            alignSelf: 'center',
         },
         quickLinkText: {
             fontSize: 10,
@@ -106,7 +115,18 @@ export default function HomeScreen() {
     });
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+            style={styles.container}
+            contentContainerStyle={styles.scrollContent}
+            refreshControl={
+                <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={onRefresh}
+                    tintColor={isDark ? '#FFFFFF' : '#111827'} // Cross-platform spinner color
+                    colors={['#7C3AED']} // Android spinner color
+                />
+            }
+        >
             {/* Header */}
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Apostolic Army</Text>

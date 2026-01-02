@@ -1,6 +1,8 @@
 import type { Config } from "tailwindcss";
 import animate from "tailwindcss-animate";
 
+// Tailwind CSS v4 configuration
+// Some theme extensions are in @theme block in globals.css
 const config: Config = {
   content: [
     "./src/app/**/*.{ts,tsx}",
@@ -46,8 +48,8 @@ const config: Config = {
       },
       keyframes: {
         pulseGlow: {
-          "0%, 100%": { opacity: 0.55, filter: "blur(40px)" },
-          "50%": { opacity: 0.9, filter: "blur(52px)" },
+          "0%, 100%": { opacity: "0.55", filter: "blur(40px)" },
+          "50%": { opacity: "0.9", filter: "blur(52px)" },
         },
       },
     },

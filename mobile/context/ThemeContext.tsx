@@ -6,7 +6,16 @@ type Theme = 'light' | 'dark';
 
 interface ThemeContextType {
   theme: Theme;
+  isDark: boolean;
   toggleTheme: () => void;
+  colors: {
+    background: string;
+    text: string;
+    card: string;
+    border: string;
+    primary: string;
+    secondary: string;
+  };
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -49,12 +58,23 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     AsyncStorage.setItem('church_app_theme', theme).catch(console.error);
   }, [theme]);
 
+  const isDark = theme === 'dark';
+
+  const colors = {
+    background: isDark ? '#000000' : '#F9FAFB',
+    text: isDark ? '#FFFFFF' : '#111827',
+    card: isDark ? '#1F2937' : '#FFFFFF',
+    border: isDark ? '#374151' : '#E5E7EB',
+    primary: '#7C3AED',
+    secondary: isDark ? '#9CA3AF' : '#6B7280',
+  };
+
   const toggleTheme = () => {
     setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, isDark, toggleTheme, colors }}>
       {children}
     </ThemeContext.Provider>
   );
