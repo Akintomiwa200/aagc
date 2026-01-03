@@ -1,15 +1,15 @@
 import { Controller, Get, Post, Body, Param, Query, Inject, forwardRef } from '@nestjs/common';
 import { DonationsService } from './donations.service';
 import { CreateDonationDto } from './dto/create-donation.dto';
-import { WebSocketGateway } from '../websocket/websocket.gateway';
+import { AppGateway } from '../websocket/websocket.gateway';
 
 @Controller('donations')
 export class DonationsController {
   constructor(
     private readonly donationsService: DonationsService,
-    @Inject(forwardRef(() => WebSocketGateway))
-    private readonly websocketGateway: WebSocketGateway,
-  ) {}
+    @Inject(forwardRef(() => AppGateway))
+    private readonly websocketGateway: AppGateway,
+  ) { }
 
   @Post()
   async create(@Body() dto: CreateDonationDto) {

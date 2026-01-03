@@ -271,6 +271,15 @@ export default function LoginScreen() {
                         <Text style={styles.linkText}>Sign Up</Text>
                     </TouchableOpacity>
                 </View>
+
+                <TouchableOpacity
+                    style={{ marginTop: 24, alignItems: 'center' }}
+                    onPress={() => router.replace('/(drawer)/(tabs)')}
+                >
+                    <Text style={[styles.linkText, { color: colors.secondary, fontWeight: '500' }]}>
+                        Skip for now
+                    </Text>
+                </TouchableOpacity>
             </View>
         </SafeAreaView>
     );

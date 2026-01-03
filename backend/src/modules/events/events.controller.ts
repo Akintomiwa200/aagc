@@ -1,15 +1,15 @@
 import { Body, Controller, Get, Param, Post, Put, Delete, Inject, forwardRef } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { CreateEventDto, UpdateEventDto } from './dto/create-event.dto';
-import { WebSocketGateway } from '../websocket/websocket.gateway';
+import { AppGateway } from '../websocket/websocket.gateway';
 
 @Controller('events')
 export class EventsController {
   constructor(
     private readonly eventsService: EventsService,
-    @Inject(forwardRef(() => WebSocketGateway))
-    private readonly websocketGateway: WebSocketGateway,
-  ) {}
+    @Inject(forwardRef(() => AppGateway))
+    private readonly websocketGateway: AppGateway,
+  ) { }
 
   @Get()
   list() {

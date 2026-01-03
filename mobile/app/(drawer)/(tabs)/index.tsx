@@ -1,34 +1,47 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Image, RefreshControl } from 'react-native';
-import { Link, Href } from 'expo-router';
-import { Gift, Users, Video, UserPlus } from 'lucide-react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, RefreshControl, SafeAreaView, Dimensions } from 'react-native';
+import { useRouter, Link } from 'expo-router';
+import {
+    Play,
+    Book,
+    Heart,
+    Calendar,
+    ChevronRight,
+    Bell,
+    Users,
+    MessageSquare,
+    Zap,
+    MapPin
+} from 'lucide-react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { apiService } from '@/services/apiService';
 
-type QuickLinkItem = {
-    id: number;
-    name: string;
-    icon: any;
-    color: string;
-    link: Href;
-};
+const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
-    const { theme } = useTheme();
+    const router = useRouter();
+    const { theme, colors } = useTheme();
     const isDark = theme === 'dark';
-    const [dailyDevotional, setDailyDevotional] = useState<any>(null);
+
     const [refreshing, setRefreshing] = useState(false);
+    const [dailyRhema, setDailyRhema] = useState<any>(null);
+    const [latestSermon, setLatestSermon] = useState<any>(null);
 
     const fetchData = useCallback(async () => {
         try {
-            const devotionalData = await apiService.getTodayDevotional();
-            setDailyDevotional(devotionalData);
+            const rhemaData = await apiService.getTodayDevotional();
+            setDailyRhema(rhemaData);
+
+            const sermonData = await apiService.getSermons();
+            if (sermonData && sermonData.length > 0) {
+                setLatestSermon(sermonData[0]);
+            }
         } catch (error) {
             console.log('Failed to fetch home data', error);
         }
     }, []);
 
-    React.useEffect(() => {
+    useEffect(() => {
         fetchData();
     }, [fetchData]);
 
@@ -38,153 +51,223 @@ export default function HomeScreen() {
         setRefreshing(false);
     }, [fetchData]);
 
-    const quickLinks: QuickLinkItem[] = [
-        { id: 1, name: 'Welcome', icon: UserPlus, color: '#7C3AED', link: '/first-timer' },
-        { id: 2, name: 'Tithe', icon: Gift, color: '#10B981', link: '/giving' },
-        { id: 3, name: 'Sermons', icon: Users, color: '#3B82F6', link: '/sermons' },
-        { id: 4, name: 'Live', icon: Video, color: '#EF4444', link: '/live-meet' },
-    ];
-
     const styles = StyleSheet.create({
         container: {
             flex: 1,
-            backgroundColor: isDark ? '#000000' : '#F9FAFB',
-        },
-        scrollContent: {
-            padding: 16,
-            paddingBottom: 100,
+            backgroundColor: colors.background,
         },
         header: {
+            paddingHorizontal: 20,
+            paddingTop: 20,
+            paddingBottom: 30,
+            backgroundColor: colors.primary,
+            borderBottomLeftRadius: 32,
+            borderBottomRightRadius: 32,
+            shadowColor: colors.primary,
+            shadowOffset: { width: 0, height: 10 },
+            shadowOpacity: 0.3,
+            shadowRadius: 20,
+            elevation: 10,
+        },
+        headerTop: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
             marginBottom: 24,
         },
-        headerTitle: {
-            fontSize: 28,
-            fontWeight: 'bold',
-            color: isDark ? '#FFFFFF' : '#111827',
-            marginBottom: 4,
-        },
-        headerSubtitle: {
-            fontSize: 12,
-            color: '#7C3AED',
+        welcomeText: {
+            fontSize: 14,
+            color: 'rgba(255,255,255,0.8)',
             fontWeight: '600',
-            letterSpacing: 2,
         },
-        quickLinksContainer: {
-            flexDirection: 'row',
-            justifyContent: 'space-around',
-            marginBottom: 32,
+        userName: {
+            fontSize: 24,
+            fontWeight: 'bold',
+            color: '#FFFFFF',
         },
-        quickLinkItem: {
-            alignItems: 'center',
-            gap: 8,
-        },
-        quickLinkIcon: {
-            width: 64,
-            height: 64,
-            borderRadius: 20,
-            alignItems: 'center',
+        iconButton: {
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            backgroundColor: 'rgba(255,255,255,0.2)',
             justifyContent: 'center',
-            alignSelf: 'center',
+            alignItems: 'center',
         },
-        quickLinkText: {
-            fontSize: 10,
-            fontWeight: '700',
-            color: isDark ? '#9CA3AF' : '#6B7280',
-            textTransform: 'uppercase',
-            letterSpacing: 1,
-        },
-        card: {
+        spotlightCard: {
             backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
             borderRadius: 24,
             padding: 20,
-            marginBottom: 20,
-            borderWidth: 1,
-            borderColor: isDark ? '#374151' : '#E5E7EB',
+            marginTop: -20,
+            marginHorizontal: 20,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.1,
+            shadowRadius: 12,
+            elevation: 5,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 16,
         },
-        cardTitle: {
+        playIcon: {
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: colors.primary,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        section: {
+            paddingHorizontal: 20,
+            marginTop: 32,
+        },
+        sectionHeader: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 16,
+        },
+        sectionTitle: {
+            fontSize: 20,
+            fontWeight: 'bold',
+            color: colors.text,
+        },
+        seeAll: {
+            fontSize: 14,
+            color: colors.primary,
+            fontWeight: '600',
+        },
+        rhemaCard: {
+            backgroundColor: colors.card,
+            borderRadius: 20,
+            padding: 20,
+            borderWidth: 1,
+            borderColor: colors.border,
+        },
+        rhemaTitle: {
             fontSize: 18,
             fontWeight: 'bold',
-            color: isDark ? '#FFFFFF' : '#111827',
-            marginBottom: 12,
+            color: colors.text,
+            marginBottom: 8,
         },
-        cardText: {
+        rhemaText: {
             fontSize: 14,
-            color: isDark ? '#D1D5DB' : '#4B5563',
-            lineHeight: 20,
+            color: colors.secondary,
+            lineHeight: 22,
         },
+        quickLinksGrid: {
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: 12,
+        },
+        linkCard: {
+            width: (width - 52) / 2,
+            padding: 16,
+            borderRadius: 20,
+            backgroundColor: colors.card,
+            borderWidth: 1,
+            borderColor: colors.border,
+            alignItems: 'center',
+            gap: 12,
+        },
+        linkIcon: {
+            width: 48,
+            height: 48,
+            borderRadius: 16,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        linkTitle: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: colors.text,
+        }
     });
 
+    const QuickLink = ({ icon: Icon, title, route, color }: any) => (
+        <TouchableOpacity style={styles.linkCard} onPress={() => router.push(route)}>
+            <View style={[styles.linkIcon, { backgroundColor: color + '15' }]}>
+                <Icon size={24} color={color} />
+            </View>
+            <Text style={styles.linkTitle}>{title}</Text>
+        </TouchableOpacity>
+    );
+
     return (
-        <ScrollView
-            style={styles.container}
-            contentContainerStyle={styles.scrollContent}
-            refreshControl={
-                <RefreshControl
-                    refreshing={refreshing}
-                    onRefresh={onRefresh}
-                    tintColor={isDark ? '#FFFFFF' : '#111827'} // Cross-platform spinner color
-                    colors={['#7C3AED']} // Android spinner color
-                />
-            }
-        >
-            {/* Header */}
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>Apostolic Army</Text>
-                <Text style={styles.headerSubtitle}>GLOBAL CHURCH</Text>
-            </View>
+        <SafeAreaView style={styles.container}>
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                }
+            >
+                {/* Visual Header */}
+                <View style={styles.header}>
+                    <View style={styles.headerTop}>
+                        <View>
+                            <Text style={styles.welcomeText}>Grace & Peace,</Text>
+                            <Text style={styles.userName}>Apostolic Army</Text>
+                        </View>
+                        <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/notifications')}>
+                            <Bell size={22} color="#FFFFFF" />
+                        </TouchableOpacity>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <MapPin size={14} color="rgba(255,255,255,0.7)" />
+                        <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: '500' }}>
+                            Global Headquarters
+                        </Text>
+                    </View>
+                </View>
 
-            {/* Quick Links */}
-            <View style={styles.quickLinksContainer}>
-                {quickLinks.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                        <Link key={item.id} href={item.link} asChild>
-                            <TouchableOpacity style={styles.quickLinkItem}>
-                                <View style={[styles.quickLinkIcon, { backgroundColor: item.color + '20' }]}>
-                                    <Icon size={28} color={item.color} />
-                                </View>
-                                <Text style={styles.quickLinkText}>{item.name}</Text>
-                            </TouchableOpacity>
-                        </Link>
-                    );
-                })}
-            </View>
-
-            {/* Welcome Card */}
-            <View style={styles.card}>
-                <Text style={styles.cardTitle}>Welcome Home</Text>
-                <Text style={styles.cardText}>
-                    Welcome to the Apostolic Army Global Church mobile app. Experience the supernatural move of God in your life.
-                </Text>
-            </View>
-
-            {/* Today's Devotional */}
-            <Link href="/devotional" asChild>
-                <TouchableOpacity style={styles.card}>
-                    <Text style={styles.cardTitle}>Today's Rhema</Text>
-                    <Text style={styles.cardText}>
-                        {dailyDevotional ? (
-                            <>
-                                <Text style={{ fontWeight: 'bold' }}>{dailyDevotional.title}</Text>
-                                {'\n'}
-                                Tap to read today's devotional.
-                            </>
-                        ) : (
-                            "Tap to read today's devotional and grow in your faith journey."
-                        )}
-                    </Text>
+                {/* Latest Sermon Spotlight */}
+                <TouchableOpacity style={styles.spotlightCard} onPress={() => router.push('/(drawer)/sermons')}>
+                    <View style={styles.playIcon}>
+                        <Play size={24} color="#FFFFFF" fill="#FFFFFF" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 12, fontWeight: 'bold', color: colors.primary, letterSpacing: 1 }}>LATEST SERMON</Text>
+                        <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.text }} numberOfLines={1}>
+                            {latestSermon?.title || 'The Power of Faith'}
+                        </Text>
+                        <Text style={{ fontSize: 13, color: colors.secondary }}>Watch now</Text>
+                    </View>
+                    <ChevronRight size={20} color={colors.border} />
                 </TouchableOpacity>
-            </Link>
 
-            {/* Events */}
-            <Link href="/events" asChild>
-                <TouchableOpacity style={styles.card}>
-                    <Text style={styles.cardTitle}>Upcoming Events</Text>
-                    <Text style={styles.cardText}>
-                        Join us for our upcoming services and special gatherings.
-                    </Text>
-                </TouchableOpacity>
-            </Link>
-        </ScrollView>
+                {/* Daily Rhema Section */}
+                <View style={styles.section}>
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Daily Rhema</Text>
+                        <TouchableOpacity onPress={() => router.push('/(drawer)/(tabs)/devotional')}>
+                            <Text style={styles.seeAll}>More</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <TouchableOpacity
+                        style={styles.rhemaCard}
+                        onPress={() => router.push('/(drawer)/(tabs)/devotional')}
+                    >
+                        <Text style={styles.rhemaTitle}>{dailyRhema?.title || 'Walking in Victory'}</Text>
+                        <Text style={styles.rhemaText} numberOfLines={3}>
+                            {dailyRhema?.content || dailyRhema?.body || 'Start your day with a powerful word from God...'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+
+                {/* Quick Actions */}
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, { marginBottom: 16 }]}>Quick Actions</Text>
+                    <View style={styles.quickLinksGrid}>
+                        <QuickLink icon={Book} title="Bible" route="/(drawer)/bible" color="#7C3AED" />
+                        <QuickLink icon={Heart} title="Giving" route="/(drawer)/giving" color="#EC4899" />
+                        <QuickLink icon={Zap} title="Live Meet" route="/(drawer)/live-meet" color="#F59E0B" />
+                        <QuickLink icon={MessageSquare} title="Prayers" route="/(drawer)/(tabs)/prayers" color="#10B981" />
+                        <QuickLink icon={Users} title="Friends" route="/(drawer)/friends" color="#3B82F6" />
+                        <QuickLink icon={Calendar} title="Events" route="/(drawer)/events" color="#6366F1" />
+                    </View>
+                </View>
+
+                <View style={{ height: 100 }} />
+            </ScrollView>
+        </SafeAreaView>
     );
 }

@@ -5,7 +5,7 @@ import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   async validateCredentials({ email, password }: LoginDto) {
     const user = await this.usersService.findByEmail(email);
@@ -23,7 +23,7 @@ export class AuthService {
 
   async handleOAuthLogin(oauthUser: any) {
     let user = await this.usersService.findByEmail(oauthUser.email);
-    
+
     if (!user) {
       // Create new user from OAuth
       user = await this.usersService.create({
@@ -32,6 +32,7 @@ export class AuthService {
         password: '', // OAuth users don't need password
         avatar: oauthUser.picture,
         provider: oauthUser.provider,
+        role: 'member',
       });
     } else {
       // Update existing user with OAuth info if needed
@@ -51,9 +52,9 @@ export class AuthService {
     // For mobile, we receive the OAuth token from the client
     // In production, verify the token with Google/Apple
     // For now, we'll use the provided data
-    
+
     let user = await this.usersService.findByEmail(data.email || '');
-    
+
     if (!user && data.email) {
       user = await this.usersService.create({
         email: data.email,
@@ -61,6 +62,7 @@ export class AuthService {
         password: '', // OAuth users don't need password
         avatar: data.picture,
         provider: data.provider,
+        role: 'member',
       });
     }
 

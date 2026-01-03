@@ -34,7 +34,7 @@ function RootLayoutNav() {
                 } else if (hasSeenOnboarding !== 'true') {
                     setInitialRoute('onboarding');
                 } else {
-                    // Seen onboarding but not logged in -> Login
+                    // Default to login for now, but the login screen will have a skip option
                     setInitialRoute('login');
                 }
             } catch (e) {
@@ -42,7 +42,7 @@ function RootLayoutNav() {
                 setInitialRoute('login'); // Fallback
             } finally {
                 setIsAppReady(true);
-                // Hide the native splash screen immediately, our CustomSplash is rendered
+                // Hide the native splash screen immediately
                 await SplashScreen.hideAsync();
             }
         }

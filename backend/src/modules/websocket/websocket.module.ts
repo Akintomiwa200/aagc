@@ -1,5 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
-import { WebSocketGateway } from './websocket.gateway';
+import { AppGateway } from './websocket.gateway';
 import { PrayersModule } from '../prayers/prayers.module';
 import { EventsModule } from '../events/events.module';
 import { SermonsModule } from '../sermons/sermons.module';
@@ -11,11 +11,11 @@ import { DonationsModule } from '../donations/donations.module';
     forwardRef(() => PrayersModule),
     forwardRef(() => EventsModule),
     forwardRef(() => SermonsModule),
-    UsersModule,
-    DonationsModule,
+    forwardRef(() => UsersModule),
+    forwardRef(() => DonationsModule),
   ],
-  providers: [WebSocketGateway],
-  exports: [WebSocketGateway],
+  providers: [AppGateway],
+  exports: [AppGateway],
 })
-export class WebSocketModule {}
+export class WebSocketModule { }
 

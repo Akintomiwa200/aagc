@@ -21,11 +21,11 @@ import { UsersService } from '../users/users.service';
   },
   namespace: '/',
 })
-export class WebSocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  private logger: Logger = new Logger('WebSocketGateway');
+  private logger: Logger = new Logger('AppGateway');
   private connectedClients = new Map<string, Socket>();
 
   constructor(
@@ -36,12 +36,12 @@ export class WebSocketGateway implements OnGatewayConnection, OnGatewayDisconnec
     @Inject(forwardRef(() => SermonsService))
     private readonly sermonsService: SermonsService,
     private readonly usersService: UsersService,
-  ) {}
+  ) { }
 
   handleConnection(client: Socket) {
     this.logger.log(`Client connected: ${client.id}`);
     this.connectedClients.set(client.id, client);
-    
+
     // Send initial data
     this.sendInitialData(client);
   }

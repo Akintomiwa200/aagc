@@ -10,6 +10,7 @@ import { SermonsModule } from './modules/sermons/sermons.module';
 import { PrayersModule } from './modules/prayers/prayers.module';
 import { WebSocketModule } from './modules/websocket/websocket.module';
 import { DonationsModule } from './modules/donations/donations.module';
+import { DevotionalsModule } from './modules/devotionals/devotionals.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { DonationsModule } from './modules/donations/donations.module';
     SermonsModule,
     PrayersModule,
     DonationsModule,
+    DevotionalsModule,
     WebSocketModule,
   ],
   controllers: [AppController],

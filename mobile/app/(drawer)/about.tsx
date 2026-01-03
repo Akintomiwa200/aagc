@@ -1,15 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Linking } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
+import { Globe, Mail, Phone, MapPin, Clock, Heart, Users, Youtube, Facebook, Instagram } from 'lucide-react-native';
 
 export default function AboutScreen() {
-    const { theme } = useTheme();
+    const { theme, colors } = useTheme();
     const isDark = theme === 'dark';
 
     const styles = StyleSheet.create({
         container: {
             flex: 1,
-            backgroundColor: isDark ? '#000000' : '#F9FAFB',
+            backgroundColor: colors.background,
         },
         content: {
             padding: 20,
@@ -18,81 +19,190 @@ export default function AboutScreen() {
         headerImage: {
             width: '100%',
             height: 200,
-            borderRadius: 20,
-            marginBottom: 20,
-            backgroundColor: '#7C3AED', // Placeholder color as I don't have an asset
+            borderRadius: 24,
+            marginBottom: 24,
+            backgroundColor: colors.primary,
+            justifyContent: 'center',
+            alignItems: 'center',
+            overflow: 'hidden',
+        },
+        headerOverlay: {
+            ...StyleSheet.absoluteFillObject,
+            backgroundColor: 'rgba(0,0,0,0.3)',
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        headerTitle: {
+            fontSize: 32,
+            fontWeight: 'bold',
+            color: '#FFFFFF',
+            textAlign: 'center',
+        },
+        section: {
+            marginBottom: 32,
         },
         title: {
             fontSize: 28,
             fontWeight: 'bold',
-            color: isDark ? '#FFFFFF' : '#111827',
-            marginBottom: 10,
+            color: colors.text,
+            marginBottom: 12,
         },
         subtitle: {
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: '600',
-            color: '#7C3AED',
+            color: colors.primary,
+            textTransform: 'uppercase',
+            letterSpacing: 1.5,
             marginBottom: 16,
         },
         text: {
             fontSize: 16,
             lineHeight: 26,
-            color: isDark ? '#D1D5DB' : '#4B5563',
-            marginBottom: 20,
+            color: colors.secondary,
+            marginBottom: 16,
         },
-        sectionTitle: {
-            fontSize: 22,
-            fontWeight: 'bold',
-            color: isDark ? '#FFFFFF' : '#111827',
-            marginTop: 10,
-            marginBottom: 12,
-        },
-        infoBlock: {
-            backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
-            padding: 16,
-            borderRadius: 16,
+        infoCard: {
+            backgroundColor: colors.card,
+            padding: 20,
+            borderRadius: 20,
             marginBottom: 16,
             borderWidth: 1,
-            borderColor: isDark ? '#374151' : '#E5E7EB',
+            borderColor: colors.border,
+        },
+        infoRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 16,
+            gap: 12,
+        },
+        infoText: {
+            fontSize: 16,
+            color: colors.text,
+            flex: 1,
+        },
+        socialContainer: {
+            flexDirection: 'row',
+            gap: 16,
+            marginTop: 8,
+        },
+        socialIcon: {
+            width: 48,
+            height: 48,
+            borderRadius: 24,
+            backgroundColor: colors.primary + '15',
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        featureGrid: {
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: 12,
+        },
+        featureItem: {
+            width: '48%',
+            backgroundColor: colors.card,
+            padding: 16,
+            borderRadius: 16,
+            alignItems: 'center',
+            borderWidth: 1,
+            borderColor: colors.border,
+        },
+        featureTitle: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: colors.text,
+            marginTop: 8,
+            textAlign: 'center',
         }
     });
+
+    const openLink = (url: string) => {
+        Linking.openURL(url).catch(err => console.error("Couldn't load page", err));
+    };
 
     return (
         <View style={styles.container}>
             <ScrollView contentContainerStyle={styles.content}>
-                <View style={styles.headerImage} />
-                {/* Real app would use an Image component with require(...) or uri */}
-
-                <Text style={styles.title}>About AAGC</Text>
-                <Text style={styles.subtitle}>A Place to Call Home</Text>
-
-                <Text style={styles.text}>
-                    We are a community of believers dedicated to spreading the love of Christ and empowering individuals to live their best lives. Our mission is to create a welcoming environment where everyone feels valued, supported, and inspired.
-                </Text>
-
-                <Text style={styles.sectionTitle}>Our Vision</Text>
-                <Text style={styles.text}>
-                    To be a beacon of hope and a catalyst for positive change in our community and beyond. We envision a world where every person has the opportunity to experience the transformative power of God's grace.
-                </Text>
-
-                <Text style={styles.sectionTitle}>Service Times</Text>
-                <View style={styles.infoBlock}>
-                    <Text style={[styles.text, { marginBottom: 4, fontWeight: 'bold' }]}>Sundays</Text>
-                    <Text style={[styles.text, { marginBottom: 12 }]}>10:00 AM - Worship Service</Text>
-
-                    <Text style={[styles.text, { marginBottom: 4, fontWeight: 'bold' }]}>Wednesdays</Text>
-                    <Text style={[styles.text, { marginBottom: 0 }]}>6:00 PM - Bible Study</Text>
+                <View style={styles.headerImage}>
+                    <View style={styles.headerOverlay}>
+                        <Text style={styles.headerTitle}>AAGC</Text>
+                        <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600', letterSpacing: 2 }}>GLOBAL CHURCH</Text>
+                    </View>
                 </View>
 
-                <Text style={styles.sectionTitle}>Contact Us</Text>
-                <View style={styles.infoBlock}>
+                <View style={styles.section}>
+                    <Text style={styles.subtitle}>Our Story</Text>
+                    <Text style={styles.title}>About AAGC</Text>
                     <Text style={styles.text}>
-                        123 Apostolic Way{'\n'}
-                        Global Heights, GH 12345{'\n'}
-                        {'\n'}
-                        Phone: (555) 123-4567{'\n'}
-                        Email: info@aagc-church.org
+                        Apostolic Army Global Church is a ministry founded on the principles of the Word of God, led by the Holy Spirit. We are a community dedicated to the supernatural move of God, focusing on prayer, the prophetic, and empowerment.
                     </Text>
+                </View>
+
+                <View style={styles.section}>
+                    <Text style={styles.subtitle}>Mission & Vision</Text>
+                    <View style={styles.featureGrid}>
+                        <View style={styles.featureItem}>
+                            <Heart size={24} color={colors.primary} />
+                            <Text style={styles.featureTitle}>Love God & People</Text>
+                        </View>
+                        <View style={styles.featureItem}>
+                            <Users size={24} color={colors.primary} />
+                            <Text style={styles.featureTitle}>Build Community</Text>
+                        </View>
+                        <View style={styles.featureItem}>
+                            <Globe size={24} color={colors.primary} />
+                            <Text style={styles.featureTitle}>Global Outreach</Text>
+                        </View>
+                        <View style={styles.featureItem}>
+                            <MapPin size={24} color={colors.primary} />
+                            <Text style={styles.featureTitle}>Locally Rooted</Text>
+                        </View>
+                    </View>
+                </View>
+
+                <View style={styles.section}>
+                    <Text style={styles.subtitle}>Worship With Us</Text>
+                    <View style={styles.infoCard}>
+                        <View style={styles.infoRow}>
+                            <Clock size={20} color={colors.primary} />
+                            <View>
+                                <Text style={{ fontWeight: 'bold', color: colors.text }}>Sunday Service</Text>
+                                <Text style={{ color: colors.secondary }}>10:00 AM - Main Auditorium</Text>
+                            </View>
+                        </View>
+                        <View style={styles.infoRow}>
+                            <Clock size={20} color={colors.primary} />
+                            <View>
+                                <Text style={{ fontWeight: 'bold', color: colors.text }}>Mid-Week Service</Text>
+                                <Text style={{ color: colors.secondary }}>Wednesday 6:00 PM - Virtual & In-Person</Text>
+                            </View>
+                        </View>
+                    </View>
+                </View>
+
+                <View style={styles.section}>
+                    <Text style={styles.subtitle}>Contact & Social</Text>
+                    <View style={styles.infoCard}>
+                        <TouchableOpacity style={styles.infoRow} onPress={() => openLink('tel:5551234567')}>
+                            <Phone size={20} color={colors.primary} />
+                            <Text style={styles.infoText}>(555) 123-4567</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.infoRow} onPress={() => openLink('mailto:info@aagc-church.org')}>
+                            <Mail size={20} color={colors.primary} />
+                            <Text style={styles.infoText}>info@aagc-church.org</Text>
+                        </TouchableOpacity>
+                        <View style={styles.socialContainer}>
+                            <TouchableOpacity style={styles.socialIcon} onPress={() => openLink('https://youtube.com')}>
+                                <Youtube size={20} color={colors.primary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.socialIcon} onPress={() => openLink('https://facebook.com')}>
+                                <Facebook size={20} color={colors.primary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.socialIcon} onPress={() => openLink('https://instagram.com')}>
+                                <Instagram size={20} color={colors.primary} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
                 </View>
             </ScrollView>
         </View>

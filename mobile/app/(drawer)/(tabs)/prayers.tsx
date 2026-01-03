@@ -12,7 +12,7 @@ export default function PrayersScreen() {
 
     const fetchPrayers = useCallback(async () => {
         try {
-            const data = await apiService.getPrayerRequests();
+            const data = await apiService.getPrayers();
             setPrayers(data);
         } catch (error) {
             console.error('Failed to fetch prayers:', error);

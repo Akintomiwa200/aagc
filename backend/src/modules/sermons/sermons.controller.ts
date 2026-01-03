@@ -1,15 +1,15 @@
 import { Body, Controller, Get, Param, Post, Put, Delete, Inject, forwardRef } from '@nestjs/common';
 import { SermonsService } from './sermons.service';
 import { CreateSermonDto, UpdateSermonDto } from './dto/create-sermon.dto';
-import { WebSocketGateway } from '../websocket/websocket.gateway';
+import { AppGateway } from '../websocket/websocket.gateway';
 
 @Controller('sermons')
 export class SermonsController {
   constructor(
     private readonly sermonsService: SermonsService,
-    @Inject(forwardRef(() => WebSocketGateway))
-    private readonly websocketGateway: WebSocketGateway,
-  ) {}
+    @Inject(forwardRef(() => AppGateway))
+    private readonly websocketGateway: AppGateway,
+  ) { }
 
   @Get()
   list() {
