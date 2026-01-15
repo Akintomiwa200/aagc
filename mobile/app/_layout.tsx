@@ -9,6 +9,8 @@ import { View } from 'react-native';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import { SocketProvider } from '../context/SocketContext';
 import CustomSplashScreen from '../components/CustomSplashScreen';
+import { NotificationManager } from '../components/NotificationManager';
+import { AuthProvider } from '../context/AuthContext';
 
 // Prevent native splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -136,10 +138,13 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
     return (
-        <ThemeProvider>
-            <SocketProvider>
-                <RootLayoutNav />
-            </SocketProvider>
-        </ThemeProvider>
+        <AuthProvider>
+            <ThemeProvider>
+                <SocketProvider>
+                    <NotificationManager />
+                    <RootLayoutNav />
+                </SocketProvider>
+            </ThemeProvider>
+        </AuthProvider>
     );
 }

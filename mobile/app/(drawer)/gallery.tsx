@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { apiService } from '@/services/apiService';
+import { useSocket } from '@/context/SocketContext';
 
 const { width } = Dimensions.get('window');
 const COLUMN_COUNT = 3;
@@ -14,19 +15,36 @@ export default function GalleryScreen() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchGallery = async () => {
-            try {
-                const data = await apiService.getGalleryImages();
-                setImages(data);
-            } catch (error) {
-                console.error('Failed to fetch gallery:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchGallery();
     }, []);
+
+    const { socket } = useSocket();
+
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleImageCreated = (image: any) => {
+            setImages(prev => [image, ...prev]);
+        };
+
+        const handleImageUpdated = (image: any) => {
+            setImages(prev => prev.map(img => img.id === image.id || img._id === image._id ? image : img));
+        };
+
+        const handleImageDeleted = (data: any) => {
+            setImages(prev => prev.filter(img => img.id !== data.imageId && img._id !== data.imageId));
+        };
+
+        socket.on('gallery-image-created', handleImageCreated);
+        socket.on('gallery-image-updated', handleImageUpdated);
+        socket.on('gallery-image-deleted', handleImageDeleted);
+
+        return () => {
+            socket.off('gallery-image-created', handleImageCreated);
+            socket.off('gallery-image-updated', handleImageUpdated);
+            socket.off('gallery-image-deleted', handleImageDeleted);
+        };
+    }, [socket]);
 
     const styles = StyleSheet.create({
         container: {

@@ -3,6 +3,7 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Image, Platform, 
 import { Calendar, MapPin, Clock, ChevronRight } from 'lucide-react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { apiService } from '@/services/apiService';
+import { useSocket } from '@/context/SocketContext';
 import { Link } from 'expo-router';
 
 export default function EventsScreen() {
@@ -27,6 +28,34 @@ export default function EventsScreen() {
     useEffect(() => {
         fetchEvents();
     }, [fetchEvents]);
+
+    const { socket } = useSocket();
+
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleEventCreated = (event: any) => {
+            setEvents(prev => [event, ...prev]);
+        };
+
+        const handleEventUpdated = (event: any) => {
+            setEvents(prev => prev.map(e => e.id === event.id || e._id === event._id ? event : e));
+        };
+
+        const handleEventDeleted = (data: any) => {
+            setEvents(prev => prev.filter(e => e.id !== data.eventId && e._id !== data.eventId));
+        };
+
+        socket.on('event-created', handleEventCreated);
+        socket.on('event-updated', handleEventUpdated);
+        socket.on('event-deleted', handleEventDeleted);
+
+        return () => {
+            socket.off('event-created', handleEventCreated);
+            socket.off('event-updated', handleEventUpdated);
+            socket.off('event-deleted', handleEventDeleted);
+        };
+    }, [socket]);
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);

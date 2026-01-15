@@ -3,6 +3,7 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, Activi
 import { DollarSign, CreditCard, Building2, History } from 'lucide-react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { apiService } from '@/services/apiService';
+import { useSocket } from '@/context/SocketContext';
 
 export default function GivingScreen() {
     const { theme } = useTheme();
@@ -19,23 +20,26 @@ export default function GivingScreen() {
     const quickAmounts = [10, 25, 50, 100, 250, 500];
 
     useEffect(() => {
-        const fetchUserDataAndHistory = async () => {
-            try {
-                const userData = await apiService.getMe();
-                setUser(userData);
-                if (userData && userData.id) {
-                    const donations = await apiService.getDonations(userData.id);
-                    setHistory(donations);
-                }
-            } catch (error) {
-                console.log('Failed to fetch user or donations', error);
-            } finally {
-                setLoadingHistory(false);
+        fetchUserDataAndHistory();
+    }, []);
+
+    const { socket } = useSocket();
+
+    useEffect(() => {
+        if (!socket || !user) return;
+
+        const handleDonationCreated = (data: any) => {
+            if (data.userId === user.id || data.userId === user._id) {
+                setHistory(prev => [data, ...prev]);
             }
         };
 
-        fetchUserDataAndHistory();
-    }, []);
+        socket.on('donation-created', handleDonationCreated);
+
+        return () => {
+            socket.off('donation-created', handleDonationCreated);
+        };
+    }, [socket, user]);
 
     const handleGive = async () => {
         if (!user) {

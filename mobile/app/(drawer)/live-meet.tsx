@@ -3,6 +3,7 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, Image,
 import { Video, Users, MessageSquare, Send, Heart, Gift } from 'lucide-react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { apiService } from '@/services/apiService';
+import { useSocket } from '@/context/SocketContext';
 
 const { width } = Dimensions.get('window');
 
@@ -16,18 +17,26 @@ export default function LiveMeetScreen() {
         { id: 1, user: 'System', text: 'Welcome to the live chat!', time: '10:00 AM' },
     ]);
 
-    React.useEffect(() => {
-        const fetchStream = async () => {
-            try {
-                const data = await apiService.getLiveStream();
-                setStreamInfo(data);
-                setIsLive(data?.isLive || false);
-            } catch (error) {
-                console.log('Failed to fetch live stream info', error);
-            }
-        };
+    useEffect(() => {
         fetchStream();
     }, []);
+
+    const { socket } = useSocket();
+
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleStreamUpdated = (stream: any) => {
+            setStreamInfo(stream);
+            setIsLive(stream.isLive);
+        };
+
+        socket.on('livestream-updated', handleStreamUpdated);
+
+        return () => {
+            socket.off('livestream-updated', handleStreamUpdated);
+        };
+    }, [socket]);
 
     const styles = StyleSheet.create({
         container: {

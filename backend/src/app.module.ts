@@ -11,6 +11,12 @@ import { PrayersModule } from './modules/prayers/prayers.module';
 import { WebSocketModule } from './modules/websocket/websocket.module';
 import { DonationsModule } from './modules/donations/donations.module';
 import { DevotionalsModule } from './modules/devotionals/devotionals.module';
+import { GalleryModule } from './modules/gallery/gallery.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { NotesModule } from './modules/notes/notes.module';
+import { FriendsModule } from './modules/friends/friends.module';
+import { ConnectionCardsModule } from './modules/connection-cards/connection-cards.module';
+import { LiveStreamModule } from './modules/livestream/livestream.module';
 
 @Module({
   imports: [
@@ -24,8 +30,14 @@ import { DevotionalsModule } from './modules/devotionals/devotionals.module';
     DonationsModule,
     DevotionalsModule,
     WebSocketModule,
+    GalleryModule,
+    NotificationsModule,
+    NotesModule,
+    FriendsModule,
+    ConnectionCardsModule,
+    LiveStreamModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

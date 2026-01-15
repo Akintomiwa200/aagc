@@ -58,6 +58,12 @@ export class User {
 
   @Prop({ type: [String], default: [] })
   groups?: string[];
+
+  @Prop({ type: [{ type: String, ref: 'User' }], default: [] })
+  friends?: string[];
+
+  @Prop()
+  pushToken?: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

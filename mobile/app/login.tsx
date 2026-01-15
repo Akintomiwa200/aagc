@@ -3,7 +3,8 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityInd
 import { useRouter } from 'expo-router';
 import { Mail, Lock, LogIn } from 'lucide-react-native';
 import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
+// import * as Google from '@react-native-google-signin/google-signin'; // Latest native sign-in
+import * as GoogleProvider from 'expo-auth-session/providers/google';
 import { useTheme } from '../context/ThemeContext';
 import { apiService } from '../services/apiService';
 
@@ -18,10 +19,10 @@ export default function LoginScreen() {
     const [loading, setLoading] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
 
-    const [request, response, promptAsync] = Google.useAuthRequest({
-        androidClientId: 'YOUR_ANDROID_CLIENT_ID', // Replace with real one later
-        iosClientId: 'YOUR_IOS_CLIENT_ID', // Replace with real one later
-        webClientId: 'YOUR_WEB_CLIENT_ID', // Replace with real one later
+    const [request, response, promptAsync] = GoogleProvider.useAuthRequest({
+        androidClientId: '768565432-v87d8...apps.googleusercontent.com', // Updated placeholder
+        iosClientId: '768565432-v87d8...apps.googleusercontent.com', // Updated placeholder
+        webClientId: '768565432-v87d8...apps.googleusercontent.com', // Updated placeholder
     });
 
     React.useEffect(() => {

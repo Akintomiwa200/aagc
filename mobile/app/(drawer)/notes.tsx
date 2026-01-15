@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, 
 import { Plus, Trash2, Save, X } from 'lucide-react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { apiService } from '@/services/apiService';
+import { useSocket } from '@/context/SocketContext';
 
 export default function NotesScreen() {
     const { theme } = useTheme();
@@ -17,6 +18,34 @@ export default function NotesScreen() {
     useEffect(() => {
         fetchNotes();
     }, []);
+
+    const { socket } = useSocket();
+
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleNoteCreated = (note: any) => {
+            setNotes(prev => [note, ...prev]);
+        };
+
+        const handleNoteUpdated = (note: any) => {
+            setNotes(prev => prev.map(n => n.id === note.id || n._id === note._id ? note : n));
+        };
+
+        const handleNoteDeleted = (data: any) => {
+            setNotes(prev => prev.filter(n => n.id !== data.noteId && n._id !== data.noteId));
+        };
+
+        socket.on('note-created', handleNoteCreated);
+        socket.on('note-updated', handleNoteUpdated);
+        socket.on('note-deleted', handleNoteDeleted);
+
+        return () => {
+            socket.off('note-created', handleNoteCreated);
+            socket.off('note-updated', handleNoteUpdated);
+            socket.off('note-deleted', handleNoteDeleted);
+        };
+    }, [socket]);
 
     const fetchNotes = async () => {
         try {

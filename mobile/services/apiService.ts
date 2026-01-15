@@ -166,6 +166,13 @@ class ApiService {
     });
   }
 
+  async updatePushToken(id: string, pushToken: string) {
+    return this.request<any>(`/users/${id}/push-token`, {
+      method: 'PUT',
+      body: JSON.stringify({ pushToken }),
+    });
+  }
+
   // Donations/Giving
   async createDonation(data: { type: string; amount: number; userId: string }) {
     return this.request<any>('/donations', {

@@ -4,6 +4,10 @@ import { useRouter } from 'expo-router';
 import { Mail, Lock, User, UserPlus } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { apiService } from '../services/apiService';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function RegisterScreen() {
     const router = useRouter();
@@ -14,6 +18,33 @@ export default function RegisterScreen() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
+
+    const [request, response, promptAsync] = Google.useAuthRequest({
+        iosClientId: 'YOUR_IOS_CLIENT_ID',
+        androidClientId: 'YOUR_ANDROID_CLIENT_ID',
+        webClientId: 'YOUR_WEB_CLIENT_ID',
+    });
+
+    React.useEffect(() => {
+        if (response?.type === 'success') {
+            const { authentication } = response;
+            handleOAuthSuccess(authentication?.idToken);
+        }
+    }, [response]);
+
+    const handleOAuthSuccess = async (idToken: string | undefined) => {
+        if (!idToken) return;
+        setGoogleLoading(true);
+        try {
+            await apiService.mobileOAuth('google', idToken);
+            router.replace('/(drawer)/(tabs)');
+        } catch (error) {
+            console.error(error);
+            Alert.alert('Error', 'Google authentication failed');
+        } finally {
+            setGoogleLoading(false);
+        }
+    };
 
     const handleRegister = async () => {
         if (!name || !email || !password) {
@@ -36,18 +67,7 @@ export default function RegisterScreen() {
     };
 
     const handleGoogleSignUp = async () => {
-        setGoogleLoading(true);
-        try {
-            // Simulate Google Sign-up
-            Alert.alert('Google Sign Up', 'Google sign-up initialized');
-            // await apiService.mobileOAuth('google', 'test-id-token');
-            // router.replace('/(drawer)/(tabs)');
-        } catch (error) {
-            console.error(error);
-            Alert.alert('Error', 'Google sign-up failed');
-        } finally {
-            setGoogleLoading(false);
-        }
+        promptAsync();
     };
 
     const styles = StyleSheet.create({

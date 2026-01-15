@@ -41,6 +41,11 @@ export class UsersController {
     await this.websocketGateway.emitMemberDeleted(id);
     return { message: 'User deleted successfully' };
   }
+
+  @Put(':id/push-token')
+  async updatePushToken(@Param('id') id: string, @Body('pushToken') pushToken: string) {
+    return this.usersService.updatePushToken(id, pushToken);
+  }
 }
 
 

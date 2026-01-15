@@ -164,4 +164,32 @@ export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async emitGalleryImageDeleted(imageId: string) {
     this.server.emit('gallery-image-deleted', { imageId });
   }
+
+  // Notification-related events
+  async emitNotificationCreated(notification: any) {
+    this.server.emit('notification-created', notification);
+  }
+
+  // Note-related events
+  async emitNoteCreated(note: any) {
+    this.server.emit('note-created', note);
+  }
+
+  async emitNoteUpdated(note: any) {
+    this.server.emit('note-updated', note);
+  }
+
+  async emitNoteDeleted(noteId: string) {
+    this.server.emit('note-deleted', { noteId });
+  }
+
+  // ConnectionCard-related events
+  async emitConnectionCardCreated(card: any) {
+    this.server.emit('connection-card-created', card);
+  }
+
+  // LiveStream-related events
+  async emitLiveStreamUpdated(stream: any) {
+    this.server.emit('livestream-updated', stream);
+  }
 }

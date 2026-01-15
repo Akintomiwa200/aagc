@@ -4,6 +4,7 @@ import { Search, UserPlus, MoreVertical, MessageSquare } from 'lucide-react-nati
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
 import { apiService } from '@/services/apiService';
+import { useSocket } from '@/context/SocketContext';
 
 export default function FriendsScreen() {
     const { theme } = useTheme();
@@ -14,19 +15,37 @@ export default function FriendsScreen() {
     const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
-        const fetchFriends = async () => {
-            try {
-                const data = await apiService.getFriends();
-                setFriends(data);
-            } catch (error) {
-                console.error('Failed to fetch friends:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchFriends();
     }, []);
+
+    const { socket } = useSocket();
+
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleMemberCreated = (member: any) => {
+            // This might not be a friend yet, but depends on logic
+            // For now, let's just refresh if needed or ignore
+        };
+
+        const handleMemberUpdated = (member: any) => {
+            setFriends(prev => prev.map(f => f.id === member.id || f._id === member._id ? { ...f, ...member } : f));
+        };
+
+        const handleMemberDeleted = (data: any) => {
+            setFriends(prev => prev.filter(f => f.id !== data.userId && f._id !== data.userId));
+        };
+
+        socket.on('member-created', handleMemberCreated);
+        socket.on('member-updated', handleMemberUpdated);
+        socket.on('member-deleted', handleMemberDeleted);
+
+        return () => {
+            socket.off('member-created', handleMemberCreated);
+            socket.off('member-updated', handleMemberUpdated);
+            socket.off('member-deleted', handleMemberDeleted);
+        };
+    }, [socket]);
 
     const filteredFriends = friends.filter(friend =>
         friend.name.toLowerCase().includes(searchQuery.toLowerCase())

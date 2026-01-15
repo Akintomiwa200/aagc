@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator }
 import { Bell } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { apiService } from '../services/apiService';
+import { useSocket } from '../context/SocketContext';
 
 export default function NotificationsScreen() {
     const { theme } = useTheme();
@@ -13,6 +14,22 @@ export default function NotificationsScreen() {
     useEffect(() => {
         fetchNotifications();
     }, []);
+
+    const { socket } = useSocket();
+
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleNotification = (notification: any) => {
+            setNotifications(prev => [notification, ...prev]);
+        };
+
+        socket.on('notification-created', handleNotification);
+
+        return () => {
+            socket.off('notification-created', handleNotification);
+        };
+    }, [socket]);
 
     const fetchNotifications = async () => {
         try {

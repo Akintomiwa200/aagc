@@ -15,6 +15,7 @@ import {
 } from 'lucide-react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { apiService } from '@/services/apiService';
+import { useSocket } from '@/context/SocketContext';
 
 const { width } = Dimensions.get('window');
 
@@ -44,6 +45,25 @@ export default function HomeScreen() {
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+
+    const { socket } = useSocket();
+
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleInitialData = (data: any) => {
+            if (data.sermons && data.sermons.length > 0) {
+                setLatestSermon(data.sermons[0]);
+            }
+            // You could also update other things here if needed
+        };
+
+        socket.on('initial-data', handleInitialData);
+
+        return () => {
+            socket.off('initial-data', handleInitialData);
+        };
+    }, [socket]);
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);

@@ -7,7 +7,7 @@ interface User {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'editor' | 'viewer';
+  role: 'admin' | 'staff' | 'member';
   avatar?: string;
   lastLogin?: string;
   bio?: string;
@@ -20,11 +20,13 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
   signup: (email: string, password: string, name: string) => Promise<{ success: boolean; message: string }>;
+  googleAuth: (idToken: string) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
   forgotPassword: (email: string) => Promise<{ success: boolean; message: string }>;
   resetPassword: (token: string, newPassword: string) => Promise<{ success: boolean; message: string }>;
   updateProfile: (data: Partial<User>) => Promise<{ success: boolean; message: string }>;
   isAuthenticated: boolean;
+  isAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -109,28 +111,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signup = async (email: string, password: string, name: string) => {
+  const googleAuth = async (idToken: string) => {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      const response = await fetch(`${API_BASE_URL}/auth/google/callback`, { // Assuming this endpoint handles web oauth tokens
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, name }),
+        body: JSON.stringify({ token: idToken }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        const message = data?.message || 'Signup failed. Please try again.';
-        return { success: false, message };
+        return { success: false, message: data?.message || 'Google Auth failed' };
       }
 
       const userData: User = {
-        id: data.id?.toString() ?? data._id ?? 'unknown',
-        email: data.email,
-        name: data.name ?? name,
-        role: (data.role as User['role']) ?? 'viewer',
+        id: data.user.id?.toString() ?? data.user._id ?? 'unknown',
+        email: data.user.email,
+        name: data.user.name ?? 'User',
+        role: (data.user.role as User['role']) ?? 'member',
+        avatar: data.user.avatar,
         lastLogin: new Date().toISOString(),
       };
 
@@ -138,9 +140,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('admin_user', JSON.stringify(userData));
       localStorage.setItem('admin_token', data.token || '');
 
-      return { success: true, message: 'Account created successfully!' };
+      return { success: true, message: 'Authentication successful!' };
     } catch {
-      return { success: false, message: 'Signup failed. Please try again.' };
+      return { success: false, message: 'Google Auth failed. Please try again.' };
     } finally {
       setLoading(false);
     }
@@ -224,11 +226,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     login,
     signup,
+    googleAuth,
     logout,
     forgotPassword,
     resetPassword,
     updateProfile,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    isAdmin: user?.role === 'admin'
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
 import { apiService } from '../services/apiService';
+import { useSocket } from '../context/SocketContext';
 import {
     Home, Calendar, BookOpen, Heart, User,
     Video, Gift, Book, FileText, Image as ImageIcon,
@@ -31,6 +32,25 @@ export default function CustomDrawerContent(props: any) {
         };
         checkAuth();
     }, [pathname]);
+
+    const { socket } = useSocket();
+
+    useEffect(() => {
+        if (!socket || !user) return;
+
+        const handleMemberUpdated = (member: any) => {
+            if (member.id === user.id || member._id === user._id) {
+                setUser(member);
+                AsyncStorage.setItem('church_app_user', JSON.stringify(member));
+            }
+        };
+
+        socket.on('member-updated', handleMemberUpdated);
+
+        return () => {
+            socket.off('member-updated', handleMemberUpdated);
+        };
+    }, [socket, user]);
 
     const handleLogout = async () => {
         await apiService.clearToken();
