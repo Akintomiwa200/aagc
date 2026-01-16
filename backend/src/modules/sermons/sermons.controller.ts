@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post, Put, Delete, Inject, forwardRef } f
 import { SermonsService } from './sermons.service';
 import { CreateSermonDto, UpdateSermonDto } from './dto/create-sermon.dto';
 import { AppGateway } from '../websocket/websocket.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Controller('sermons')
 export class SermonsController {
@@ -9,6 +10,7 @@ export class SermonsController {
     private readonly sermonsService: SermonsService,
     @Inject(forwardRef(() => AppGateway))
     private readonly websocketGateway: AppGateway,
+    private readonly notificationsService: NotificationsService,
   ) { }
 
   @Get()
@@ -25,6 +27,13 @@ export class SermonsController {
   async create(@Body() dto: CreateSermonDto) {
     const sermon = await this.sermonsService.create(dto);
     await this.websocketGateway.emitSermonCreated(sermon);
+    
+    // Broadcast notification for new sermon
+    await this.notificationsService.broadcastNotification(
+        'New Sermon Posted',
+        `A new sermon "${sermon.title}" by ${sermon.preacher} is now available.`
+    );
+    
     return sermon;
   }
 

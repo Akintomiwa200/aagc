@@ -9,17 +9,20 @@ import { useSocket } from '../context/SocketContext';
 import {
     Home, Calendar, BookOpen, Heart, User,
     Video, Gift, Book, FileText, Image as ImageIcon,
-    Users, Info, Settings, LogOut, ChevronRight
+    Users, Info, Settings, LogOut, ChevronRight,
+    Bell, MessageCircle, Globe, Shield, Zap
 } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 
 export default function CustomDrawerContent(props: any) {
-    const { colors, theme, isDark } = useTheme();
+    const { colors, theme } = useTheme();
     const router = useRouter();
     const pathname = usePathname();
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [user, setUser] = useState<any>(null);
+    const [prayerCount, setPrayerCount] = useState(0);
+    const [notificationCount, setNotificationCount] = useState(0);
 
     useEffect(() => {
         const checkAuth = async () => {
@@ -27,7 +30,22 @@ export default function CustomDrawerContent(props: any) {
             setIsAuthenticated(!!token);
             if (token) {
                 const userData = await AsyncStorage.getItem('church_app_user');
-                if (userData) setUser(JSON.parse(userData));
+                if (userData) {
+                    const parsedUser = JSON.parse(userData);
+                    setUser(parsedUser);
+                    
+                    // Fetch user-specific data
+                    try {
+                        const [prayers, notifications] = await Promise.all([
+                            apiService.getUserPrayers(),
+                            apiService.getNotifications()
+                        ]);
+                        setPrayerCount(prayers?.length || 0);
+                        setNotificationCount(notifications?.unread || 0);
+                    } catch (error) {
+                        console.log('Error fetching user data:', error);
+                    }
+                }
             }
         };
         checkAuth();
@@ -45,10 +63,22 @@ export default function CustomDrawerContent(props: any) {
             }
         };
 
+        const handlePrayerUpdate = (data: any) => {
+            if (data.userId === user.id || data.userId === user._id) {
+                setPrayerCount(prev => prev + 1);
+            }
+        };
+
         socket.on('member-updated', handleMemberUpdated);
+        socket.on('prayer-added', handlePrayerUpdate);
+        socket.on('notification-added', () => {
+            setNotificationCount(prev => prev + 1);
+        });
 
         return () => {
             socket.off('member-updated', handleMemberUpdated);
+            socket.off('prayer-added', handlePrayerUpdate);
+            socket.off('notification-added');
         };
     }, [socket, user]);
 
@@ -66,13 +96,12 @@ export default function CustomDrawerContent(props: any) {
             backgroundColor: colors.background,
         },
         header: {
-            paddingTop: 40,
+            paddingTop: 60,
             paddingBottom: 24,
-            paddingHorizontal: 20,
-            backgroundColor: colors.primary,
-            borderBottomLeftRadius: 32,
-            borderBottomRightRadius: 32,
-            marginBottom: 16,
+            paddingHorizontal: 24,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border + '30',
+            marginBottom: 8,
         },
         profileSection: {
             flexDirection: 'row',
@@ -80,93 +109,169 @@ export default function CustomDrawerContent(props: any) {
             gap: 16,
         },
         avatar: {
-            width: 56,
-            height: 56,
-            borderRadius: 28,
-            backgroundColor: 'rgba(255,255,255,0.2)',
+            width: 60,
+            height: 60,
+            borderRadius: 30,
+            backgroundColor: colors.primary + '15',
             justifyContent: 'center',
             alignItems: 'center',
             borderWidth: 2,
-            borderColor: 'rgba(255,255,255,0.3)',
+            borderColor: colors.primary + '30',
         },
         userInfo: {
             flex: 1,
         },
         userName: {
-            fontSize: 18,
-            fontWeight: 'bold',
-            color: '#FFFFFF',
+            fontSize: 20,
+            fontWeight: '700',
+            color: colors.text,
+            marginBottom: 4,
         },
         userEmail: {
+            fontSize: 13,
+            color: colors.secondary,
+            fontWeight: '400',
+        },
+        userStatus: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            marginTop: 12,
+            paddingTop: 12,
+            borderTopWidth: 1,
+            borderTopColor: colors.border + '30',
+        },
+        statusItem: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+        },
+        statusText: {
             fontSize: 12,
-            color: 'rgba(255,255,255,0.7)',
+            color: colors.secondary,
+            fontWeight: '500',
         },
         sectionLabel: {
             fontSize: 11,
-            fontWeight: '800',
+            fontWeight: '600',
             color: colors.primary,
-            marginLeft: 24,
-            marginTop: 20,
+            marginLeft: 28,
+            marginTop: 24,
             marginBottom: 8,
             textTransform: 'uppercase',
-            letterSpacing: 1.5,
-            opacity: 0.8,
+            letterSpacing: 1,
+            opacity: 0.6,
         },
         drawerItem: {
             borderRadius: 12,
             marginHorizontal: 12,
-            marginVertical: 2,
-            paddingHorizontal: 4,
+            marginVertical: 4,
+            paddingHorizontal: 12,
+        },
+        drawerItemContent: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingVertical: 8,
+        },
+        drawerIconContainer: {
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginRight: 12,
         },
         drawerLabel: {
             fontSize: 15,
+            fontWeight: '500',
+            flex: 1,
+        },
+        badge: {
+            backgroundColor: colors.primary,
+            borderRadius: 10,
+            paddingHorizontal: 6,
+            paddingVertical: 2,
+            minWidth: 20,
+            alignItems: 'center',
+        },
+        badgeText: {
+            color: '#FFFFFF',
+            fontSize: 10,
             fontWeight: '600',
-            marginLeft: -8, // Adjusted for better spacing (previous was -16)
+        },
+        activeIndicator: {
+            width: 4,
+            height: 20,
+            borderRadius: 2,
+            backgroundColor: colors.primary,
+            position: 'absolute',
+            left: 0,
         },
         footer: {
-            padding: 20,
+            padding: 24,
+            paddingBottom: 34,
             borderTopWidth: 1,
-            borderTopColor: colors.border,
-            backgroundColor: colors.card,
+            borderTopColor: colors.border + '30',
         },
         authButton: {
             flexDirection: 'row',
             alignItems: 'center',
-            padding: 14,
-            borderRadius: 12,
-            gap: 12,
             justifyContent: 'center',
+            gap: 12,
+            paddingVertical: 14,
+            borderRadius: 12,
+            borderWidth: 1,
         },
         logoutButton: {
-            backgroundColor: '#EF444415',
+            borderColor: colors.border,
+            backgroundColor: 'transparent',
         },
         loginButton: {
+            borderColor: colors.primary,
             backgroundColor: colors.primary,
         },
         authText: {
-            fontSize: 16,
-            fontWeight: 'bold',
+            fontSize: 15,
+            fontWeight: '600',
+        },
+        versionText: {
+            textAlign: 'center',
+            fontSize: 11,
+            color: colors.secondary + '80',
+            marginTop: 16,
+            fontWeight: '400',
         }
     });
 
     const menuItems = [
-        { label: 'Home', icon: Home, route: '/(drawer)/(tabs)' },
+        { 
+            label: 'Home', 
+            icon: Home, 
+            route: '/(drawer)/(tabs)', 
+            badge: notificationCount > 0 ? notificationCount : undefined 
+        },
         { label: 'Events', icon: Calendar, route: '/(drawer)/(tabs)/events' },
         { label: 'Devotional', icon: BookOpen, route: '/(drawer)/(tabs)/devotional' },
-        { label: 'Prayers', icon: Heart, route: '/(drawer)/(tabs)/prayers' },
+        { 
+            label: 'Prayers', 
+            icon: Heart, 
+            route: '/(drawer)/(tabs)/prayers', 
+            badge: prayerCount > 0 ? prayerCount : undefined 
+        },
     ];
 
     const resourcesItems = [
         { label: 'Sermons', icon: Video, route: '/(drawer)/sermons' },
-        { label: 'Live Meet', icon: Video, route: '/(drawer)/live-meet' },
-        { label: 'Giving', icon: Gift, route: '/(drawer)/giving' },
+        { label: 'Live Stream', icon: Zap, route: '/(drawer)/live-meet' },
+        { label: 'Give', icon: Gift, route: '/(drawer)/giving' },
         { label: 'Bible', icon: Book, route: '/(drawer)/bible' },
         { label: 'Notes', icon: FileText, route: '/(drawer)/notes' },
-        { label: 'Gallery', icon: ImageIcon, route: '/(drawer)/gallery' },
+        { label: 'Media', icon: ImageIcon, route: '/(drawer)/gallery' },
     ];
 
     const communityItems = [
-        { label: 'Friends', icon: Users, route: '/(drawer)/friends' },
+        { label: 'Community', icon: Users, route: '/(drawer)/friends' },
+        { label: 'Messages', icon: MessageCircle, route: '/(drawer)/messages' },
         { label: 'About', icon: Info, route: '/(drawer)/about' },
         { label: 'Settings', icon: Settings, route: '/(drawer)/settings' },
     ];
@@ -176,30 +281,49 @@ export default function CustomDrawerContent(props: any) {
         if (props.navigation && props.navigation.closeDrawer) {
             props.navigation.closeDrawer();
         }
+        
+        // Reset notification count if going to home
+        if (route === '/(drawer)/(tabs)' && notificationCount > 0) {
+            setNotificationCount(0);
+        }
     };
 
-    const renderItem = (item: any) => {
+    const CustomDrawerItem = ({ item }: { item: any }) => {
         const Icon = item.icon;
         const isActive = pathname === item.route;
 
         return (
-            <DrawerItem
-                key={item.route}
-                label={item.label}
-                icon={({ color, size }) => (
-                    <Icon size={22} color={color} strokeWidth={isActive ? 2.5 : 2} />
-                )}
-                focused={isActive}
-                activeTintColor={colors.primary}
-                inactiveTintColor={colors.secondary}
-                activeBackgroundColor={colors.primary + '10'}
-                style={styles.drawerItem}
-                labelStyle={[
-                    styles.drawerLabel,
-                    isActive && { color: colors.primary, fontWeight: 'bold' }
-                ]}
+            <TouchableOpacity
+                style={[styles.drawerItem, isActive && {
+                    backgroundColor: colors.primary + '08',
+                }]}
                 onPress={() => handleNavigation(item.route)}
-            />
+            >
+                <View style={styles.drawerItemContent}>
+                    {isActive && <View style={styles.activeIndicator} />}
+                    <View style={[
+                        styles.drawerIconContainer,
+                        { backgroundColor: isActive ? colors.primary + '15' : colors.border + '20' }
+                    ]}>
+                        <Icon 
+                            size={20} 
+                            color={isActive ? colors.primary : colors.secondary} 
+                            strokeWidth={isActive ? 2.2 : 1.8}
+                        />
+                    </View>
+                    <Text style={[
+                        styles.drawerLabel,
+                        { color: isActive ? colors.primary : colors.text }
+                    ]}>
+                        {item.label}
+                    </Text>
+                    {item.badge && (
+                        <View style={styles.badge}>
+                            <Text style={styles.badgeText}>{item.badge}</Text>
+                        </View>
+                    )}
+                </View>
+            </TouchableOpacity>
         );
     };
 
@@ -208,30 +332,57 @@ export default function CustomDrawerContent(props: any) {
             <View style={styles.header}>
                 <View style={styles.profileSection}>
                     <View style={styles.avatar}>
-                        <User size={32} color="#FFFFFF" strokeWidth={1.5} />
+                        <User size={28} color={colors.primary} strokeWidth={1.8} />
                     </View>
                     <View style={styles.userInfo}>
-                        <Text style={styles.userName}>
-                            {isAuthenticated ? (user?.name || 'Believer') : 'AAGC Global'}
+                        <Text style={styles.userName} numberOfLines={1}>
+                            {isAuthenticated ? (user?.name || 'Believer') : 'Guest User'}
                         </Text>
-                        <Text style={styles.userEmail}>
-                            {isAuthenticated ? (user?.email || 'Active Member') : 'Welcome Home'}
+                        <Text style={styles.userEmail} numberOfLines={1}>
+                            {isAuthenticated ? (user?.email || 'Tap to login') : 'Welcome to AAGC'}
                         </Text>
                     </View>
                 </View>
+                
+                {isAuthenticated && (
+                    <View style={styles.userStatus}>
+                        <View style={styles.statusItem}>
+                            <Bell size={14} color={colors.secondary} />
+                            <Text style={styles.statusText}>{notificationCount} alerts</Text>
+                        </View>
+                        <View style={styles.statusItem}>
+                            <Heart size={14} color={colors.secondary} />
+                            <Text style={styles.statusText}>{prayerCount} prayers</Text>
+                        </View>
+                        <View style={styles.statusItem}>
+                            <Shield size={14} color={colors.secondary} />
+                            <Text style={styles.statusText}>Member</Text>
+                        </View>
+                    </View>
+                )}
             </View>
 
-            <DrawerContentScrollView {...props} showsVerticalScrollIndicator={false}>
-                <Text style={styles.sectionLabel}>Overview</Text>
-                {menuItems.map(renderItem)}
+            <DrawerContentScrollView 
+                {...props} 
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 20 }}
+            >
+                <Text style={styles.sectionLabel}>Navigation</Text>
+                {menuItems.map((item, index) => (
+                    <CustomDrawerItem key={index} item={item} />
+                ))}
 
-                <Text style={styles.sectionLabel}>Spiritual Walk</Text>
-                {resourcesItems.map(renderItem)}
+                <Text style={styles.sectionLabel}>Resources</Text>
+                {resourcesItems.map((item, index) => (
+                    <CustomDrawerItem key={index} item={item} />
+                ))}
 
-                <Text style={styles.sectionLabel}>Connect</Text>
-                {communityItems.map(renderItem)}
+                <Text style={styles.sectionLabel}>Community</Text>
+                {communityItems.map((item, index) => (
+                    <CustomDrawerItem key={index} item={item} />
+                ))}
 
-                <View style={{ height: 20 }} />
+                <View style={{ height: 40 }} />
             </DrawerContentScrollView>
 
             <View style={styles.footer}>
@@ -240,18 +391,29 @@ export default function CustomDrawerContent(props: any) {
                         style={[styles.authButton, styles.logoutButton]}
                         onPress={handleLogout}
                     >
-                        <LogOut size={20} color="#EF4444" />
-                        <Text style={[styles.authText, { color: '#EF4444' }]}>Logout</Text>
+                        <LogOut size={18} color={colors.text} />
+                        <Text style={[styles.authText, { color: colors.text }]}>
+                            Sign Out
+                        </Text>
                     </TouchableOpacity>
                 ) : (
                     <TouchableOpacity
                         style={[styles.authButton, styles.loginButton]}
-                        onPress={() => router.replace('/login')}
+                        onPress={() => {
+                            router.replace('/login');
+                            props.navigation?.closeDrawer();
+                        }}
                     >
-                        <LogOut size={20} color="#FFFFFF" />
-                        <Text style={[styles.authText, { color: '#FFFFFF' }]}>Login / Sign Up</Text>
+                        <User size={18} color="#FFFFFF" />
+                        <Text style={[styles.authText, { color: '#FFFFFF' }]}>
+                            Sign In
+                        </Text>
                     </TouchableOpacity>
                 )}
+                
+                <Text style={styles.versionText}>
+                    AAGC Global • v1.0.0
+                </Text>
             </View>
         </View>
     );

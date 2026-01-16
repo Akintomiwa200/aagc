@@ -36,4 +36,29 @@ export class PushNotificationsService {
             this.logger.error('Error sending push notification', error);
         }
     }
+
+    async sendBroadcastPushNotification(pushTokens: string[], title: string, body: string, data?: any) {
+        const messages: ExpoPushMessage[] = [];
+        for (const pushToken of pushTokens) {
+            if (Expo.isExpoPushToken(pushToken)) {
+                messages.push({
+                    to: pushToken,
+                    sound: 'default',
+                    title,
+                    body,
+                    data,
+                });
+            }
+        }
+
+        try {
+            const chunks = this.expo.chunkPushNotifications(messages);
+            for (const chunk of chunks) {
+                await this.expo.sendPushNotificationsAsync(chunk);
+            }
+            this.logger.log(`Broadcasted push notification to ${pushTokens.length} users`);
+        } catch (error) {
+            this.logger.error('Error broadcasting push notifications', error);
+        }
+    }
 }

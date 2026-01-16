@@ -56,4 +56,17 @@ export class NotificationsService {
         if (!result) throw new NotFoundException('Notification not found');
         return { message: 'Notification deleted' };
     }
+
+    async broadcastNotification(title: string, message: string, type: string = 'info', data?: any) {
+        // Fetch all users with push tokens
+        const users = await this.usersService.findAll();
+        const tokens = users.map(u => u.pushToken).filter(t => !!t) as string[];
+
+        if (tokens.length > 0) {
+            await this.pushNotificationsService.sendBroadcastPushNotification(tokens, title, message, data);
+        }
+
+        // Note: For now we only send push for broadcasts. 
+        // In a full implementation, you might want to create a Notification record for EVERY user in the DB.
+    }
 }

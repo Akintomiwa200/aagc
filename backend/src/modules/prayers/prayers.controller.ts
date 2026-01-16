@@ -2,6 +2,7 @@ import { Controller, Get, Post, Put, Delete, Body, Param, Inject, forwardRef } f
 import { PrayersService } from './prayers.service';
 import { CreatePrayerDto, UpdatePrayerStatusDto } from './dto/create-prayer.dto';
 import { AppGateway } from '../websocket/websocket.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Controller('prayers')
 export class PrayersController {
@@ -9,12 +10,20 @@ export class PrayersController {
     private readonly prayersService: PrayersService,
     @Inject(forwardRef(() => AppGateway))
     private readonly websocketGateway: AppGateway,
+    private readonly notificationsService: NotificationsService,
   ) { }
 
   @Post()
   async create(@Body() dto: CreatePrayerDto) {
     const prayer = await this.prayersService.create(dto);
     await this.websocketGateway.emitPrayerCreated(prayer);
+
+    // Notify about new prayer request (e.g. broadcast to staff/admin)
+    await this.notificationsService.broadcastNotification(
+      'New Prayer Request',
+      `${prayer.name} has submitted a new prayer request.`
+    );
+
     return prayer;
   }
 

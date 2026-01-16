@@ -14,13 +14,19 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { DevotionalsService } from './devotionals.service';
 import { CreateDevotionalDto, UpdateDevotionalDto } from './dto/create-devotional.dto';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { AppGateway } from '../websocket/websocket.gateway';
+import { Inject, forwardRef } from '@nestjs/common';
 
 @Controller('devotionals')
 export class DevotionalsController {
   constructor(
     private readonly devotionalsService: DevotionalsService,
     private readonly cloudinaryService: CloudinaryService,
-  ) {}
+    private readonly notificationsService: NotificationsService,
+    @Inject(forwardRef(() => AppGateway))
+    private readonly websocketGateway: AppGateway,
+  ) { }
 
   @Post()
   @UseInterceptors(FileInterceptor('featuredImage'))
@@ -29,8 +35,8 @@ export class DevotionalsController {
     @UploadedFile() file?: Express.Multer.File,
   ) {
     // Parse body data (may be string if multipart/form-data)
-    const dto: CreateDevotionalDto = typeof body === 'string' 
-      ? JSON.parse(body) 
+    const dto: CreateDevotionalDto = typeof body === 'string'
+      ? JSON.parse(body)
       : body;
 
     if (file) {
@@ -40,7 +46,18 @@ export class DevotionalsController {
       );
       dto.featuredImage = uploadResult.secure_url;
     }
-    return this.devotionalsService.create(dto);
+    const created = await this.devotionalsService.create(dto);
+
+    // Broadcast notification for new devotional
+    if (created.status === 'published') {
+      await this.notificationsService.broadcastNotification(
+        'Daily Devotional',
+        `Today's devotional "${created.title}" is ready for you.`
+      );
+      await this.websocketGateway.emitDevotionalCreated(created);
+    }
+
+    return created;
   }
 
   @Get()
@@ -66,8 +83,8 @@ export class DevotionalsController {
     @UploadedFile() file?: Express.Multer.File,
   ) {
     // Parse body data (may be string if multipart/form-data)
-    const dto: UpdateDevotionalDto = typeof body === 'string' 
-      ? JSON.parse(body) 
+    const dto: UpdateDevotionalDto = typeof body === 'string'
+      ? JSON.parse(body)
       : body;
 
     if (file) {

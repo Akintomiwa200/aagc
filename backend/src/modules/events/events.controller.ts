@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post, Put, Delete, Inject, forwardRef } f
 import { EventsService } from './events.service';
 import { CreateEventDto, UpdateEventDto } from './dto/create-event.dto';
 import { AppGateway } from '../websocket/websocket.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Controller('events')
 export class EventsController {
@@ -9,6 +10,7 @@ export class EventsController {
     private readonly eventsService: EventsService,
     @Inject(forwardRef(() => AppGateway))
     private readonly websocketGateway: AppGateway,
+    private readonly notificationsService: NotificationsService,
   ) { }
 
   @Get()
@@ -25,6 +27,13 @@ export class EventsController {
   async create(@Body() dto: CreateEventDto) {
     const event = await this.eventsService.create(dto);
     await this.websocketGateway.emitEventCreated(event);
+
+    // Broadcast push notification for the new event
+    await this.notificationsService.broadcastNotification(
+      'New Event!',
+      `Join us for ${event.title} on ${new Date(event.date).toLocaleDateString()}.`
+    );
+
     return event;
   }
 
