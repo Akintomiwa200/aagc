@@ -24,7 +24,7 @@ export default function PrayersScreen() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
-    const [newPrayer, setNewPrayer] = useState({ title: '', description: '' });
+    const [newPrayer, setNewPrayer] = useState({ name: '', request: '' });
     const [submitting, setSubmitting] = useState(false);
 
     const { socket } = useSocket();
@@ -85,19 +85,19 @@ export default function PrayersScreen() {
     };
 
     const handleCreatePrayer = async () => {
-        if (!newPrayer.title.trim() || !newPrayer.description.trim()) {
+        if (!newPrayer.name.trim() || !newPrayer.request.trim()) {
             Alert.alert('Error', 'Please fill in all fields');
             return;
         }
 
         setSubmitting(true);
         try {
-            await apiService.createPrayer(
-                newPrayer.title,
-                newPrayer.description,
-                true
-            );
-            setNewPrayer({ title: '', description: '' });
+            await apiService.createPrayer({
+                name: newPrayer.name,
+                request: newPrayer.request,
+                isAnonymous: false
+            });
+            setNewPrayer({ name: '', request: '' });
             setModalVisible(false);
             Alert.alert('Success', 'Prayer request submitted');
         } catch (err) {
@@ -239,8 +239,8 @@ export default function PrayersScreen() {
                 ) : prayers.length ? (
                     prayers.map(prayer => (
                         <View key={prayer.id || prayer._id} style={styles.card}>
-                            <Text style={styles.cardTitle}>{prayer.title}</Text>
-                            <Text style={styles.cardText}>{prayer.description}</Text>
+                            <Text style={styles.cardTitle}>{prayer.name}</Text>
+                            <Text style={styles.cardText}>{prayer.request}</Text>
                             <View style={styles.meta}>
                                 <Text style={styles.metaText}>
                                     {prayer.authorName || 'Anonymous'}
@@ -274,18 +274,18 @@ export default function PrayersScreen() {
 
                         <TextInput
                             style={styles.input}
-                            placeholder="Title"
-                            value={newPrayer.title}
-                            onChangeText={t => setNewPrayer(p => ({ ...p, title: t }))}
+                            placeholder="Your Name (or Topic)"
+                            value={newPrayer.name}
+                            onChangeText={t => setNewPrayer(p => ({ ...p, name: t }))}
                         />
 
                         <TextInput
                             style={[styles.input, styles.textarea]}
                             placeholder="Your prayer request..."
                             multiline
-                            value={newPrayer.description}
+                            value={newPrayer.request}
                             onChangeText={t =>
-                                setNewPrayer(p => ({ ...p, description: t }))
+                                setNewPrayer(p => ({ ...p, request: t }))
                             }
                         />
 

@@ -1,4 +1,4 @@
-import { ChurchEvent, Department, Devotional, EventType, Badge } from './types';
+import { ChurchEvent, Department, Devotional, EventType, Badge, ChurchBranch } from './types';
 
 export const APP_NAME = "Apostolic Army Global";
 
@@ -23,13 +23,13 @@ export const MOCK_EVENTS: ChurchEvent[] = [
     requiresRegistration: false,
     image: 'https://images.unsplash.com/photo-1438232992991-995b7058bbb3?w=800&q=80',
     previousImages: [
-        'https://images.unsplash.com/photo-1510936111840-65e151ad71bb?w=400&q=80',
-        'https://images.unsplash.com/photo-1601142634808-38923eb7c560?w=400&q=80',
-        'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?w=400&q=80'
+      'https://images.unsplash.com/photo-1510936111840-65e151ad71bb?w=400&q=80',
+      'https://images.unsplash.com/photo-1601142634808-38923eb7c560?w=400&q=80',
+      'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?w=400&q=80'
     ],
     testimonials: [
-        { id: '1', name: 'John Doe', text: 'The presence of God was heavy! I got healed.', avatar: 'https://i.pravatar.cc/150?u=1' },
-        { id: '2', name: 'Sarah Smith', text: 'Best service ever. The worship was divine.', avatar: 'https://i.pravatar.cc/150?u=2' }
+      { id: '1', name: 'John Doe', text: 'The presence of God was heavy! I got healed.', avatar: 'https://i.pravatar.cc/150?u=1' },
+      { id: '2', name: 'Sarah Smith', text: 'Best service ever. The worship was divine.', avatar: 'https://i.pravatar.cc/150?u=2' }
     ]
   },
   {
@@ -43,11 +43,11 @@ export const MOCK_EVENTS: ChurchEvent[] = [
     requiresRegistration: true,
     image: 'https://images.unsplash.com/photo-1510590337019-5ef2d39aa7bf?w=800&q=80',
     previousImages: [
-        'https://images.unsplash.com/photo-1529070538774-1843cb3265df?w=400&q=80',
-        'https://images.unsplash.com/photo-1516280440614-6697288d5d38?w=400&q=80'
+      'https://images.unsplash.com/photo-1529070538774-1843cb3265df?w=400&q=80',
+      'https://images.unsplash.com/photo-1516280440614-6697288d5d38?w=400&q=80'
     ],
     testimonials: [
-        { id: '3', name: 'Mike Ross', text: 'My life changed after the last fire night.', avatar: 'https://i.pravatar.cc/150?u=3' }
+      { id: '3', name: 'Mike Ross', text: 'My life changed after the last fire night.', avatar: 'https://i.pravatar.cc/150?u=3' }
     ]
   },
   {
@@ -61,11 +61,11 @@ export const MOCK_EVENTS: ChurchEvent[] = [
     requiresRegistration: true,
     image: 'https://images.unsplash.com/photo-1593113598332-cd288d649433?w=800&q=80',
     previousImages: [
-         'https://images.unsplash.com/photo-1469571486292-0ba58a3f068b?w=400&q=80',
-         'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=400&q=80'
+      'https://images.unsplash.com/photo-1469571486292-0ba58a3f068b?w=400&q=80',
+      'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=400&q=80'
     ],
     testimonials: [
-        { id: '4', name: 'Emily Clark', text: 'So fulfilling to give back to the community.', avatar: 'https://i.pravatar.cc/150?u=4' }
+      { id: '4', name: 'Emily Clark', text: 'So fulfilling to give back to the community.', avatar: 'https://i.pravatar.cc/150?u=4' }
     ]
   }
 ];
@@ -110,3 +110,34 @@ export const INITIAL_DEVOTIONAL: Devotional = {
   author: "Apostle Michael",
   image: "https://images.unsplash.com/photo-1504052434569-70ad5836ab65?w=800&q=80"
 };
+
+export const CHURCH_BRANCHES: ChurchBranch[] = [
+  {
+    id: '1',
+    name: 'AAGC Lagos (Main Campus)',
+    address: '123 Faith Avenue, Ikeja, Lagos, Nigeria',
+    phone: '+234 800 000 0001',
+    coordinates: { latitude: 6.6018, longitude: 3.3515 }
+  },
+  {
+    id: '2',
+    name: 'AAGC Abuja District',
+    address: '45 Glory Road, Garki, Abuja, Nigeria',
+    phone: '+234 800 000 0002',
+    coordinates: { latitude: 9.0765, longitude: 7.3986 }
+  },
+  {
+    id: '3',
+    name: 'AAGC London Branch',
+    address: '78 Salvation Way, Greenwich, London, UK',
+    phone: '+44 20 0000 0003',
+    coordinates: { latitude: 51.4826, longitude: 0.0077 }
+  },
+  {
+    id: '4',
+    name: 'AAGC Houston Branch',
+    address: '101 Grace Street, Houston, TX, USA',
+    phone: '+1 713 000 0004',
+    coordinates: { latitude: 29.7604, longitude: -95.3698 }
+  }
+];

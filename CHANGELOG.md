@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2024-12-10
 
 ### Added
-- Initial release of AAGC Platform
+- Initial release of Apostolic Army Global Church
 - Backend API with NestJS
 - Frontend website and admin dashboard with Next.js
 - Mobile app with React

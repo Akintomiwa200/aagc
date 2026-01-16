@@ -1,6 +1,6 @@
 # API Documentation
 
-Complete API reference for AAGC Platform Backend.
+Complete API reference for Apostolic Army Global Church Backend.
 
 ## Base URL
 

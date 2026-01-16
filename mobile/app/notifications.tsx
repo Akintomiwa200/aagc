@@ -4,16 +4,20 @@ import { Bell } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { apiService } from '../services/apiService';
 import { useSocket } from '../context/SocketContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function NotificationsScreen() {
     const { theme } = useTheme();
+    const { user } = useAuth();
     const isDark = theme === 'dark';
     const [notifications, setNotifications] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetchNotifications();
-    }, []);
+        if (user?.id) {
+            fetchNotifications();
+        }
+    }, [user]);
 
     const { socket } = useSocket();
 
@@ -21,7 +25,9 @@ export default function NotificationsScreen() {
         if (!socket) return;
 
         const handleNotification = (notification: any) => {
-            setNotifications(prev => [notification, ...prev]);
+            if (notification.userId === user?.id || notification.userId === (user as any)?._id) {
+                setNotifications(prev => [notification, ...prev]);
+            }
         };
 
         socket.on('notification-created', handleNotification);
@@ -29,11 +35,11 @@ export default function NotificationsScreen() {
         return () => {
             socket.off('notification-created', handleNotification);
         };
-    }, [socket]);
+    }, [socket, user]);
 
     const fetchNotifications = async () => {
         try {
-            const data = await apiService.getNotifications();
+            const data = await apiService.getNotifications(user?.id);
             setNotifications(data);
         } catch (error) {
             console.error('Failed to fetch notifications:', error);
@@ -45,7 +51,7 @@ export default function NotificationsScreen() {
     const handleRead = async (id: string) => {
         try {
             await apiService.markNotificationRead(id);
-            setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+            setNotifications(prev => prev.map(n => (n.id === id || n._id === id) ? { ...n, isRead: true } : n));
         } catch (error) {
             console.error('Failed to mark read', error);
         }
@@ -127,7 +133,7 @@ export default function NotificationsScreen() {
             ) : (
                 <FlatList
                     data={notifications}
-                    keyExtractor={(item) => item.id}
+                    keyExtractor={(item) => item.id || item._id}
                     contentContainerStyle={styles.listContent}
                     ListEmptyComponent={
                         <View style={styles.emptyState}>
@@ -137,17 +143,17 @@ export default function NotificationsScreen() {
                     }
                     renderItem={({ item }) => (
                         <TouchableOpacity
-                            style={[styles.item, !item.read && styles.itemUnread]}
-                            onPress={() => handleRead(item.id)}
+                            style={[styles.item, !item.isRead && styles.itemUnread]}
+                            onPress={() => handleRead(item.id || item._id)}
                         >
                             <View style={styles.iconContainer}>
-                                <Bell size={24} color={!item.read ? '#7C3AED' : (isDark ? '#9CA3AF' : '#6B7280')} />
+                                <Bell size={24} color={!item.isRead ? '#7C3AED' : (isDark ? '#9CA3AF' : '#6B7280')} />
                             </View>
                             <View style={styles.textContainer}>
-                                <Text style={[styles.message, !item.read && { fontWeight: '600' }]}>{item.message}</Text>
+                                <Text style={[styles.message, !item.isRead && { fontWeight: '600' }]}>{item.message}</Text>
                                 <Text style={styles.date}>{new Date(item.createdAt || Date.now()).toLocaleDateString()}</Text>
                             </View>
-                            {!item.read && <View style={styles.unreadDot} />}
+                            {!item.isRead && <View style={styles.unreadDot} />}
                         </TouchableOpacity>
                     )}
                 />

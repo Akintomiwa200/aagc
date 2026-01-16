@@ -14,39 +14,45 @@ export default function LoginScreen() {
     const router = useRouter();
     const { colors, isDark } = useTheme();
 
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [googleLoading, setGoogleLoading] = useState(false);
-
+    // For Google Authentication:
+    // 1. Create IDs at https://console.cloud.google.com/
+    // 2. Add them to your .env file as EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID, etc.
     const [request, response, promptAsync] = GoogleProvider.useAuthRequest({
-        androidClientId: '768565432-v87d8...apps.googleusercontent.com', // Updated placeholder
-        iosClientId: '768565432-v87d8...apps.googleusercontent.com', // Updated placeholder
-        webClientId: '768565432-v87d8...apps.googleusercontent.com', // Updated placeholder
+        androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || 'YOUR_ANDROID_CLIENT_ID',
+        iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || 'YOUR_IOS_CLIENT_ID',
+        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || 'YOUR_WEB_CLIENT_ID',
     });
 
     React.useEffect(() => {
         if (response?.type === 'success') {
-            const { authentication } = response;
-            handleMobileOAuth(authentication?.accessToken || '');
+            const { authentication, params } = response;
+            // Prefer idToken for backend verification if available
+            const token = authentication?.idToken || authentication?.accessToken;
+            if (token) {
+                handleMobileOAuth(token);
+            }
         }
     }, [response]);
+
+    const [googleLoading, setGoogleLoading] = useState(false);
 
     const handleMobileOAuth = async (token: string) => {
         setGoogleLoading(true);
         try {
-            // Fetch user info from Google using the access token
-            const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            // Fetch user info from Google using the token
+            // Note: If using idToken, user info is already inside.
+            // For simplicity with the existing backend, we fetch from userinfo endpoint
+            const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            const userInfo = await response.json();
+            const userInfo = await res.json();
 
             // Call our backend with the token and user info
             const result = await apiService.mobileOAuth(
                 'google',
                 token,
                 userInfo.email,
-                userInfo.name,
+                userInfo.name || userInfo.given_name,
                 userInfo.picture
             );
 
@@ -55,27 +61,9 @@ export default function LoginScreen() {
             }
         } catch (error: any) {
             console.error('Google login error:', error);
-            Alert.alert('Error', error.message || 'Google login failed');
+            Alert.alert('Error', 'Google login failed. Please ensure your Client IDs are correct.');
         } finally {
             setGoogleLoading(false);
-        }
-    };
-
-    const handleLogin = async () => {
-        if (!email || !password) {
-            Alert.alert('Error', 'Please fill in all fields');
-            return;
-        }
-
-        setLoading(true);
-        try {
-            await apiService.login(email, password);
-            router.replace('/(drawer)/(tabs)');
-        } catch (error) {
-            console.error(error);
-            Alert.alert('Error', 'Invalid credentials');
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -145,36 +133,24 @@ export default function LoginScreen() {
             fontSize: 16,
             fontWeight: 'bold',
         },
-        dividerContainer: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginVertical: 32,
-        },
-        divider: {
-            flex: 1,
-            height: 1,
-            backgroundColor: colors.border,
-        },
-        dividerText: {
-            marginHorizontal: 16,
-            color: colors.secondary,
-            fontSize: 14,
-        },
         socialButton: {
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: colors.card,
+            backgroundColor: colors.primary, // Make it look like the primary button
             borderRadius: 16,
-            padding: 16,
-            borderWidth: 1,
-            borderColor: colors.border,
+            padding: 18,
             gap: 12,
+            shadowColor: colors.primary,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.2,
+            shadowRadius: 8,
+            elevation: 4,
         },
         socialButtonText: {
-            color: colors.text,
+            color: '#FFFFFF',
             fontSize: 16,
-            fontWeight: '600',
+            fontWeight: 'bold',
         },
         googleIcon: {
             width: 20,
@@ -201,80 +177,27 @@ export default function LoginScreen() {
         <SafeAreaView style={styles.container}>
             <View style={styles.content}>
                 <View style={styles.header}>
-                    <Text style={styles.title}>Welcome Back</Text>
-                    <Text style={styles.subtitle}>Sign in to continue</Text>
-                </View>
-
-                <View style={styles.inputContainer}>
-                    <Mail size={20} color={colors.secondary} style={styles.inputIcon} />
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Email"
-                        placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
-                        value={email}
-                        onChangeText={setEmail}
-                        autoCapitalize="none"
-                        keyboardType="email-address"
-                    />
-                </View>
-
-                <View style={styles.inputContainer}>
-                    <Lock size={20} color={colors.secondary} style={styles.inputIcon} />
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Password"
-                        placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry
-                    />
-                </View>
-
-                <TouchableOpacity
-                    style={styles.button}
-                    onPress={handleLogin}
-                    disabled={loading || googleLoading}
-                >
-                    {loading ? (
-                        <ActivityIndicator color="#FFFFFF" />
-                    ) : (
-                        <>
-                            <LogIn size={20} color="#FFFFFF" />
-                            <Text style={styles.buttonText}>Sign In</Text>
-                        </>
-                    )}
-                </TouchableOpacity>
-
-                <View style={styles.dividerContainer}>
-                    <View style={styles.divider} />
-                    <Text style={styles.dividerText}>OR</Text>
-                    <View style={styles.divider} />
+                    <Text style={styles.title}>Apostolic Army Global Church</Text>
+                    <Text style={styles.subtitle}>Lift each other up in prayer and community</Text>
                 </View>
 
                 <TouchableOpacity
                     style={styles.socialButton}
                     onPress={handleGoogleLogin}
-                    disabled={loading || googleLoading}
+                    disabled={googleLoading}
                 >
                     {googleLoading ? (
-                        <ActivityIndicator color={colors.text} />
+                        <ActivityIndicator color="#FFFFFF" />
                     ) : (
                         <>
-                            <Text style={{ fontSize: 20 }}>G</Text>
+                            <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#FFFFFF' }}>G</Text>
                             <Text style={styles.socialButtonText}>Continue with Google</Text>
                         </>
                     )}
                 </TouchableOpacity>
 
-                <View style={styles.footer}>
-                    <Text style={styles.footerText}>Don't have an account? </Text>
-                    <TouchableOpacity onPress={() => router.push('/register' as any)}>
-                        <Text style={styles.linkText}>Sign Up</Text>
-                    </TouchableOpacity>
-                </View>
-
                 <TouchableOpacity
-                    style={{ marginTop: 24, alignItems: 'center' }}
+                    style={{ marginTop: 32, alignItems: 'center' }}
                     onPress={() => router.replace('/(drawer)/(tabs)')}
                 >
                     <Text style={[styles.linkText, { color: colors.secondary, fontWeight: '500' }]}>

@@ -112,7 +112,7 @@ export interface Badge {
   id: string;
   name: string;
   description: string;
-  icon: string; 
+  icon: string;
   requiredPoints: number;
 }
 
@@ -148,3 +148,15 @@ export interface Friend {
   mutualFriends: number;
   status: 'friend' | 'pending_received' | 'pending_sent' | 'none';
 }
+
+export interface ChurchBranch {
+  id: string;
+  name: string;
+  address: string;
+  phone: string;
+  coordinates: {
+    latitude: number;
+    longitude: number;
+  };
+}
+

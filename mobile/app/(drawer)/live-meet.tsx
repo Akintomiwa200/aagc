@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, Image, Dimensions } from 'react-native';
 import { Video, Users, MessageSquare, Send, Heart, Gift } from 'lucide-react-native';
 import { useTheme } from '@/context/ThemeContext';

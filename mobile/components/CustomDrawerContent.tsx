@@ -33,15 +33,16 @@ export default function CustomDrawerContent(props: any) {
                 if (userData) {
                     const parsedUser = JSON.parse(userData);
                     setUser(parsedUser);
-                    
+
                     // Fetch user-specific data
                     try {
                         const [prayers, notifications] = await Promise.all([
                             apiService.getUserPrayers(),
-                            apiService.getNotifications()
+                            apiService.getNotifications(user.id)
                         ]);
                         setPrayerCount(prayers?.length || 0);
-                        setNotificationCount(notifications?.unread || 0);
+                        const unreadCount = notifications?.filter((n: any) => !n.read).length || 0;
+                        setNotificationCount(unreadCount);
                     } catch (error) {
                         console.log('Error fetching user data:', error);
                     }
@@ -70,8 +71,8 @@ export default function CustomDrawerContent(props: any) {
         };
 
         socket.on('member-updated', handleMemberUpdated);
-        socket.on('prayer-added', handlePrayerUpdate);
-        socket.on('notification-added', () => {
+        socket.on('prayer-created', handlePrayerUpdate);
+        socket.on('notification-created', () => {
             setNotificationCount(prev => prev + 1);
         });
 
@@ -244,19 +245,19 @@ export default function CustomDrawerContent(props: any) {
     });
 
     const menuItems = [
-        { 
-            label: 'Home', 
-            icon: Home, 
-            route: '/(drawer)/(tabs)', 
-            badge: notificationCount > 0 ? notificationCount : undefined 
+        {
+            label: 'Home',
+            icon: Home,
+            route: '/(drawer)/(tabs)',
+            badge: notificationCount > 0 ? notificationCount : undefined
         },
         { label: 'Events', icon: Calendar, route: '/(drawer)/(tabs)/events' },
         { label: 'Devotional', icon: BookOpen, route: '/(drawer)/(tabs)/devotional' },
-        { 
-            label: 'Prayers', 
-            icon: Heart, 
-            route: '/(drawer)/(tabs)/prayers', 
-            badge: prayerCount > 0 ? prayerCount : undefined 
+        {
+            label: 'Prayers',
+            icon: Heart,
+            route: '/(drawer)/(tabs)/prayers',
+            badge: prayerCount > 0 ? prayerCount : undefined
         },
     ];
 
@@ -281,7 +282,7 @@ export default function CustomDrawerContent(props: any) {
         if (props.navigation && props.navigation.closeDrawer) {
             props.navigation.closeDrawer();
         }
-        
+
         // Reset notification count if going to home
         if (route === '/(drawer)/(tabs)' && notificationCount > 0) {
             setNotificationCount(0);
@@ -305,9 +306,9 @@ export default function CustomDrawerContent(props: any) {
                         styles.drawerIconContainer,
                         { backgroundColor: isActive ? colors.primary + '15' : colors.border + '20' }
                     ]}>
-                        <Icon 
-                            size={20} 
-                            color={isActive ? colors.primary : colors.secondary} 
+                        <Icon
+                            size={20}
+                            color={isActive ? colors.primary : colors.secondary}
                             strokeWidth={isActive ? 2.2 : 1.8}
                         />
                     </View>
@@ -343,7 +344,7 @@ export default function CustomDrawerContent(props: any) {
                         </Text>
                     </View>
                 </View>
-                
+
                 {isAuthenticated && (
                     <View style={styles.userStatus}>
                         <View style={styles.statusItem}>
@@ -362,8 +363,8 @@ export default function CustomDrawerContent(props: any) {
                 )}
             </View>
 
-            <DrawerContentScrollView 
-                {...props} 
+            <DrawerContentScrollView
+                {...props}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 20 }}
             >
@@ -410,7 +411,7 @@ export default function CustomDrawerContent(props: any) {
                         </Text>
                     </TouchableOpacity>
                 )}
-                
+
                 <Text style={styles.versionText}>
                     AAGC Global • v1.0.0
                 </Text>

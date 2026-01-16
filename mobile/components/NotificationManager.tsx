@@ -12,13 +12,15 @@ Notifications.setNotificationHandler({
         shouldShowAlert: true,
         shouldPlaySound: true,
         shouldSetBadge: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
     }),
 });
 
 export const NotificationManager: React.FC = () => {
     const { user } = useAuth();
-    const notificationListener = useRef<Notifications.Subscription>();
-    const responseListener = useRef<Notifications.Subscription>();
+    const notificationListener = useRef<Notifications.Subscription | null>(null);
+    const responseListener = useRef<Notifications.Subscription | null>(null);
 
     useEffect(() => {
         if (user?.id) {
@@ -44,10 +46,10 @@ export const NotificationManager: React.FC = () => {
 
         return () => {
             if (notificationListener.current) {
-                Notifications.removeNotificationSubscription(notificationListener.current);
+                notificationListener.current.remove();
             }
             if (responseListener.current) {
-                Notifications.removeNotificationSubscription(responseListener.current);
+                responseListener.current.remove();
             }
         };
     }, [user]);
@@ -75,7 +77,7 @@ async function registerForPushNotificationsAsync() {
             finalStatus = status;
         }
         if (finalStatus !== 'granted') {
-            Alert.alert('Failed to get push token for push notification!');
+            console.log('Failed to get push token for push notification!');
             return;
         }
 
@@ -83,7 +85,13 @@ async function registerForPushNotificationsAsync() {
         try {
             const projectId =
                 Constants?.expoConfig?.extra?.eas?.projectId ??
-                Constants?.easConfig?.projectId;
+                Constants?.easConfig?.projectId ??
+                'YOUR-PROJECT-ID-FALLBACK'; // Should be configured in app.json
+
+            if (!projectId || projectId === 'your-project-id') {
+                console.log('EAS Project ID not found. Push tokens may not be available.');
+                return;
+            }
 
             token = (await Notifications.getExpoPushTokenAsync({
                 projectId,

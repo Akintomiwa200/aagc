@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "AAGC Platform",
+    "name": "Apostolic Army Global Church",
     "slug": "aagc-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -50,7 +50,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow AAGC Platform to access your camera to take photos for your profile and events."
+          "cameraPermission": "Allow Apostolic Army Global Church to access your camera to take photos for your profile and events."
         }
       ],
       [
@@ -62,7 +62,7 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow AAGC Platform to use your location to show nearby events and church locations."
+          "locationAlwaysAndWhenInUsePermission": "Allow Apostolic Army Global Church to use your location to show nearby events and church locations."
         }
       ],
       [
@@ -78,8 +78,11 @@
     },
     "scheme": "aagc",
     "extra": {
+      "apiUrl": "http://10.186.103.99:3001",
+      "socketUrl": "http://10.186.103.99:3001",
+      "router": {},
       "eas": {
-        "projectId": "your-project-id"
+        "projectId": "1ad077e8-d663-437a-8bca-ba717e3cab93"
       }
     }
   }

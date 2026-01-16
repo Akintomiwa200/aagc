@@ -1,7 +1,7 @@
 {
   "name": "@aagc/backend",
   "version": "1.0.0",
-  "description": "AAGC Platform Backend API - NestJS-based RESTful API with real-time WebSocket support",
+  "description": "Apostolic Army Global Church Backend API - NestJS-based RESTful API with real-time WebSocket support",
   "author": "Apostolic Army Global Church",
   "private": true,
   "license": "MIT",

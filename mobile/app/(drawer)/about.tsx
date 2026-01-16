@@ -1,7 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Linking, Platform } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
-import { Globe, Mail, Phone, MapPin, Clock, Heart, Users, Youtube, Facebook, Instagram } from 'lucide-react-native';
+import { Globe, Mail, Phone, MapPin, Clock, Heart, Users, Youtube, Facebook, Instagram, Map } from 'lucide-react-native';
+import { CHURCH_BRANCHES } from '@/constants';
+import { ChurchBranch } from '@/types';
+
 
 export default function AboutScreen() {
     const { theme, colors } = useTheme();
@@ -113,11 +116,75 @@ export default function AboutScreen() {
             color: colors.text,
             marginTop: 8,
             textAlign: 'center',
+        },
+        branchCard: {
+            backgroundColor: colors.card,
+            padding: 16,
+            borderRadius: 16,
+            marginBottom: 12,
+            borderWidth: 1,
+            borderColor: colors.border,
+        },
+        branchName: {
+            fontSize: 18,
+            fontWeight: 'bold',
+            color: colors.text,
+            marginBottom: 4,
+        },
+        branchAddress: {
+            fontSize: 14,
+            color: colors.secondary,
+            marginBottom: 8,
+        },
+        mapButton: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: colors.primary + '15',
+            paddingVertical: 8,
+            paddingHorizontal: 16,
+            borderRadius: 8,
+            alignSelf: 'flex-start',
+            gap: 8,
+        },
+        mapButtonText: {
+            color: colors.primary,
+            fontWeight: '600',
+            fontSize: 14,
+        },
+        liveMapButton: {
+            backgroundColor: colors.primary,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+            borderRadius: 16,
+            gap: 12,
+            marginTop: 8,
+        },
+        liveMapButtonText: {
+            color: '#FFFFFF',
+            fontSize: 18,
+            fontWeight: 'bold',
         }
     });
 
     const openLink = (url: string) => {
         Linking.openURL(url).catch(err => console.error("Couldn't load page", err));
+    };
+
+    const openBranchInMap = (branch: ChurchBranch) => {
+        const { latitude, longitude } = branch.coordinates;
+        const label = branch.name;
+        const url = Platform.select({
+            ios: `maps:0,0?q=${label}@${latitude},${longitude}`,
+            android: `geo:0,0?q=${latitude},${longitude}(${label})`
+        }) || `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+        Linking.openURL(url);
+    };
+
+    const openLiveMap = () => {
+        const url = `https://www.google.com/maps/search/?api=1&query=Apostolic+Army+Global+Church`;
+        Linking.openURL(url);
     };
 
     return (
@@ -178,6 +245,33 @@ export default function AboutScreen() {
                             </View>
                         </View>
                     </View>
+                </View>
+
+                <View style={styles.section}>
+                    <Text style={styles.subtitle}>Global Presence</Text>
+                    <Text style={styles.title}>Our Branches</Text>
+                    <Text style={styles.text}>
+                        We have a growing global presence. Join us at any of our branches for a life-changing encounter.
+                    </Text>
+
+                    {CHURCH_BRANCHES.map((branch) => (
+                        <View key={branch.id} style={styles.branchCard}>
+                            <Text style={styles.branchName}>{branch.name}</Text>
+                            <Text style={styles.branchAddress}>{branch.address}</Text>
+                            <TouchableOpacity
+                                style={styles.mapButton}
+                                onPress={() => openBranchInMap(branch)}
+                            >
+                                <MapPin size={16} color={colors.primary} />
+                                <Text style={styles.mapButtonText}>Directions</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ))}
+
+                    <TouchableOpacity style={styles.liveMapButton} onPress={openLiveMap}>
+                        <Map size={24} color="#FFFFFF" />
+                        <Text style={styles.liveMapButtonText}>Live Global Map</Text>
+                    </TouchableOpacity>
                 </View>
 
                 <View style={styles.section}>

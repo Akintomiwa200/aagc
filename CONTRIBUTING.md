@@ -1,4 +1,4 @@
-# Contributing to AAGC Platform
+# Contributing to Apostolic Army Global Church
 
 Thank you for your interest in contributing to the Apostolic Army Global Church Platform! This document provides guidelines and instructions for contributing.
 

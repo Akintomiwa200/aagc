@@ -41,7 +41,7 @@
 
 ## 🎯 Overview
 
-AAGC Platform is a full-stack, real-time church management system designed to enhance community engagement, streamline administrative tasks, and provide an immersive digital experience for members, visitors, and administrators.
+Apostolic Army Global Church is a full-stack, real-time church management system designed to enhance community engagement, streamline administrative tasks, and provide an immersive digital experience for members, visitors, and administrators.
 
 ### Key Capabilities
 

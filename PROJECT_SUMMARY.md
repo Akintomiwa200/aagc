@@ -1,6 +1,6 @@
-# AAGC Platform - Project Documentation Summary
+# Apostolic Army Global Church - Project Documentation Summary
 
-This document provides an overview of all documentation and configuration files in the AAGC Platform project.
+This document provides an overview of all documentation and configuration files in the Apostolic Army Global Church project.
 
 ## 📚 Documentation Files
 

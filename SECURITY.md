@@ -63,5 +63,5 @@ Security updates will be announced via:
 - Release notes
 - Email notifications (for critical issues)
 
-Thank you for helping keep AAGC Platform secure!
+Thank you for helping keep Apostolic Army Global Church secure!
 

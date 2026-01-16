@@ -18,6 +18,17 @@ export default function FriendsScreen() {
         fetchFriends();
     }, []);
 
+    const fetchFriends = async () => {
+        try {
+            const data = await apiService.getFriends();
+            setFriends(data);
+        } catch (error) {
+            console.error('Failed to fetch friends:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const { socket } = useSocket();
 
     useEffect(() => {
@@ -190,7 +201,7 @@ export default function FriendsScreen() {
             ) : (
                 <FlatList
                     data={filteredFriends}
-                    keyExtractor={(item) => item.id}
+                    keyExtractor={(item) => item.id || item._id}
                     contentContainerStyle={styles.listContent}
                     ListEmptyComponent={
                         <View style={styles.emptyState}>

@@ -92,6 +92,11 @@ class ApiService {
     return this.request<any[]>('/prayers');
   }
 
+  async getUserPrayers() {
+    // Backend doesn't have a specific getUserPrayers yet, using getPrayers
+    return this.getPrayers();
+  }
+
   async createPrayer(data: { name: string; request: string; email?: string; phone?: string; isAnonymous?: boolean }) {
     return this.request<any>('/prayers', {
       method: 'POST',
@@ -119,6 +124,11 @@ class ApiService {
   // Events
   async getEvents() {
     return this.request<any[]>('/events');
+  }
+
+  async getTodayEvents() {
+    // Backend doesn't have today events specifically yet, using getEvents
+    return this.getEvents();
   }
 
   async getEvent(id: string) {
@@ -208,13 +218,14 @@ class ApiService {
   }
 
   // Notifications
-  async getNotifications() {
-    return this.request<any[]>('/notifications');
+  async getNotifications(userId?: string) {
+    const query = userId ? `?userId=${userId}` : '';
+    return this.request<any[]>(`/notifications${query}`);
   }
 
   async markNotificationRead(id: string) {
     return this.request<any>(`/notifications/${id}/read`, {
-      method: 'PUT',
+      method: 'POST',
     });
   }
 

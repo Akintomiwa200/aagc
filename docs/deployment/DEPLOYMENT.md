@@ -1,6 +1,6 @@
 # Deployment Guide
 
-Complete guide for deploying AAGC Platform to production.
+Complete guide for deploying Apostolic Army Global Church to production.
 
 ## Prerequisites
 

@@ -1,4 +1,4 @@
-# AAGC Platform Mobile App
+# Apostolic Army Global Church Mobile App
 
 Native mobile application for Apostolic Army Global Church built with React Native and Expo.
 

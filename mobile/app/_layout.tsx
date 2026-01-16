@@ -22,7 +22,7 @@ function RootLayoutNav() {
 
     const [isAppReady, setIsAppReady] = useState(false);
     const [showCustomSplash, setShowCustomSplash] = useState(true);
-    const [initialRoute, setInitialRoute] = useState<'onboarding' | 'login' | '(drawer)' | null>(null);
+    const [initialRoute, setInitialRoute] = useState<'/onboarding' | '/login' | '/(drawer)/(tabs)' | null>(null);
 
     useEffect(() => {
         async function prepare() {
@@ -32,16 +32,16 @@ function RootLayoutNav() {
                 const hasSeenOnboarding = await AsyncStorage.getItem('hasSeenOnboarding');
 
                 if (userSession && userSession !== 'null') {
-                    setInitialRoute('(drawer)');
+                    setInitialRoute('/(drawer)/(tabs)');
                 } else if (hasSeenOnboarding !== 'true') {
-                    setInitialRoute('onboarding');
+                    setInitialRoute('/onboarding');
                 } else {
                     // Default to login for now, but the login screen will have a skip option
-                    setInitialRoute('login');
+                    setInitialRoute('/login');
                 }
             } catch (e) {
                 console.warn(e);
-                setInitialRoute('login'); // Fallback
+                setInitialRoute('/login'); // Fallback
             } finally {
                 setIsAppReady(true);
                 // Hide the native splash screen immediately
@@ -83,7 +83,6 @@ function RootLayoutNav() {
                 <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
                 <Stack.Screen name="onboarding" options={{ headerShown: false }} />
                 <Stack.Screen name="login" options={{ headerShown: false }} />
-                <Stack.Screen name="register" options={{ headerShown: false }} />
 
                 {/* Modals and other screens */}
                 <Stack.Screen
