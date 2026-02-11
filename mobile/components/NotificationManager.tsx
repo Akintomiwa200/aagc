@@ -5,6 +5,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { apiService } from '../services/apiService';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
 
 // Configure how notifications are handled when the app is foregrounded
 Notifications.setNotificationHandler({
@@ -21,6 +22,7 @@ export const NotificationManager: React.FC = () => {
     const { user } = useAuth();
     const notificationListener = useRef<Notifications.Subscription | null>(null);
     const responseListener = useRef<Notifications.Subscription | null>(null);
+    const { socket } = useSocket();
 
     useEffect(() => {
         if (user?.id) {
@@ -33,7 +35,27 @@ export const NotificationManager: React.FC = () => {
             });
         }
 
-        // Listener for when a notification is received in the foreground
+        // --- REAL-TIME SOCKET LISTENERS ---
+        if (socket) {
+            socket.on('new-notification', (data) => {
+                console.log('Real-time notification via socket:', data);
+                Alert.alert(
+                    data.title || 'New Notification',
+                    data.message || 'You have a new update from Apostolic Army Global.',
+                    [{ text: 'Dismiss' }, { text: 'View', onPress: () => {/* Navigate */ } }]
+                );
+            });
+
+            socket.on('friend-request', (data) => {
+                Alert.alert('New Friend Request', `${data.senderName} wants to connect with you.`);
+            });
+
+            socket.on('live-update', (data) => {
+                Alert.alert('Live Now', data.message || 'A live session has started!');
+            });
+        }
+
+        // Listener for when a notification is received in the foreground (Push)
         notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
             console.log('Notification Received:', notification);
         });
@@ -51,8 +73,13 @@ export const NotificationManager: React.FC = () => {
             if (responseListener.current) {
                 responseListener.current.remove();
             }
+            if (socket) {
+                socket.off('new-notification');
+                socket.off('friend-request');
+                socket.off('live-update');
+            }
         };
-    }, [user]);
+    }, [user, socket]);
 
     return null;
 };

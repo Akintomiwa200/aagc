@@ -13,6 +13,7 @@ import { PrayersService } from '../prayers/prayers.service';
 import { EventsService } from '../events/events.service';
 import { SermonsService } from '../sermons/sermons.service';
 import { UsersService } from '../users/users.service';
+import { DevotionalsService } from '../devotionals/devotionals.service';
 
 @WebSocketGateway({
   cors: {
@@ -35,6 +36,8 @@ export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly eventsService: EventsService,
     @Inject(forwardRef(() => SermonsService))
     private readonly sermonsService: SermonsService,
+    @Inject(forwardRef(() => DevotionalsService))
+    private readonly devotionalsService: DevotionalsService,
     private readonly usersService: UsersService,
   ) { }
 
@@ -53,10 +56,11 @@ export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private async sendInitialData(client: Socket) {
     try {
-      const [prayers, events, sermons, stats] = await Promise.all([
+      const [prayers, events, sermons, devotionals, stats] = await Promise.all([
         this.prayersService.findAll(),
         this.eventsService.findAll(),
         this.sermonsService.findAll(),
+        this.devotionalsService.findAll('published'),
         this.prayersService.getStats(),
       ]);
 
@@ -64,6 +68,7 @@ export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect {
         prayers,
         events,
         sermons,
+        devotionals,
         prayerStats: stats,
       });
     } catch (error) {
@@ -150,6 +155,19 @@ export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async emitDonationUpdated(donation: any) {
     this.server.emit('donation-updated', donation);
+  }
+
+  // Devotional-related events
+  async emitDevotionalCreated(devotional: any) {
+    this.server.emit('devotional-created', devotional);
+  }
+
+  async emitDevotionalUpdated(devotional: any) {
+    this.server.emit('devotional-updated', devotional);
+  }
+
+  async emitDevotionalDeleted(devotionalId: string) {
+    this.server.emit('devotional-deleted', { devotionalId });
   }
 
   // Gallery-related events

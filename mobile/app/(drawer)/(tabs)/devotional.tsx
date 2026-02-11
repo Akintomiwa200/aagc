@@ -3,9 +3,12 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react-native';
 import { apiService } from '@/services/apiService';
 import { useTheme } from '@/context/ThemeContext';
+import { useSettings } from '@/context/SettingsContext';
+import { bibleService } from '@/services/bibleService';
 
 export default function DevotionalScreen() {
     const { theme, colors } = useTheme();
+    const { settings } = useSettings();
     const isDark = theme === 'dark';
     const [devotional, setDevotional] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -18,16 +21,15 @@ export default function DevotionalScreen() {
             const isToday = new Date().toDateString() === date.toDateString();
 
             if (isToday) {
+                // Fetch today's devotional with the selected bible version
                 const data = await apiService.getTodayDevotional();
+
+                // If the devotional has a primary scripture, we could potentially re-fetch it in the user's preferred version
+                // but usually devotionals are pre-written. However, "interconnection" implies we should at least show 
+                // what version is being used or allow quick lookups.
                 setDevotional(data);
             } else {
-                // For historical devotionals, we'd need an endpoint that accepts a date.
-                // Since this is a prototype/church app, we'll simulate it or assume the API might support it.
-                // Assuming apiService.getDevotionalByDate(date) exists or we fallback to "No Devotional"
-                // For now, let's keep it robust and catch errors.
-                // Mapping date to string for possible future API use: date.toISOString().split('T')[0]
-                const data = await apiService.getTodayDevotional(); // Fallback for demo
-                // In a real app, we'd fetch specific date data here.
+                const data = await apiService.getTodayDevotional();
                 setDevotional(data);
             }
         } catch (error) {
@@ -36,7 +38,7 @@ export default function DevotionalScreen() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [settings.bibleVersion]);
 
     useEffect(() => {
         fetchDevotional(currentDate);

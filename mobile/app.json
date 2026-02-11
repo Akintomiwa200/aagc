@@ -78,12 +78,13 @@
     },
     "scheme": "aagc",
     "extra": {
-      "apiUrl": "http://10.186.103.99:3001",
-      "socketUrl": "http://10.186.103.99:3001",
+      "apiUrl": "http://192.168.1.106:3001",
+      "socketUrl": "http://192.168.1.106:3001",
       "router": {},
       "eas": {
         "projectId": "1ad077e8-d663-437a-8bca-ba717e3cab93"
       }
-    }
+    },
+    "owner": "herkintormiwer"
   }
 }

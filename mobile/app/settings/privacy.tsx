@@ -1,19 +1,15 @@
 import React from 'react';
 import { View, Text, StyleSheet, Switch, ScrollView } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
+import { useSettings } from '@/context/SettingsContext';
 import { Eye, Shield, Share2, Globe } from 'lucide-react-native';
 
 export default function PrivacySettings() {
-    const { colors, isDark } = useTheme();
-    const [privacyStates, setPrivacyStates] = React.useState({
-        profilePublic: true,
-        showActivity: true,
-        allowTagging: false,
-        shareAnalytics: true
-    });
+    const { colors } = useTheme();
+    const { settings, updateSettings } = useSettings();
 
-    const toggleSwitch = (key: keyof typeof privacyStates) => {
-        setPrivacyStates(prev => ({ ...prev, [key]: !prev[key] }));
+    const toggleSwitch = (key: keyof typeof settings) => {
+        updateSettings({ [key]: !settings[key as keyof typeof settings] });
     };
 
     const styles = StyleSheet.create({
@@ -70,7 +66,7 @@ export default function PrivacySettings() {
                         <Text style={styles.description}>Let others see your profile details</Text>
                     </View>
                     <Switch
-                        value={privacyStates.profilePublic}
+                        value={settings.profilePublic}
                         onValueChange={() => toggleSwitch('profilePublic')}
                     />
                 </View>
@@ -84,8 +80,8 @@ export default function PrivacySettings() {
                         <Text style={styles.description}>Others can see when you're active</Text>
                     </View>
                     <Switch
-                        value={privacyStates.showActivity}
-                        onValueChange={() => toggleSwitch('showActivity')}
+                        value={settings.showOnlineStatus}
+                        onValueChange={() => toggleSwitch('showOnlineStatus')}
                     />
                 </View>
 
@@ -98,8 +94,8 @@ export default function PrivacySettings() {
                         <Text style={styles.description}>Allow friends to tag you in posts</Text>
                     </View>
                     <Switch
-                        value={privacyStates.allowTagging}
-                        onValueChange={() => toggleSwitch('allowTagging')}
+                        value={settings.socialTagging}
+                        onValueChange={() => toggleSwitch('socialTagging')}
                     />
                 </View>
 
@@ -112,8 +108,8 @@ export default function PrivacySettings() {
                         <Text style={styles.description}>Share app usage data to help us improve</Text>
                     </View>
                     <Switch
-                        value={privacyStates.shareAnalytics}
-                        onValueChange={() => toggleSwitch('shareAnalytics')}
+                        value={settings.usageAnalytics}
+                        onValueChange={() => toggleSwitch('usageAnalytics')}
                     />
                 </View>
             </View>

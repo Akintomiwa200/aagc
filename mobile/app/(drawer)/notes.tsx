@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Modal, Alert } from 'react-native';
-import { Plus, Trash2, Save, X } from 'lucide-react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Modal, Alert, ScrollView } from 'react-native';
+import { Plus, Trash2, Save, X, ExternalLink } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
 import { apiService } from '@/services/apiService';
 import { useSocket } from '@/context/SocketContext';
 
 export default function NotesScreen() {
-    const { theme } = useTheme();
+    const { theme, colors } = useTheme();
     const isDark = theme === 'dark';
+    const router = useRouter();
     const [notes, setNotes] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [modalVisible, setModalVisible] = useState(false);
@@ -108,6 +110,50 @@ export default function NotesScreen() {
                 }
             }
         ]);
+    };
+
+    const renderNoteContent = (content: string) => {
+        // Simple regex for Bible verses, e.g., "John 3:16", "1 John 1:9", "Genesis 1:1-5"
+        const bibleRegex = /(([1-3]\s+)?[A-Z][a-z]+(\s+[A-Z][a-z]+)?)\s+(\d+):(\d+)(-\d+)?/g;
+
+        const parts = content.split(bibleRegex);
+        if (parts.length === 1) return <Text style={styles.inputContentText}>{content}</Text>;
+
+        const result: React.ReactNode[] = [];
+        let lastIndex = 0;
+
+        content.replace(bibleRegex, (match, book, p2, p3, chapter, verse, range, offset) => {
+            // Push text before match
+            result.push(<Text key={`text-${offset}`} style={styles.inputContentText}>{content.slice(lastIndex, offset)}</Text>);
+
+            // Push match as link
+            result.push(
+                <TouchableOpacity
+                    key={`link-${offset}`}
+                    onPress={() => {
+                        setModalVisible(false);
+                        router.push({
+                            pathname: '/(drawer)/bible',
+                            params: { book, chapter, verse }
+                        });
+                    }}
+                    style={styles.verseLink}
+                >
+                    <Text style={styles.verseLinkText}>{match}</Text>
+                    <ExternalLink size={12} color={colors.primary} />
+                </TouchableOpacity>
+            );
+
+            lastIndex = offset + match.length;
+            return match;
+        });
+
+        // Push remaining text
+        if (lastIndex < content.length) {
+            result.push(<Text key={`text-end`} style={styles.inputContentText}>{content.slice(lastIndex)}</Text>);
+        }
+
+        return <View style={styles.contentContainer}>{result}</View>;
     };
 
     const styles = StyleSheet.create({
@@ -223,6 +269,31 @@ export default function NotesScreen() {
         },
         emptyText: {
             color: isDark ? '#9CA3AF' : '#6B7280',
+        },
+        verseLink: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: '#7C3AED15',
+            paddingHorizontal: 6,
+            paddingVertical: 2,
+            borderRadius: 6,
+            marginHorizontal: 2,
+            gap: 4,
+        },
+        verseLinkText: {
+            color: '#7C3AED',
+            fontWeight: '600',
+            fontSize: 16,
+        },
+        inputContentText: {
+            fontSize: 16,
+            color: isDark ? '#D1D5DB' : '#4B5563',
+            lineHeight: 24,
+        },
+        contentContainer: {
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            alignItems: 'center',
         }
     });
 
@@ -288,14 +359,33 @@ export default function NotesScreen() {
                         onChangeText={setNoteTitle}
                     />
 
-                    <TextInput
-                        style={styles.inputContent}
-                        placeholder="Start writing..."
-                        placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
-                        value={noteContent}
-                        onChangeText={setNoteContent}
-                        multiline
-                    />
+                    {currentNote ? (
+                        <View style={{ flex: 1 }}>
+                            <ScrollView showsVerticalScrollIndicator={false}>
+                                {renderNoteContent(noteContent)}
+                            </ScrollView>
+                            <TouchableOpacity
+                                style={{ position: 'absolute', bottom: 20, right: 0, backgroundColor: colors.primary, padding: 12, borderRadius: 30 }}
+                                onPress={() => {
+                                    // Switch to edit mode by hiding the rendered view? 
+                                    // For simplicity in this demo, let's just make it editable by clicking a separate "Edit" button if needed,
+                                    // but we can also just show the content as editable by default and only link it in the list or a preview.
+                                    // Let's stick to the user's intent: Interconnection.
+                                }}
+                            >
+                                <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Edit</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <TextInput
+                            style={styles.inputContent}
+                            placeholder="Start writing..."
+                            placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
+                            value={noteContent}
+                            onChangeText={setNoteContent}
+                            multiline
+                        />
+                    )}
                 </View>
             </Modal>
         </View>

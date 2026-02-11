@@ -70,22 +70,29 @@ class BibleService {
     HIGHLIGHT_COLORS = HIGHLIGHT_COLORS;
 
     async getChapter(book: string, chapter: number, version: string): Promise<BibleVerse[]> {
+        const cacheKey = `bible_cache_${book}_${chapter}_${version}`;
         try {
+            // Check cache first
+            const cached = await AsyncStorage.getItem(cacheKey);
+            if (cached) {
+                return JSON.parse(cached);
+            }
+
             // Clean book name (remove spaces for URL)
             const cleanBook = book.replace(/\s+/g, '');
-            
+
             const response = await fetch(
                 `${this.baseURL}/${cleanBook}+${chapter}?translation=${version}`
             );
-            
+
             if (!response.ok) {
                 throw new Error('Failed to fetch chapter');
             }
-            
+
             const data = await response.json();
-            
+
             if (data.verses && Array.isArray(data.verses)) {
-                return data.verses.map((verse: any) => ({
+                const verses = data.verses.map((verse: any) => ({
                     id: `${book}-${chapter}-${verse.verse}-${version}`,
                     book,
                     chapter,
@@ -93,12 +100,49 @@ class BibleService {
                     text: verse.text ? verse.text.trim() : '',
                     version,
                 }));
+
+                // Save to cache
+                await AsyncStorage.setItem(cacheKey, JSON.stringify(verses));
+                return verses;
             }
-            
+
             return [];
         } catch (error) {
             console.error('Failed to fetch chapter:', error);
-            return [];
+            // Try fetching from cache one last time on error
+            const cached = await AsyncStorage.getItem(cacheKey);
+            return cached ? JSON.parse(cached) : [];
+        }
+    }
+
+    // Verse of the Day
+    async getVerseOfTheDay(version: string = 'kjv'): Promise<BibleVerse | null> {
+        try {
+            // Check if we already have today's verse
+            const today = new Date().toISOString().split('T')[0];
+            const cached = await AsyncStorage.getItem(`votd_${today}`);
+            if (cached) return JSON.parse(cached);
+
+            const response = await fetch(`${this.baseURL}/?random=verse&translation=${version}`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.verses && data.verses.length > 0) {
+                    const verse = {
+                        id: `votd-${today}`,
+                        book: data.verses[0].book_name,
+                        chapter: data.verses[0].chapter,
+                        verse: data.verses[0].verse,
+                        text: data.verses[0].text.trim(),
+                        version: version
+                    };
+                    await AsyncStorage.setItem(`votd_${today}`, JSON.stringify(verse));
+                    return verse;
+                }
+            }
+            return null;
+        } catch (error) {
+            console.error('Failed to fetch VOTD:', error);
+            return null;
         }
     }
 
@@ -111,10 +155,10 @@ class BibleService {
                 id: Date.now().toString(),
                 createdAt: new Date(),
             };
-            
+
             const updatedHighlights = [...(highlights || []), newHighlight];
             await AsyncStorage.setItem('bible_highlights', JSON.stringify(updatedHighlights));
-            
+
             return newHighlight;
         } catch (error) {
             console.error('Error saving highlight:', error);
@@ -161,10 +205,10 @@ class BibleService {
                 verseId,
                 createdAt: new Date(),
             };
-            
+
             const updated = [...(bookmarks || []), newBookmark];
             await AsyncStorage.setItem('bible_bookmarks', JSON.stringify(updated));
-            
+
             return newBookmark;
         } catch (error) {
             console.error('Error saving bookmark:', error);
@@ -212,10 +256,10 @@ class BibleService {
                 createdAt: new Date(),
                 updatedAt: new Date(),
             };
-            
+
             const updated = [...(notes || []), newNote];
             await AsyncStorage.setItem('bible_notes', JSON.stringify(updated));
-            
+
             return newNote;
         } catch (error) {
             console.error('Error saving note:', error);
@@ -247,18 +291,18 @@ class BibleService {
         try {
             const notes = await this.getNotes();
             const noteIndex = notes?.findIndex(n => n.id === noteId) ?? -1;
-            
+
             if (noteIndex === -1) {
                 throw new Error('Note not found');
             }
-            
+
             if (!notes) throw new Error('No notes found');
-            
+
             notes[noteIndex].text = text;
             notes[noteIndex].updatedAt = new Date();
-            
+
             await AsyncStorage.setItem('bible_notes', JSON.stringify(notes));
-            
+
             return notes[noteIndex];
         } catch (error) {
             console.error('Error updating note:', error);
@@ -282,12 +326,12 @@ class BibleService {
             const response = await fetch(
                 `${this.baseURL}/search?q=${encodeURIComponent(query)}&version=${version}`
             );
-            
+
             if (response.ok) {
                 const data = await response.json();
                 return data.results || [];
             }
-            
+
             return [];
         } catch (error) {
             console.error('Search failed:', error);

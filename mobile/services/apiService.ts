@@ -3,8 +3,8 @@ import Constants from 'expo-constants';
 
 const API_BASE_URL = Constants.expoConfig?.extra?.apiUrl
   ? `${Constants.expoConfig.extra.apiUrl}/api`
-  : 'http://10.186.103.99:3001/api';
-const SOCKET_URL = Constants.expoConfig?.extra?.socketUrl || 'http://10.186.103.99:3001';
+  : 'http://192.168.1.106:3001/api';
+const SOCKET_URL = Constants.expoConfig?.extra?.socketUrl || 'http://192.168.1.106:3001';
 
 class ApiService {
   private token: string | null = null;
@@ -51,6 +51,29 @@ class ApiService {
     }
 
     return response.json();
+  }
+
+  // Generic methods
+  async get<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, { method: 'GET' });
+  }
+
+  async post<T>(endpoint: string, data: any): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async put<T>(endpoint: string, data: any): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async delete(endpoint: string): Promise<void> {
+    return this.request<void>(endpoint, { method: 'DELETE' });
   }
 
   // Auth
@@ -201,6 +224,10 @@ class ApiService {
 
   async getFriendRequests() {
     return this.request<any[]>('/friends/requests');
+  }
+
+  async getSuggestedFriends() {
+    return this.request<any[]>('/friends/suggestions');
   }
 
   async sendFriendRequest(userId: string) {

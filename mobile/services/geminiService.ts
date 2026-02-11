@@ -11,7 +11,7 @@ Tone: Compassionate, biblical, encouraging, prophetic, and wisdom-filled.
  * Generates an uplifting prayer using gemini-3-flash-preview.
  */
 export const generatePrayer = async (topic: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: process.env.EXPO_PUBLIC_GEMINI_API_KEY });
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -30,7 +30,7 @@ export const generatePrayer = async (topic: string): Promise<string> => {
  * Answers Bible study questions using gemini-3-flash-preview.
  */
 export const askBibleAi = async (question: string, context: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: process.env.EXPO_PUBLIC_GEMINI_API_KEY });
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -53,50 +53,50 @@ export const askBibleAi = async (question: string, context: string): Promise<str
  * General church assistant chat using gemini-3-flash-preview.
  */
 export const askChurchAi = async (message: string, history: string = ""): Promise<string> => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `
+  const ai = new GoogleGenAI({ apiKey: process.env.EXPO_PUBLIC_GEMINI_API_KEY });
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `
         ${CHRISTIAN_CONTEXT_INSTRUCTION}
         Previous Conversation Context: ${history}
         User Message: ${message}
         
         Answer helpfully and briefly. Provide info about service times (Sun 9am), location, or general spiritual guidance.`,
-      });
-      return response.text || "I couldn't process that request.";
-    } catch (error) {
-      console.error("Error asking Church AI:", error);
-      return "I'm currently offline. Please try again later.";
-    }
-  };
+    });
+    return response.text || "I couldn't process that request.";
+  } catch (error) {
+    console.error("Error asking Church AI:", error);
+    return "I'm currently offline. Please try again later.";
+  }
+};
 
 /**
  * Generates artistic church-related images using gemini-2.5-flash-image.
  */
 export const generateChurchImage = async (prompt: string): Promise<string | null> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: process.env.EXPO_PUBLIC_GEMINI_API_KEY });
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: {
         parts: [
-           { text: "Generate a respectful, artistic image suitable for a church setting based on: " + prompt }
+          { text: "Generate a respectful, artistic image suitable for a church setting based on: " + prompt }
         ],
       },
       config: {
-         imageConfig: {
-             aspectRatio: "1:1"
-         }
+        imageConfig: {
+          aspectRatio: "1:1"
+        }
       }
     });
 
     if (response.candidates?.[0]?.content?.parts) {
-        for (const part of response.candidates[0].content.parts) {
-             if (part.inlineData) {
-                return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
-             }
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) {
+          return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
         }
+      }
     }
     return null;
 

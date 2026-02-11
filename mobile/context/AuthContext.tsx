@@ -8,6 +8,8 @@ interface User {
     name: string;
     avatar?: string;
     role?: string;
+    phone?: string;
+    location?: string;
 }
 
 interface AuthContextType {
@@ -54,6 +56,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 name: result.user.name,
                 avatar: result.user.avatar,
                 role: result.user.role,
+                phone: result.user.phone,
+                location: result.user.location,
             };
             setUser(userData);
             await AsyncStorage.setItem('church_app_user', JSON.stringify(userData));

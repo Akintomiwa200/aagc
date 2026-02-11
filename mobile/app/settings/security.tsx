@@ -1,11 +1,46 @@
-import React from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
+import { apiService } from '@/services/apiService';
 import { Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react-native';
 
 export default function SecuritySettings() {
     const { colors } = useTheme();
-    const [showPassword, setShowPassword] = React.useState(false);
+    const { user } = useAuth();
+    const [showPassword, setShowPassword] = useState(false);
+    const [updating, setUpdating] = useState(false);
+    const [passwords, setPasswords] = useState({
+        current: '',
+        new: '',
+        confirm: ''
+    });
+
+    const handleUpdatePassword = async () => {
+        if (!user?.id) return;
+        if (!passwords.current || !passwords.new || !passwords.confirm) {
+            Alert.alert('Error', 'Please fill in all password fields');
+            return;
+        }
+        if (passwords.new !== passwords.confirm) {
+            Alert.alert('Error', 'New passwords do not match');
+            return;
+        }
+
+        try {
+            setUpdating(true);
+            await apiService.post(`/users/${user.id}/change-password`, {
+                oldPassword: passwords.current,
+                newPassword: passwords.new
+            });
+            Alert.alert('Success', 'Password updated successfully');
+            setPasswords({ current: '', new: '', confirm: '' });
+        } catch (error: any) {
+            Alert.alert('Error', error.message || 'Failed to update password');
+        } finally {
+            setUpdating(false);
+        }
+    };
 
     const styles = StyleSheet.create({
         container: {
@@ -73,6 +108,8 @@ export default function SecuritySettings() {
                             style={styles.input}
                             secureTextEntry={!showPassword}
                             placeholder="••••••••"
+                            value={passwords.current}
+                            onChangeText={(text) => setPasswords({ ...passwords, current: text })}
                             placeholderTextColor={colors.border}
                         />
                     </View>
@@ -86,6 +123,8 @@ export default function SecuritySettings() {
                             style={styles.input}
                             secureTextEntry={!showPassword}
                             placeholder="••••••••"
+                            value={passwords.new}
+                            onChangeText={(text) => setPasswords({ ...passwords, new: text })}
                             placeholderTextColor={colors.border}
                         />
                     </View>
@@ -99,6 +138,8 @@ export default function SecuritySettings() {
                             style={styles.input}
                             secureTextEntry={!showPassword}
                             placeholder="••••••••"
+                            value={passwords.confirm}
+                            onChangeText={(text) => setPasswords({ ...passwords, confirm: text })}
                             placeholderTextColor={colors.border}
                         />
                     </View>
@@ -112,8 +153,16 @@ export default function SecuritySettings() {
                     <Text style={{ color: colors.primary, fontWeight: '600' }}>Show Password</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.updateButton}>
-                    <Text style={styles.updateButtonText}>Update Password</Text>
+                <TouchableOpacity
+                    style={[styles.updateButton, updating && { opacity: 0.7 }]}
+                    onPress={handleUpdatePassword}
+                    disabled={updating}
+                >
+                    {updating ? (
+                        <ActivityIndicator color="#FFF" />
+                    ) : (
+                        <Text style={styles.updateButtonText}>Update Password</Text>
+                    )}
                 </TouchableOpacity>
             </View>
 

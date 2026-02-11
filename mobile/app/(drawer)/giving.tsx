@@ -23,6 +23,21 @@ export default function GivingScreen() {
         fetchUserDataAndHistory();
     }, []);
 
+    const fetchUserDataAndHistory = async () => {
+        try {
+            const userData = await apiService.getMe();
+            setUser(userData);
+            if (userData?.id || userData?._id) {
+                const donations = await apiService.getDonations(userData.id || userData._id);
+                setHistory(donations);
+            }
+        } catch (error) {
+            console.error('Failed to fetch user or history:', error);
+        } finally {
+            setLoadingHistory(false);
+        }
+    };
+
     const { socket } = useSocket();
 
     useEffect(() => {
@@ -58,11 +73,11 @@ export default function GivingScreen() {
             await apiService.createDonation({
                 type: givingType,
                 amount: amount,
-                userId: user.id
+                userId: user.id || user._id
             });
             Alert.alert('Success', 'Thank you for your generosity!');
             // Refresh history
-            const donations = await apiService.getDonations(user.id);
+            const donations = await apiService.getDonations(user.id || user._id);
             setHistory(donations);
             // Reset form
             setSelectedAmount(null);

@@ -45,6 +45,29 @@ import { useSocket } from '@/context/SocketContext';
 
 const { width } = Dimensions.get('window');
 
+
+const QuickLink = ({ icon: Icon, title, route, color, badge, colors, router, styles }: any) => (
+    <TouchableOpacity style={styles.linkCard} onPress={() => router.push(route)}>
+        <View style={[styles.linkIcon, { backgroundColor: color + '15' }]}>
+            {Icon && <Icon size={24} color={color} />}
+        </View>
+        <Text style={styles.linkTitle}>{title}</Text>
+        {badge ? (
+            <View style={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                backgroundColor: colors.primary,
+                borderRadius: 10,
+                paddingHorizontal: 6,
+                paddingVertical: 2,
+            }}>
+                <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '600' }}>{badge}</Text>
+            </View>
+        ) : null}
+    </TouchableOpacity>
+);
+
 export default function HomeScreen() {
     const router = useRouter();
     const { theme, colors } = useTheme();
@@ -478,28 +501,6 @@ export default function HomeScreen() {
         },
     });
 
-    const QuickLink = ({ icon: Icon, title, route, color, badge }: any) => (
-        <TouchableOpacity style={styles.linkCard} onPress={() => router.push(route)}>
-            <View style={[styles.linkIcon, { backgroundColor: color + '15' }]}>
-                <Icon size={24} color={color} />
-            </View>
-            <Text style={styles.linkTitle}>{title}</Text>
-            {badge && (
-                <View style={{
-                    position: 'absolute',
-                    top: 8,
-                    right: 8,
-                    backgroundColor: colors.primary,
-                    borderRadius: 10,
-                    paddingHorizontal: 6,
-                    paddingVertical: 2,
-                }}>
-                    <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '600' }}>{badge}</Text>
-                </View>
-            )}
-        </TouchableOpacity>
-    );
-
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView
@@ -612,12 +613,12 @@ export default function HomeScreen() {
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { marginBottom: 16 }]}>🚀 Quick Actions</Text>
                     <View style={styles.quickLinksGrid}>
-                        <QuickLink icon={Book} title="Bible" route="/bible" color="#7C3AED" />
-                        <QuickLink icon={Heart} title="Giving" route="/giving" color="#EC4899" badge="New" />
-                        <QuickLink icon={Zap} title="Live Meet" route="/live-meet" color="#F59E0B" />
-                        <QuickLink icon={MessageSquare} title="Prayers" route="/prayers" color="#10B981" badge={prayerCount} />
-                        <QuickLink icon={Users} title="Community" route="/friends" color="#3B82F6" badge={activeUsers} />
-                        <QuickLink icon={Calendar} title="Events" route="/events" color="#6366F1" badge={todayEvents.length} />
+                        <QuickLink icon={Book} title="Bible" route="/bible" color="#7C3AED" colors={colors} router={router} styles={styles} />
+                        <QuickLink icon={Heart} title="Giving" route="/giving" color="#EC4899" badge="New" colors={colors} router={router} styles={styles} />
+                        <QuickLink icon={Zap} title="Live Meet" route="/live-meet" color="#F59E0B" colors={colors} router={router} styles={styles} />
+                        <QuickLink icon={MessageSquare} title="Prayers" route="/prayers" color="#10B981" badge={prayerCount} colors={colors} router={router} styles={styles} />
+                        <QuickLink icon={Users} title="Community" route="/friends" color="#3B82F6" badge={activeUsers} colors={colors} router={router} styles={styles} />
+                        <QuickLink icon={Calendar} title="Events" route="/events" color="#6366F1" badge={todayEvents.length} colors={colors} router={router} styles={styles} />
                     </View>
                 </View>
 

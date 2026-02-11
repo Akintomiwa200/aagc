@@ -94,12 +94,16 @@ export class DevotionalsController {
       );
       dto.featuredImage = uploadResult.secure_url;
     }
-    return this.devotionalsService.update(id, dto);
+    const updated = await this.devotionalsService.update(id, dto);
+    await this.websocketGateway.emitDevotionalUpdated(updated);
+    return updated;
   }
 
   @Delete(':id')
   async delete(@Param('id') id: string) {
-    return this.devotionalsService.delete(id);
+    const result = await this.devotionalsService.delete(id);
+    await this.websocketGateway.emitDevotionalDeleted(id);
+    return result;
   }
 
   @Post(':id/like')

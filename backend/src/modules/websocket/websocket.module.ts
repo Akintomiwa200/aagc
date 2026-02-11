@@ -10,6 +10,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { NotesModule } from '../notes/notes.module';
 import { ConnectionCardsModule } from '../connection-cards/connection-cards.module';
 import { LiveStreamModule } from '../livestream/livestream.module';
+import { DevotionalsModule } from '../devotionals/devotionals.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { LiveStreamModule } from '../livestream/livestream.module';
     forwardRef(() => NotesModule),
     forwardRef(() => ConnectionCardsModule),
     forwardRef(() => LiveStreamModule),
+    forwardRef(() => DevotionalsModule),
   ],
   providers: [AppGateway],
   exports: [AppGateway],

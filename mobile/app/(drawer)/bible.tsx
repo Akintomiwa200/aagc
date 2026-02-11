@@ -14,7 +14,10 @@ import {
     Dimensions,
     Animated,
     Share,
+    PanResponder,
+    RefreshControl,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import {
     ChevronLeft,
     ChevronRight,
@@ -28,21 +31,13 @@ import {
     Highlighter,
     MessageSquare,
     Share2,
-    MoreVertical,
-    Sun,
-    Moon,
-    Type,
-    Volume2,
     Check,
-    Filter,
-    Home,
-    Tag,
     Plus,
     Minus,
-    ZoomIn,
-    ZoomOut,
 } from 'lucide-react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
+import { useSettings } from '@/context/SettingsContext';
 import { BIBLE_BOOKS } from '@/constants/BibleData';
 import { bibleService, BIBLE_VERSIONS, HIGHLIGHT_COLORS } from '@/services/bibleService';
 import type { BibleVerse, Highlight, Bookmark as BookmarkType, Note } from '@/services/bibleService';
@@ -50,12 +45,42 @@ import type { BibleVerse, Highlight, Bookmark as BookmarkType, Note } from '@/se
 const { width, height } = Dimensions.get('window');
 
 export default function BibleScreen() {
+    const params = useLocalSearchParams();
     const { theme, colors } = useTheme();
+    const { settings, updateSettings } = useSettings();
     const isDark = theme === 'dark';
-
     const [selectedBook, setSelectedBook] = useState(BIBLE_BOOKS[42]); // John
     const [selectedChapter, setSelectedChapter] = useState(1);
-    const [selectedVersion, setSelectedVersion] = useState(BIBLE_VERSIONS[0]); // Fixed: Use imported constant
+    const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
+
+    // Initial load from params
+    useEffect(() => {
+        if (params.book) {
+            const book = BIBLE_BOOKS.find(b => b.name.toLowerCase() === (params.book as string).toLowerCase());
+            if (book) {
+                setSelectedBook(book);
+                if (params.chapter) setSelectedChapter(parseInt(params.chapter as string));
+                if (params.verse) setSelectedVerse(parseInt(params.verse as string));
+
+                // Scroll to verse if provided
+                if (params.verse) {
+                    setTimeout(() => {
+                        if (mainListRef.current) {
+                            mainListRef.current.scrollToIndex({
+                                index: parseInt(params.verse as string) - 1,
+                                animated: true,
+                                viewPosition: 0,
+                            });
+                        }
+                    }, 500);
+                }
+            }
+        }
+    }, [params.book, params.chapter, params.verse]);
+
+    // Find the current version object from settings
+    const currentVersion = BIBLE_VERSIONS.find(v => v.code === settings.bibleVersion) || BIBLE_VERSIONS[0];
+    const [loadingVOTD, setLoadingVOTD] = useState(false);
     const [verses, setVerses] = useState<BibleVerse[]>([]);
     const [loading, setLoading] = useState(true);
     const [highlights, setHighlights] = useState<Highlight[]>([]);
@@ -74,14 +99,79 @@ export default function BibleScreen() {
     const [showNoteModal, setShowNoteModal] = useState(false);
     const [noteText, setNoteText] = useState('');
     const [selectedHighlightColor, setSelectedHighlightColor] = useState('yellow');
+    const [votd, setVotd] = useState<BibleVerse | null>(null);
+
+    // Typography Settings
+    const [fontFamily, setFontFamily] = useState<'sans' | 'serif'>('sans');
+    const [lineHeight, setLineHeight] = useState(1.5);
+    const [letterSpacing, setLetterSpacing] = useState(0);
+
+    // Parallel Reading
+    const [parallelMode, setParallelMode] = useState(false);
+    const [parallelVersion, setParallelVersion] = useState(BIBLE_VERSIONS[1]); // WEB by default
+    const [parallelVerses, setParallelVerses] = useState<BibleVerse[]>([]);
+    const [loadingParallel, setLoadingParallel] = useState(false);
+
+    // Themes
+    // Themes - set initial based on global theme
+    const [bibleTheme, setBibleTheme] = useState<'light' | 'dark' | 'sepia' | 'paper'>(isDark ? 'dark' : 'light');
+
+    const bibleColors = getThemeColors();
 
     // New state for scripture selector
     const [showScriptureSelector, setShowScriptureSelector] = useState(false);
-    const [selectorTab, setSelectorTab] = useState<'book' | 'chapter'>('book');
+    const [selectorTab, setSelectorTab] = useState<'book' | 'chapter' | 'verse'>('book');
+    const [showVersionPicker, setShowVersionPicker] = useState(false);
 
     // Animations
     const slideAnim = useRef(new Animated.Value(0)).current;
     const fadeAnim = useRef(new Animated.Value(0)).current;
+    const mainListRef = useRef<FlatList>(null);
+
+    const panResponder = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => false,
+            onMoveShouldSetPanResponder: (_, gestureState) => {
+                return Math.abs(gestureState.dx) > 30 && Math.abs(gestureState.dy) < 10;
+            },
+            onPanResponderRelease: (_, gestureState) => {
+                if (gestureState.dx > 50) {
+                    handlePrevChapter();
+                } else if (gestureState.dx < -50) {
+                    handleNextChapter();
+                }
+            },
+        })
+    ).current;
+
+    const getThemeColors = () => {
+        switch (bibleTheme) {
+            case 'sepia':
+                return { background: '#F4ECD8', text: '#5B4636', card: '#EFE3C6', border: '#D3C1A5' };
+            case 'paper':
+                return { background: '#F8F9F3', text: '#2C3E50', card: '#F2F3EC', border: '#DCDDE1' };
+            case 'dark':
+                return { background: '#121212', text: '#E0E0E0', card: '#1E1E1E', border: '#333333' };
+            default:
+                return { background: '#FFFFFF', text: '#1A1A1A', card: '#F8F9FA', border: '#E9ECEF' };
+        }
+    };
+
+    const fetchParallelScripture = useCallback(async () => {
+        setLoadingParallel(true);
+        try {
+            const data = await bibleService.getChapter(
+                selectedBook.name,
+                selectedChapter,
+                parallelVersion.code
+            );
+            setParallelVerses(data || []);
+        } catch (error) {
+            console.error('Failed to fetch parallel scripture:', error);
+        } finally {
+            setLoadingParallel(false);
+        }
+    }, [selectedBook, selectedChapter, parallelVersion]);
 
     const fetchScripture = useCallback(async () => {
         setLoading(true);
@@ -89,34 +179,49 @@ export default function BibleScreen() {
             const versesData = await bibleService.getChapter(
                 selectedBook.name,
                 selectedChapter,
-                selectedVersion.code
+                settings.bibleVersion
             );
             setVerses(versesData || []);
-            
+
             // Load user data
             const [userHighlights, userBookmarks, userNotes] = await Promise.all([
                 bibleService.getHighlights(),
                 bibleService.getBookmarks(),
                 bibleService.getNotes(),
             ]);
-            
+
             setHighlights(userHighlights || []);
             setBookmarks(userBookmarks || []);
             setNotes(userNotes || []);
-            
+
             // Save reading progress
             await bibleService.saveReadingProgress(selectedBook.name, selectedChapter);
+
+            // Fetch parallel if needed
+            if (parallelMode) {
+                fetchParallelScripture();
+            }
         } catch (error) {
             console.error('Failed to fetch scripture:', error);
             setVerses([]);
         } finally {
             setLoading(false);
         }
-    }, [selectedBook, selectedChapter, selectedVersion]);
+    }, [selectedBook, selectedChapter, settings.bibleVersion, parallelMode, fetchParallelScripture]);
+
+    const fetchVOTD = useCallback(async () => {
+        try {
+            const verse = await bibleService.getVerseOfTheDay(settings.bibleVersion);
+            setVotd(verse);
+        } catch (error) {
+            console.error('Failed to fetch VOTD:', error);
+        }
+    }, [settings.bibleVersion]);
 
     useEffect(() => {
         fetchScripture();
-    }, [fetchScripture]);
+        fetchVOTD();
+    }, [fetchScripture, fetchVOTD]);
 
     const handleNextChapter = () => {
         if (selectedChapter < selectedBook.chapters) {
@@ -161,13 +266,13 @@ export default function BibleScreen() {
         setSelectedVerseForActions(verse);
         setSelectedVerses(new Set([verse.verse]));
         setShowVerseActions(true);
-        
+
         // Animate slide up
         Animated.spring(slideAnim, {
             toValue: 1,
             useNativeDriver: true,
         }).start();
-        
+
         Animated.timing(fadeAnim, {
             toValue: 1,
             duration: 200,
@@ -180,7 +285,7 @@ export default function BibleScreen() {
             toValue: 0,
             useNativeDriver: true,
         }).start();
-        
+
         Animated.timing(fadeAnim, {
             toValue: 0,
             duration: 200,
@@ -242,7 +347,7 @@ export default function BibleScreen() {
         if (selectedVerseForActions) {
             try {
                 await Share.share({
-                    message: `${selectedVerseForActions.book} ${selectedVerseForActions.chapter}:${selectedVerseForActions.verse}\n\n"${selectedVerseForActions.text}"\n\n- ${selectedVersion.name}`,
+                    message: `${selectedVerseForActions.book} ${selectedVerseForActions.chapter}:${selectedVerseForActions.verse}\n\n"${selectedVerseForActions.text}"\n\n- ${currentVersion.name}`,
                 });
                 hideVerseActions();
             } catch (error) {
@@ -254,7 +359,7 @@ export default function BibleScreen() {
     const handleSearch = async () => {
         if (searchQuery.trim()) {
             try {
-                const results = await bibleService.searchScripture(searchQuery, selectedVersion.code);
+                const results = await bibleService.searchScripture(searchQuery, settings.bibleVersion);
                 setSearchResults(results || []);
             } catch (error) {
                 console.error('Search failed:', error);
@@ -292,41 +397,80 @@ export default function BibleScreen() {
 
     const selectChapter = (chapter: number) => {
         setSelectedChapter(chapter);
-        setShowScriptureSelector(false);
+        setSelectorTab('verse');
     };
 
-    const renderVerse = ({ item }: { item: BibleVerse }) => {
+    const selectVerse = (verse: number) => {
+        setSelectedVerse(verse);
+        setShowScriptureSelector(false);
+        // Scroll to verse after a short delay to ensure rendering
+        setTimeout(() => {
+            if (mainListRef.current) {
+                mainListRef.current.scrollToIndex({
+                    index: verse - 1,
+                    animated: true,
+                    viewPosition: 0,
+                });
+            }
+        }, 300);
+    };
+
+    const renderVerse = ({ item, index }: { item: BibleVerse, index: number }) => {
         const highlight = getVerseHighlight(item.id);
         const note = getVerseNote(item.id);
         const isBookmarked = isVerseBookmarked(item.id);
         const isSelected = selectedVerses.has(item.verse);
-        
+
+        // Parallel verse
+        const parallelVerse = parallelMode ? parallelVerses[index] : null;
+
+        const textStyle = {
+            fontSize,
+            lineHeight: fontSize * lineHeight,
+            letterSpacing,
+            fontFamily: fontFamily === 'serif' ? 'serif' : 'System',
+            color: bibleColors.text,
+        };
+
         return (
-            <TouchableOpacity
-                style={[
-                    verseStyles.verseContainer,
-                    isSelected && { backgroundColor: colors.primary + '08' },
-                    highlight && { backgroundColor: highlight.color + '30' },
-                ]}
-                onPress={() => handleVersePress(item)}
-                onLongPress={() => handleLongPress(item)}
-                activeOpacity={0.7}
-            >
-                <View style={verseStyles.verseNumberContainer}>
-                    <Text style={verseStyles.verseNumber}>{item.verse}</Text>
-                </View>
-                <View style={verseStyles.verseTextContainer}>
-                    <Text style={[verseStyles.verseText, { fontSize }]}>{item.text}</Text>
-                    {note && (
-                        <Text style={verseStyles.footnote}>
-                            📝 Note: {note.text}
-                        </Text>
-                    )}
-                    {isBookmarked && (
-                        <BookmarkCheck size={16} color={colors.primary} style={{ marginTop: 8 }} />
-                    )}
-                </View>
-            </TouchableOpacity>
+            <View style={[
+                verseStyles.verseRow,
+                isSelected && { backgroundColor: colors.primary + '15' },
+            ]}>
+                <TouchableOpacity
+                    style={[
+                        verseStyles.verseContainer,
+                        parallelMode && { flex: 1 },
+                        highlight && { backgroundColor: highlight.color + '40' },
+                    ]}
+                    onPress={() => handleVersePress(item)}
+                    onLongPress={() => handleLongPress(item)}
+                    activeOpacity={0.7}
+                >
+                    <View style={verseStyles.verseNumberContainer}>
+                        <Text style={[verseStyles.verseNumber, { color: colors.primary, backgroundColor: colors.primary + '15' }]}>{item.verse}</Text>
+                    </View>
+                    <View style={verseStyles.verseTextContainer}>
+                        <Text style={[verseStyles.verseText, textStyle]}>{item.text}</Text>
+                        {note && (
+                            <Text style={[verseStyles.footnote, { color: bibleColors.text + '90' }]}>
+                                📝 Note: {note.text}
+                            </Text>
+                        )}
+                        {isBookmarked && (
+                            <BookmarkCheck size={14} color={colors.primary} style={{ marginTop: 4 }} />
+                        )}
+                    </View>
+                </TouchableOpacity>
+
+                {parallelMode && parallelVerse && (
+                    <View style={[verseStyles.verseContainer, { flex: 1, borderLeftWidth: 1, borderLeftColor: bibleColors.border }]}>
+                        <View style={verseStyles.verseTextContainer}>
+                            <Text style={[verseStyles.verseText, textStyle]}>{parallelVerse.text}</Text>
+                        </View>
+                    </View>
+                )}
+            </View>
         );
     };
 
@@ -334,7 +478,7 @@ export default function BibleScreen() {
     const containerStyles = StyleSheet.create({
         container: {
             flex: 1,
-            backgroundColor: colors.background,
+            backgroundColor: bibleColors.background,
         },
         header: {
             flexDirection: 'row',
@@ -342,9 +486,9 @@ export default function BibleScreen() {
             justifyContent: 'space-between',
             paddingHorizontal: 20,
             paddingVertical: 16,
-            backgroundColor: colors.card,
+            backgroundColor: bibleColors.card,
             borderBottomWidth: 1,
-            borderBottomColor: colors.border,
+            borderBottomColor: bibleColors.border,
         },
         headerLeft: {
             flexDirection: 'row',
@@ -363,12 +507,12 @@ export default function BibleScreen() {
             paddingHorizontal: 12,
             paddingVertical: 8,
             borderRadius: 12,
-            backgroundColor: colors.primary + '10',
+            backgroundColor: colors.primary + '15',
         },
         chapterText: {
             fontSize: 16,
             fontWeight: '700',
-            color: colors.text,
+            color: bibleColors.text,
         },
         versionSelector: {
             flexDirection: 'row',
@@ -388,7 +532,7 @@ export default function BibleScreen() {
             width: 40,
             height: 40,
             borderRadius: 20,
-            backgroundColor: colors.primary + '10',
+            backgroundColor: colors.primary + '15',
             justifyContent: 'center',
             alignItems: 'center',
         },
@@ -401,9 +545,9 @@ export default function BibleScreen() {
             alignItems: 'center',
             paddingHorizontal: 24,
             paddingVertical: 16,
-            backgroundColor: colors.card,
+            backgroundColor: bibleColors.card,
             borderTopWidth: 1,
-            borderTopColor: colors.border,
+            borderTopColor: bibleColors.border,
         },
         navButton: {
             flexDirection: 'row',
@@ -412,7 +556,7 @@ export default function BibleScreen() {
             paddingHorizontal: 20,
             paddingVertical: 12,
             borderRadius: 25,
-            backgroundColor: colors.primary + '10',
+            backgroundColor: colors.primary + '15',
         },
         navButtonText: {
             fontSize: 14,
@@ -425,21 +569,24 @@ export default function BibleScreen() {
         chapterTitle: {
             fontSize: 16,
             fontWeight: 'bold',
-            color: colors.text,
+            color: bibleColors.text,
         },
         chapterSubtitle: {
             fontSize: 12,
-            color: colors.secondary,
+            color: bibleColors.text + '90',
         },
     });
 
     const verseStyles = StyleSheet.create({
+        verseRow: {
+            flexDirection: 'row',
+        },
         verseContainer: {
             flexDirection: 'row',
             paddingHorizontal: 24,
             paddingVertical: 16,
             borderBottomWidth: 1,
-            borderBottomColor: colors.border + '30',
+            borderBottomColor: bibleColors.border,
         },
         verseNumberContainer: {
             width: 36,
@@ -455,19 +602,19 @@ export default function BibleScreen() {
             borderRadius: 12,
             textAlign: 'center',
             lineHeight: 24,
-            backgroundColor: colors.primary + '10',
+            backgroundColor: colors.primary + '15',
         },
         verseTextContainer: {
             flex: 1,
         },
         verseText: {
             lineHeight: 24,
-            color: colors.text,
+            color: bibleColors.text,
             letterSpacing: 0.3,
         },
         footnote: {
             fontSize: 12,
-            color: colors.secondary,
+            color: bibleColors.text + '80',
             fontStyle: 'italic',
             marginTop: 8,
         },
@@ -551,7 +698,7 @@ export default function BibleScreen() {
             justifyContent: 'flex-end',
         },
         modalContent: {
-            backgroundColor: colors.card,
+            backgroundColor: bibleColors.card,
             borderTopLeftRadius: 24,
             borderTopRightRadius: 24,
             maxHeight: '80%',
@@ -563,17 +710,17 @@ export default function BibleScreen() {
             alignItems: 'center',
             padding: 20,
             borderBottomWidth: 1,
-            borderBottomColor: colors.border,
+            borderBottomColor: bibleColors.border,
         },
         modalTitle: {
             fontSize: 20,
             fontWeight: 'bold',
-            color: colors.text,
+            color: bibleColors.text,
         },
         tabContainer: {
             flexDirection: 'row',
             padding: 4,
-            backgroundColor: colors.background,
+            backgroundColor: bibleColors.background,
             margin: 16,
             borderRadius: 12,
         },
@@ -584,7 +731,7 @@ export default function BibleScreen() {
             borderRadius: 8,
         },
         activeTab: {
-            backgroundColor: colors.card,
+            backgroundColor: bibleColors.card,
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.1,
@@ -594,20 +741,46 @@ export default function BibleScreen() {
         tabText: {
             fontSize: 14,
             fontWeight: '600',
-            color: colors.secondary,
+            color: bibleColors.text + '90',
         },
         activeTabText: {
             color: colors.primary,
         },
-        bookItem: {
+        bookGrid: {
+            padding: 12,
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'flex-start',
+        },
+        testamentHeader: {
+            width: '100%',
             paddingVertical: 12,
             paddingHorizontal: 16,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border,
+            backgroundColor: bibleColors.card + '80',
+            marginBottom: 8,
+        },
+        testamentHeaderText: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: bibleColors.text + '90',
+            textTransform: 'uppercase',
+            letterSpacing: 1,
+        },
+        bookGridItem: {
+            width: (width * 0.9 - 24) / 3 - 8,
+            height: 48,
+            justifyContent: 'center',
+            alignItems: 'center',
+            margin: 4,
+            borderRadius: 8,
+            backgroundColor: bibleColors.background,
+            borderWidth: 1,
+            borderColor: bibleColors.border,
         },
         bookItemText: {
-            fontSize: 16,
-            color: colors.text,
+            fontSize: 13,
+            color: bibleColors.text,
+            textAlign: 'center',
         },
         chapterGrid: {
             flexDirection: 'row',
@@ -621,10 +794,10 @@ export default function BibleScreen() {
             height: 50,
             borderRadius: 25,
             borderWidth: 1,
-            borderColor: colors.border,
+            borderColor: bibleColors.border,
             justifyContent: 'center',
             alignItems: 'center',
-            backgroundColor: colors.background,
+            backgroundColor: bibleColors.background,
         },
         activeChapterItem: {
             backgroundColor: colors.primary,
@@ -697,20 +870,20 @@ export default function BibleScreen() {
     const searchStyles = StyleSheet.create({
         searchContainer: {
             padding: 20,
-            backgroundColor: colors.card,
+            backgroundColor: bibleColors.card,
         },
         searchInput: {
-            backgroundColor: colors.background,
+            backgroundColor: bibleColors.background,
             borderRadius: 12,
             padding: 16,
             fontSize: 16,
-            color: colors.text,
+            color: bibleColors.text,
             marginBottom: 12,
         },
         searchResult: {
             padding: 16,
             borderBottomWidth: 1,
-            borderBottomColor: colors.border,
+            borderBottomColor: bibleColors.border,
         },
         searchReference: {
             fontSize: 14,
@@ -720,7 +893,7 @@ export default function BibleScreen() {
         },
         searchText: {
             fontSize: 14,
-            color: colors.text,
+            color: bibleColors.text,
             lineHeight: 20,
         },
     });
@@ -735,7 +908,7 @@ export default function BibleScreen() {
         settingsTitle: {
             fontSize: 16,
             fontWeight: 'bold',
-            color: colors.text,
+            color: bibleColors.text,
             marginBottom: 16,
         },
         fontSizeControl: {
@@ -747,7 +920,7 @@ export default function BibleScreen() {
         fontSizeValue: {
             fontSize: 16,
             fontWeight: '600',
-            color: colors.text,
+            color: bibleColors.text,
         },
         themeButton: {
             flexDirection: 'row',
@@ -755,7 +928,7 @@ export default function BibleScreen() {
             justifyContent: 'space-between',
             padding: 16,
             borderRadius: 12,
-            backgroundColor: colors.background,
+            backgroundColor: bibleColors.background,
             marginBottom: 12,
         },
     });
@@ -767,41 +940,49 @@ export default function BibleScreen() {
             alignItems: 'center',
             justifyContent: 'space-between',
             borderBottomWidth: 1,
-            borderBottomColor: colors.border,
+            borderBottomColor: bibleColors.border,
         },
         versionItemName: {
             fontSize: 16,
-            color: colors.text,
+            color: bibleColors.text,
         },
     });
 
-    const [showVersionPicker, setShowVersionPicker] = useState(false);
-
     return (
         <SafeAreaView style={containerStyles.container}>
+
+
+            <StatusBar style={bibleTheme === 'dark' ? 'light' : 'dark'} />
+
             {/* Header */}
             <View style={containerStyles.header}>
                 <View style={containerStyles.headerLeft}>
-                    <TouchableOpacity 
-                        style={containerStyles.chapterSelector} 
+                    <TouchableOpacity
+                        style={containerStyles.chapterSelector}
                         onPress={openScriptureSelector}
                     >
                         <Text style={containerStyles.chapterText}>
-                            {selectedBook.name} {selectedChapter}
+                            {selectedBook.name} {selectedChapter}{selectedVerse ? `:${selectedVerse}` : ''}
                         </Text>
-                        <ChevronDown size={20} color={colors.text} />
+                        <ChevronDown size={20} color={bibleColors.text} />
                     </TouchableOpacity>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={containerStyles.versionSelector}
                         onPress={() => setShowVersionPicker(true)}
                     >
                         <Text style={containerStyles.versionText}>
-                            {selectedVersion.code.toUpperCase()}
+                            {currentVersion.code.toUpperCase()}
                         </Text>
                         <ChevronDown size={14} color={colors.primary} />
                     </TouchableOpacity>
                 </View>
                 <View style={containerStyles.headerRight}>
+                    <TouchableOpacity
+                        style={[containerStyles.iconButton, parallelMode && { backgroundColor: colors.primary + '20' }]}
+                        onPress={() => setParallelMode(!parallelMode)}
+                    >
+                        <Book size={20} color={parallelMode ? colors.primary : bibleColors.text + '90'} />
+                    </TouchableOpacity>
                     <TouchableOpacity
                         style={containerStyles.iconButton}
                         onPress={() => setShowSearch(true)}
@@ -818,39 +999,91 @@ export default function BibleScreen() {
             </View>
 
             {/* Bible Content */}
-            {loading ? (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <ActivityIndicator size="large" color={colors.primary} />
-                    <Text style={{ marginTop: 16, color: colors.secondary }}>
-                        Loading Scripture...
-                    </Text>
-                </View>
-            ) : (
-                <FlatList
-                    data={verses}
-                    keyExtractor={(item) => item.id}
-                    renderItem={renderVerse}
-                    ListHeaderComponent={
-                        <View style={{ padding: 24, alignItems: 'center' }}>
-                            <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.text }}>
-                                {selectedBook.name} {selectedChapter}
-                            </Text>
-                            <Text style={{ fontSize: 14, color: colors.secondary, marginTop: 4 }}>
-                                {selectedVersion.name}
-                            </Text>
-                        </View>
-                    }
-                    ListFooterComponent={<View style={{ height: 80 }} />}
-                />
-            )}
+            <View style={{ flex: 1 }} {...panResponder.panHandlers}>
+                {loading ? (
+                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                        <ActivityIndicator size="large" color={colors.primary} />
+                        <Text style={{ marginTop: 16, color: bibleColors.text + '90' }}>
+                            Loading Scripture...
+                        </Text>
+                    </View>
+                ) : (
+                    <FlatList
+                        ref={mainListRef}
+                        data={verses}
+                        keyExtractor={(item) => item.id}
+                        renderItem={renderVerse}
+                        extraData={{ fontSize, bibleTheme, fontFamily, lineHeight, letterSpacing, selectedVerses, parallelMode, bibleColors }}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={loading}
+                                onRefresh={fetchScripture}
+                                colors={[colors.primary]}
+                                tintColor={colors.primary}
+                            />
+                        }
+                        ListEmptyComponent={
+                            !loading ? (
+                                <View style={{ padding: 40, alignItems: 'center' }}>
+                                    <Text style={{ color: bibleColors.text + '80', textAlign: 'center' }}>
+                                        No verses found for this chapter or version.
+                                    </Text>
+                                    <TouchableOpacity
+                                        style={[containerStyles.navButton, { marginTop: 20 }]}
+                                        onPress={fetchScripture}
+                                    >
+                                        <Text style={containerStyles.navButtonText}>Retry Loading</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ) : null
+                        }
+                        onScrollToIndexFailed={(info) => {
+                            mainListRef.current?.scrollToOffset({
+                                offset: info.averageItemLength * info.index,
+                                animated: true,
+                            });
+                        }}
+                        ListHeaderComponent={
+                            <View style={{ padding: 24, alignItems: 'center' }}>
+                                <Text style={{ fontSize: 24, fontWeight: 'bold', color: bibleColors.text }}>
+                                    {selectedBook.name} {selectedChapter}
+                                </Text>
+                                <Text style={{ fontSize: 14, color: bibleColors.text + '90', marginTop: 4 }}>
+                                    {currentVersion.name}
+                                </Text>
+                            </View>
+                        }
+                        ListFooterComponent={<View style={{ height: 180 }} />}
+                    />
+                )}
+            </View>
 
             {/* Navigation Footer */}
+            {/* Verse of the Day */}
+            {
+                votd && (
+                    <View style={[
+                        { padding: 20, margin: 16, borderRadius: 16, backgroundColor: colors.primary + '10' }
+                    ]}>
+                        <Text style={{ fontSize: 12, fontWeight: 'bold', color: colors.primary, marginBottom: 8, textTransform: 'uppercase' }}>
+                            Verse of the Day
+                        </Text>
+                        <Text style={[verseStyles.verseText, { fontSize: 16, color: getThemeColors().text, fontStyle: 'italic' }]}>
+                            "{votd.text}"
+                        </Text>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary, marginTop: 8 }}>
+                            {votd.book} {votd.chapter}:{votd.verse}
+                        </Text>
+                    </View>
+                )
+            }
+
             <View style={containerStyles.footer}>
                 <TouchableOpacity style={containerStyles.navButton} onPress={handlePrevChapter}>
                     <ChevronLeft size={20} color={colors.primary} />
                     <Text style={containerStyles.navButtonText}>Previous</Text>
                 </TouchableOpacity>
-                
+
                 <View style={containerStyles.chapterInfo}>
                     <Text style={containerStyles.chapterTitle}>
                         {selectedBook.name} {selectedChapter}
@@ -859,7 +1092,7 @@ export default function BibleScreen() {
                         Chapter {selectedChapter} of {selectedBook.chapters}
                     </Text>
                 </View>
-                
+
                 <TouchableOpacity style={containerStyles.navButton} onPress={handleNextChapter}>
                     <Text style={containerStyles.navButtonText}>Next</Text>
                     <ChevronRight size={20} color={colors.primary} />
@@ -888,7 +1121,7 @@ export default function BibleScreen() {
                                 onPress={() => setSelectorTab('book')}
                             >
                                 <Text style={[
-                                    modalStyles.tabText, 
+                                    modalStyles.tabText,
                                     selectorTab === 'book' && modalStyles.activeTabText
                                 ]}>
                                     Book
@@ -899,36 +1132,74 @@ export default function BibleScreen() {
                                 onPress={() => setSelectorTab('chapter')}
                             >
                                 <Text style={[
-                                    modalStyles.tabText, 
+                                    modalStyles.tabText,
                                     selectorTab === 'chapter' && modalStyles.activeTabText
                                 ]}>
                                     Chapter
                                 </Text>
                             </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[modalStyles.tab, selectorTab === 'verse' && modalStyles.activeTab]}
+                                onPress={() => setSelectorTab('verse')}
+                            >
+                                <Text style={[
+                                    modalStyles.tabText,
+                                    selectorTab === 'verse' && modalStyles.activeTabText
+                                ]}>
+                                    Verse
+                                </Text>
+                            </TouchableOpacity>
                         </View>
 
                         {selectorTab === 'book' ? (
-                            <FlatList
-                                data={BIBLE_BOOKS}
-                                keyExtractor={(item) => item.name}
-                                renderItem={({ item }) => (
-                                    <TouchableOpacity
-                                        style={modalStyles.bookItem}
-                                        onPress={() => selectBook(item)}
-                                    >
-                                        <Text style={[
-                                            modalStyles.bookItemText,
-                                            item.name === selectedBook.name && { 
-                                                color: colors.primary, 
-                                                fontWeight: 'bold' 
-                                            }
-                                        ]}>
-                                            {item.name}
-                                        </Text>
-                                    </TouchableOpacity>
-                                )}
-                            />
-                        ) : (
+                            <ScrollView>
+                                <View style={modalStyles.testamentHeader}>
+                                    <Text style={modalStyles.testamentHeaderText}>Old Testament</Text>
+                                </View>
+                                <View style={modalStyles.bookGrid}>
+                                    {BIBLE_BOOKS.slice(0, 39).map((item) => (
+                                        <TouchableOpacity
+                                            key={item.name}
+                                            style={[
+                                                modalStyles.bookGridItem,
+                                                item.name === selectedBook.name && { borderColor: colors.primary, borderWidth: 1.5 }
+                                            ]}
+                                            onPress={() => selectBook(item)}
+                                        >
+                                            <Text style={[
+                                                modalStyles.bookItemText,
+                                                item.name === selectedBook.name && { color: colors.primary, fontWeight: 'bold' }
+                                            ]}>
+                                                {item.name}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+
+                                <View style={modalStyles.testamentHeader}>
+                                    <Text style={modalStyles.testamentHeaderText}>New Testament</Text>
+                                </View>
+                                <View style={modalStyles.bookGrid}>
+                                    {BIBLE_BOOKS.slice(39).map((item) => (
+                                        <TouchableOpacity
+                                            key={item.name}
+                                            style={[
+                                                modalStyles.bookGridItem,
+                                                item.name === selectedBook.name && { borderColor: colors.primary, borderWidth: 1.5 }
+                                            ]}
+                                            onPress={() => selectBook(item)}
+                                        >
+                                            <Text style={[
+                                                modalStyles.bookItemText,
+                                                item.name === selectedBook.name && { color: colors.primary, fontWeight: 'bold' }
+                                            ]}>
+                                                {item.name}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </ScrollView>
+                        ) : selectorTab === 'chapter' ? (
                             <ScrollView contentContainerStyle={modalStyles.chapterGrid}>
                                 {Array.from({ length: selectedBook.chapters }, (_, i) => i + 1).map((chapter) => (
                                     <TouchableOpacity
@@ -948,87 +1219,109 @@ export default function BibleScreen() {
                                     </TouchableOpacity>
                                 ))}
                             </ScrollView>
+                        ) : (
+                            <ScrollView contentContainerStyle={modalStyles.chapterGrid}>
+                                {verses.map((v, i) => (
+                                    <TouchableOpacity
+                                        key={v.id}
+                                        style={[
+                                            modalStyles.chapterItem,
+                                            v.verse === selectedVerse && modalStyles.activeChapterItem
+                                        ]}
+                                        onPress={() => selectVerse(v.verse)}
+                                    >
+                                        <Text style={[
+                                            modalStyles.chapterItemText,
+                                            v.verse === selectedVerse && modalStyles.activeChapterItemText
+                                        ]}>
+                                            {v.verse}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
                         )}
                     </View>
                 </View>
             </Modal>
 
             {/* Verse Actions Panel */}
-            {showVerseActions && (
-                <>
-                    <TouchableOpacity
-                        style={actionsStyles.actionsOverlay}
-                        onPress={hideVerseActions}
-                        activeOpacity={1}
-                    />
-                    <Animated.View
-                        style={[
-                            actionsStyles.actionsPanel,
-                            {
-                                transform: [{ translateY: slideUp }],
-                                opacity: fadeAnim,
-                            },
-                        ]}
-                    >
-                        <View style={actionsStyles.actionsHeader}>
-                            <Text style={actionsStyles.actionsTitle}>Verse Options</Text>
-                            <TouchableOpacity onPress={hideVerseActions}>
-                                <X size={24} color={colors.text} />
-                            </TouchableOpacity>
-                        </View>
-                        
-                        <View style={actionsStyles.actionsGrid}>
-                            <TouchableOpacity
-                                style={actionsStyles.actionButton}
-                                onPress={handleBookmark}
-                            >
-                                <View style={[actionsStyles.actionIcon, { backgroundColor: '#FFD70015' }]}>
-                                    <Bookmark size={24} color="#FFD700" />
-                                </View>
-                                <Text style={actionsStyles.actionText}>Bookmark</Text>
-                            </TouchableOpacity>
-                            
-                            <TouchableOpacity
-                                style={actionsStyles.actionButton}
-                                onPress={() => setShowHighlightModal(true)}
-                            >
-                                <View style={[actionsStyles.actionIcon, { backgroundColor: '#87CEEB15' }]}>
-                                    <Highlighter size={24} color="#87CEEB" />
-                                </View>
-                                <Text style={actionsStyles.actionText}>Highlight</Text>
-                            </TouchableOpacity>
-                            
-                            <TouchableOpacity
-                                style={actionsStyles.actionButton}
-                                onPress={() => setShowNoteModal(true)}
-                            >
-                                <View style={[actionsStyles.actionIcon, { backgroundColor: '#90EE9015' }]}>
-                                    <MessageSquare size={24} color="#90EE90" />
-                                </View>
-                                <Text style={actionsStyles.actionText}>Note</Text>
-                            </TouchableOpacity>
-                            
-                            <TouchableOpacity
-                                style={actionsStyles.actionButton}
-                                onPress={handleShare}
-                            >
-                                <View style={[actionsStyles.actionIcon, { backgroundColor: '#DDA0DD15' }]}>
-                                    <Share2 size={24} color="#DDA0DD" />
-                                </View>
-                                <Text style={actionsStyles.actionText}>Share</Text>
-                            </TouchableOpacity>
-                        </View>
-                        
-                        {selectedVerses.size > 0 && (
-                            <View style={actionsStyles.selectedVerses}>
-                                <Text style={actionsStyles.selectedCount}>
-                                    {selectedVerses.size} verse{selectedVerses.size > 1 ? 's' : ''} selected
-                                </Text>
+            {
+                showVerseActions && (
+                    <>
+                        <TouchableOpacity
+                            style={actionsStyles.actionsOverlay}
+                            onPress={hideVerseActions}
+                            activeOpacity={1}
+                        />
+                        <Animated.View
+                            style={[
+                                actionsStyles.actionsPanel,
+                                {
+                                    transform: [{ translateY: slideUp }],
+                                    opacity: fadeAnim,
+                                },
+                            ]}
+                        >
+                            <View style={actionsStyles.actionsHeader}>
+                                <Text style={actionsStyles.actionsTitle}>Verse Options</Text>
+                                <TouchableOpacity onPress={hideVerseActions}>
+                                    <X size={24} color={colors.text} />
+                                </TouchableOpacity>
                             </View>
-                        )}
-                    </Animated.View>
-                </>
-            )}
+
+                            <View style={actionsStyles.actionsGrid}>
+                                <TouchableOpacity
+                                    style={actionsStyles.actionButton}
+                                    onPress={handleBookmark}
+                                >
+                                    <View style={[actionsStyles.actionIcon, { backgroundColor: '#FFD70015' }]}>
+                                        <Bookmark size={24} color="#FFD700" />
+                                    </View>
+                                    <Text style={actionsStyles.actionText}>Bookmark</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={actionsStyles.actionButton}
+                                    onPress={() => setShowHighlightModal(true)}
+                                >
+                                    <View style={[actionsStyles.actionIcon, { backgroundColor: '#87CEEB15' }]}>
+                                        <Highlighter size={24} color="#87CEEB" />
+                                    </View>
+                                    <Text style={actionsStyles.actionText}>Highlight</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={actionsStyles.actionButton}
+                                    onPress={() => setShowNoteModal(true)}
+                                >
+                                    <View style={[actionsStyles.actionIcon, { backgroundColor: '#90EE9015' }]}>
+                                        <MessageSquare size={24} color="#90EE90" />
+                                    </View>
+                                    <Text style={actionsStyles.actionText}>Note</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={actionsStyles.actionButton}
+                                    onPress={handleShare}
+                                >
+                                    <View style={[actionsStyles.actionIcon, { backgroundColor: '#DDA0DD15' }]}>
+                                        <Share2 size={24} color="#DDA0DD" />
+                                    </View>
+                                    <Text style={actionsStyles.actionText}>Share</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {selectedVerses.size > 0 && (
+                                <View style={actionsStyles.selectedVerses}>
+                                    <Text style={actionsStyles.selectedCount}>
+                                        {selectedVerses.size} verse{selectedVerses.size > 1 ? 's' : ''} selected
+                                    </Text>
+                                </View>
+                            )}
+                        </Animated.View>
+                    </>
+                )
+            }
 
             {/* Highlight Color Modal */}
             <Modal
@@ -1139,7 +1432,7 @@ export default function BibleScreen() {
                             data={searchResults}
                             keyExtractor={(item) => item.id}
                             renderItem={({ item }) => (
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     style={searchStyles.searchResult}
                                     onPress={() => {
                                         // Navigate to the verse when search result is clicked
@@ -1173,7 +1466,7 @@ export default function BibleScreen() {
                 <SafeAreaView style={containerStyles.container}>
                     <View style={containerStyles.header}>
                         <TouchableOpacity onPress={() => setShowSettings(false)}>
-                            <X size={24} color={colors.text} />
+                            <X size={24} color={bibleColors.text} />
                         </TouchableOpacity>
                         <Text style={[containerStyles.chapterText, { flex: 1, textAlign: 'center' }]}>
                             Settings
@@ -1187,16 +1480,83 @@ export default function BibleScreen() {
                                 <TouchableOpacity
                                     onPress={() => setFontSize(Math.max(14, fontSize - 2))}
                                 >
-                                    <Minus size={24} color={colors.text} />
+                                    <Minus size={24} color={bibleColors.text} />
                                 </TouchableOpacity>
                                 <Text style={settingsStyles.fontSizeValue}>{fontSize}px</Text>
                                 <TouchableOpacity
                                     onPress={() => setFontSize(Math.min(32, fontSize + 2))}
                                 >
-                                    <Plus size={24} color={colors.text} />
+                                    <Plus size={24} color={bibleColors.text} />
                                 </TouchableOpacity>
                             </View>
                         </View>
+                        <View style={settingsStyles.settingsSection}>
+                            <Text style={settingsStyles.settingsTitle}>Aesthetics</Text>
+                            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+                                {['light', 'sepia', 'paper', 'dark'].map((t) => (
+                                    <TouchableOpacity
+                                        key={t}
+                                        style={[
+                                            { flex: 1, height: 40, borderRadius: 8, borderWidth: 2, borderColor: bibleTheme === t ? colors.primary : 'transparent', justifyContent: 'center', alignItems: 'center' },
+                                            t === 'light' && { backgroundColor: '#FFFFFF' },
+                                            t === 'sepia' && { backgroundColor: '#F4ECD8' },
+                                            t === 'paper' && { backgroundColor: '#F8F9F3' },
+                                            t === 'dark' && { backgroundColor: '#121212' },
+                                        ]}
+                                        onPress={() => setBibleTheme(t as any)}
+                                    >
+                                        <Text style={{ fontSize: 10, fontWeight: 'bold', color: t === 'dark' ? '#FFF' : '#000' }}>
+                                            {t.toUpperCase()}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        <View style={settingsStyles.settingsSection}>
+                            <Text style={settingsStyles.settingsTitle}>Typography</Text>
+                            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+                                <TouchableOpacity
+                                    style={[settingsStyles.themeButton, { flex: 1, backgroundColor: fontFamily === 'sans' ? colors.primary + '20' : bibleColors.background }]}
+                                    onPress={() => setFontFamily('sans')}
+                                >
+                                    <Text style={{ color: bibleColors.text }}>Sans-serif</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[settingsStyles.themeButton, { flex: 1, backgroundColor: fontFamily === 'serif' ? colors.primary + '20' : bibleColors.background }]}
+                                    onPress={() => setFontFamily('serif')}
+                                >
+                                    <Text style={{ color: bibleColors.text, fontFamily: 'serif' }}>Serif</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={settingsStyles.fontSizeControl}>
+                                <Text style={{ color: bibleColors.text + '80' }}>Line Height</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                                    <TouchableOpacity onPress={() => setLineHeight(Math.max(1.2, lineHeight - 0.1))}>
+                                        <Minus size={20} color={bibleColors.text} />
+                                    </TouchableOpacity>
+                                    <Text style={{ color: bibleColors.text }}>{lineHeight.toFixed(1)}</Text>
+                                    <TouchableOpacity onPress={() => setLineHeight(Math.min(2.5, lineHeight + 0.1))}>
+                                        <Plus size={20} color={bibleColors.text} />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+
+                            <View style={settingsStyles.fontSizeControl}>
+                                <Text style={{ color: bibleColors.text + '80' }}>Letter Spacing</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                                    <TouchableOpacity onPress={() => setLetterSpacing(Math.max(-1, letterSpacing - 0.5))}>
+                                        <Minus size={20} color={bibleColors.text} />
+                                    </TouchableOpacity>
+                                    <Text style={{ color: bibleColors.text }}>{letterSpacing.toFixed(1)}</Text>
+                                    <TouchableOpacity onPress={() => setLetterSpacing(Math.min(5, letterSpacing + 0.5))}>
+                                        <Plus size={20} color={bibleColors.text} />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </View>
+
                         <View style={settingsStyles.settingsSection}>
                             <Text style={settingsStyles.settingsTitle}>Bible Version</Text>
                             {BIBLE_VERSIONS.map((version) => (
@@ -1204,12 +1564,15 @@ export default function BibleScreen() {
                                     key={version.code}
                                     style={settingsStyles.themeButton}
                                     onPress={() => {
-                                        setSelectedVersion(version);
+                                        updateSettings({ bibleVersion: version.code });
                                         setShowSettings(false);
                                     }}
                                 >
-                                    <Text style={{ color: colors.text }}>{version.name}</Text>
-                                    {version.code === selectedVersion.code && (
+                                    <View>
+                                        <Text style={{ color: bibleColors.text, fontWeight: 'bold' }}>{version.name}</Text>
+                                        <Text style={{ color: bibleColors.text + '80', fontSize: 12 }}>{version.code.toUpperCase()}</Text>
+                                    </View>
+                                    {version.code === settings.bibleVersion && (
                                         <Check size={20} color={colors.primary} />
                                     )}
                                 </TouchableOpacity>
@@ -1231,7 +1594,7 @@ export default function BibleScreen() {
                         <View style={modalStyles.modalHeader}>
                             <Text style={modalStyles.modalTitle}>Select Version</Text>
                             <TouchableOpacity onPress={() => setShowVersionPicker(false)}>
-                                <X size={24} color={colors.text} />
+                                <X size={24} color={bibleColors.text} />
                             </TouchableOpacity>
                         </View>
                         <FlatList
@@ -1241,26 +1604,26 @@ export default function BibleScreen() {
                                 <TouchableOpacity
                                     style={versionModalStyles.versionItem}
                                     onPress={() => {
-                                        setSelectedVersion(item);
+                                        updateSettings({ bibleVersion: item.code });
                                         setShowVersionPicker(false);
                                     }}
                                 >
                                     <Text style={[
                                         versionModalStyles.versionItemName,
-                                        item.code === selectedVersion.code && { 
-                                            color: colors.primary, 
-                                            fontWeight: 'bold' 
+                                        item.code === settings.bibleVersion && {
+                                            color: colors.primary,
+                                            fontWeight: 'bold'
                                         }
                                     ]}>
                                         {item.name} ({item.code.toUpperCase()})
                                     </Text>
-                                    {item.code === selectedVersion.code && <Check size={18} color={colors.primary} />}
+                                    {item.code === settings.bibleVersion && <Check size={18} color={colors.primary} />}
                                 </TouchableOpacity>
                             )}
                         />
                     </View>
                 </View>
             </Modal>
-        </SafeAreaView>
+        </SafeAreaView >
     );
 }

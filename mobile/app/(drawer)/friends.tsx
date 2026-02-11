@@ -13,10 +13,25 @@ export default function FriendsScreen() {
     const [friends, setFriends] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [suggestions, setSuggestions] = useState<any[]>([]);
+    const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
     useEffect(() => {
         fetchFriends();
+        fetchSuggestions();
     }, []);
+
+    const fetchSuggestions = async () => {
+        setLoadingSuggestions(true);
+        try {
+            const data = await apiService.getSuggestedFriends();
+            setSuggestions(data);
+        } catch (error) {
+            console.error('Failed to fetch suggestions:', error);
+        } finally {
+            setLoadingSuggestions(false);
+        }
+    };
 
     const fetchFriends = async () => {
         try {
@@ -168,6 +183,11 @@ export default function FriendsScreen() {
         emptyText: {
             color: isDark ? '#9CA3AF' : '#6B7280',
             marginTop: 8,
+        },
+        sectionTitle: {
+            fontSize: 18,
+            fontWeight: 'bold',
+            color: isDark ? '#FFFFFF' : '#111827',
         }
     });
 
@@ -205,13 +225,17 @@ export default function FriendsScreen() {
                     contentContainerStyle={styles.listContent}
                     ListEmptyComponent={
                         <View style={styles.emptyState}>
-                            <Text style={styles.emptyText}>No friends found. connect with people!</Text>
+                            <UserPlus size={48} color={isDark ? '#374151' : '#E5E7EB'} />
+                            <Text style={[styles.emptyText, { fontWeight: 'bold', fontSize: 18, color: isDark ? '#FFFFFF' : '#111827' }]}>
+                                No friends yet
+                            </Text>
+                            <Text style={styles.emptyText}>Start connecting with your church community!</Text>
                         </View>
                     }
                     renderItem={({ item }) => (
                         <View style={styles.friendItem}>
                             <View style={styles.avatar}>
-                                <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
+                                <Text style={styles.avatarText}>{item.name?.charAt(0) || '?'}</Text>
                             </View>
                             <View style={styles.friendInfo}>
                                 <Text style={styles.friendName}>{item.name}</Text>
@@ -227,6 +251,54 @@ export default function FriendsScreen() {
                             </View>
                         </View>
                     )}
+                    ListFooterComponent={
+                        <View style={{ marginTop: filteredFriends.length === 0 ? 0 : 24, marginBottom: 100 }}>
+                            {suggestions.length > 0 ? (
+                                <>
+                                    <Text style={[styles.sectionTitle, { marginBottom: 16 }]}>
+                                        {filteredFriends.length === 0 ? "Suggested People" : "Suggested for you"}
+                                    </Text>
+                                    {suggestions.map((item) => (
+                                        <View key={item.id || item._id} style={styles.friendItem}>
+                                            <View style={styles.avatar}>
+                                                <Text style={styles.avatarText}>{item.name?.charAt(0) || '?'}</Text>
+                                            </View>
+                                            <View style={styles.friendInfo}>
+                                                <Text style={styles.friendName}>{item.name}</Text>
+                                                <Text style={styles.friendStatus}>Potential match</Text>
+                                            </View>
+                                            <TouchableOpacity
+                                                style={[styles.iconButton, { backgroundColor: '#7C3AED20' }]}
+                                                onPress={async () => {
+                                                    try {
+                                                        await apiService.sendFriendRequest(item.id || item._id);
+                                                        setSuggestions(prev => prev.filter(s => (s.id || s._id) !== (item.id || item._id)));
+                                                        alert('Friend request sent!');
+                                                    } catch (error) {
+                                                        alert('Failed to send request');
+                                                    }
+                                                }}
+                                            >
+                                                <UserPlus size={20} color="#7C3AED" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    ))}
+                                </>
+                            ) : (
+                                filteredFriends.length === 0 && (
+                                    <View style={[styles.emptyState, { marginTop: 20 }]}>
+                                        <Text style={styles.emptyText}>No suggestions available right now.</Text>
+                                        <TouchableOpacity
+                                            style={[styles.iconButton, { marginTop: 12, paddingHorizontal: 20, borderRadius: 12, backgroundColor: '#7C3AED' }]}
+                                            onPress={fetchSuggestions}
+                                        >
+                                            <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>Refresh Discovery</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )
+                            )}
+                        </View>
+                    }
                 />
             )}
 

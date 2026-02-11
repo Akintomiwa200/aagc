@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, Switch, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
-import { Moon, Bell, Type, Shield, CircleHelp as HelpCircle, Info, User, Lock, Eye, Languages, Database, LogOut, ChevronRight } from 'lucide-react-native';
+import { useSettings } from '@/context/SettingsContext';
+import { Moon, Bell, Type, Shield, CircleHelp as HelpCircle, Info, User, Lock, Eye, Languages, Database, LogOut, ChevronRight, Zap, Heart } from 'lucide-react-native';
 
 export default function SettingsScreen() {
     const { theme, toggleTheme, colors } = useTheme();
+    const { settings, updateSettings } = useSettings();
     const router = useRouter();
     const isDark = theme === 'dark';
-    const [notifications, setNotifications] = useState(true);
-    const [marketingEmails, setMarketingEmails] = useState(false);
 
     const styles = StyleSheet.create({
         container: {
@@ -146,15 +146,22 @@ export default function SettingsScreen() {
                             icon={Bell}
                             label="Push Notifications"
                             hasSwitch
-                            switchValue={notifications}
-                            onSwitchChange={setNotifications}
+                            switchValue={settings.pushNotifications}
+                            onSwitchChange={(val: boolean) => updateSettings({ pushNotifications: val })}
                         />
                         <SettingRow
-                            icon={Bell}
-                            label="Marketing Emails"
+                            icon={Zap}
+                            label="Spiritual Growth Alerts"
                             hasSwitch
-                            switchValue={marketingEmails}
-                            onSwitchChange={setMarketingEmails}
+                            switchValue={settings.spiritualGrowthAlerts}
+                            onSwitchChange={(val: boolean) => updateSettings({ spiritualGrowthAlerts: val })}
+                        />
+                        <SettingRow
+                            icon={Heart}
+                            label="Community Event Alerts"
+                            hasSwitch
+                            switchValue={settings.communityEventAlerts}
+                            onSwitchChange={(val: boolean) => updateSettings({ communityEventAlerts: val })}
                             isLast
                         />
                     </View>
@@ -167,11 +174,6 @@ export default function SettingsScreen() {
                             icon={Eye}
                             label="Privacy Center"
                             onPress={() => router.push('/settings/privacy')}
-                        />
-                        <SettingRow
-                            icon={Database}
-                            label="Data Management"
-                            onPress={() => router.push('/settings/data')}
                             isLast
                         />
                     </View>
@@ -180,16 +182,6 @@ export default function SettingsScreen() {
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Support</Text>
                     <View style={styles.menuContainer}>
-                        <SettingRow
-                            icon={HelpCircle}
-                            label="Help Center"
-                            onPress={() => router.push('/settings/help')}
-                        />
-                        <SettingRow
-                            icon={Shield}
-                            label="Terms of Service"
-                            onPress={() => router.push('/settings/terms')}
-                        />
                         <SettingRow
                             icon={Info}
                             label="About AAGC App"

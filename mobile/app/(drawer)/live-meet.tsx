@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, Image, Dimensions } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, Image, Dimensions, ActivityIndicator } from 'react-native';
 import { Video, Users, MessageSquare, Send, Heart, Gift } from 'lucide-react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { apiService } from '@/services/apiService';
@@ -17,9 +17,24 @@ export default function LiveMeetScreen() {
         { id: 1, user: 'System', text: 'Welcome to the live chat!', time: '10:00 AM' },
     ]);
 
+    const [loading, setLoading] = useState(true);
+
     useEffect(() => {
         fetchStream();
     }, []);
+
+    const fetchStream = async () => {
+        setLoading(true);
+        try {
+            const data = await apiService.getLiveStream();
+            setStreamInfo(data);
+            setIsLive(data?.isLive || false);
+        } catch (error) {
+            console.error('Failed to fetch stream:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const { socket } = useSocket();
 
@@ -259,31 +274,37 @@ export default function LiveMeetScreen() {
             </View>
 
             {/* Content Area */}
-            <View style={styles.content}>
-                <View style={styles.serviceInfo}>
-                    <Text style={styles.serviceTitle}>{streamInfo?.title || 'No Live Service'}</Text>
-                    <Text style={styles.serviceSubtitle}>{streamInfo?.description || 'Check back later for upcoming services.'}</Text>
+            {loading ? (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <ActivityIndicator size="large" color="#7C3AED" />
                 </View>
-
-                {/* Chat Section */}
-                <View style={styles.chatSection}>
-                    <View style={styles.chatHeader}>
-                        <MessageSquare size={18} color="#7C3AED" />
-                        <Text style={styles.chatTitle}>Live Chat</Text>
+            ) : (
+                <View style={styles.content}>
+                    <View style={styles.serviceInfo}>
+                        <Text style={styles.serviceTitle}>{streamInfo?.title || 'No Live Service'}</Text>
+                        <Text style={styles.serviceSubtitle}>{streamInfo?.description || 'Check back later for upcoming services.'}</Text>
                     </View>
-                    <ScrollView style={styles.chatList} showsVerticalScrollIndicator={false}>
-                        {chatMessages.map((msg) => (
-                            <View key={msg.id} style={styles.chatBubble}>
-                                <Text style={styles.chatUser}>{msg.user}</Text>
-                                <View style={styles.chatText}>
-                                    <Text style={{ color: isDark ? '#D1D5DB' : '#4B5563' }}>{msg.text}</Text>
+
+                    {/* Chat Section */}
+                    <View style={styles.chatSection}>
+                        <View style={styles.chatHeader}>
+                            <MessageSquare size={18} color="#7C3AED" />
+                            <Text style={styles.chatTitle}>Live Chat</Text>
+                        </View>
+                        <ScrollView style={styles.chatList} showsVerticalScrollIndicator={false}>
+                            {chatMessages.map((msg) => (
+                                <View key={msg.id} style={styles.chatBubble}>
+                                    <Text style={styles.chatUser}>{msg.user}</Text>
+                                    <View style={styles.chatText}>
+                                        <Text style={{ color: isDark ? '#D1D5DB' : '#4B5563' }}>{msg.text}</Text>
+                                    </View>
+                                    <Text style={styles.chatTime}>{msg.time}</Text>
                                 </View>
-                                <Text style={styles.chatTime}>{msg.time}</Text>
-                            </View>
-                        ))}
-                    </ScrollView>
+                            ))}
+                        </ScrollView>
+                    </View>
                 </View>
-            </View>
+            )}
 
             {/* Input Area */}
             <View style={styles.inputArea}>

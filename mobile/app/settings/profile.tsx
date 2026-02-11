@@ -1,24 +1,49 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
-import { User, Mail, Phone, MapPin } from 'lucide-react-native';
+import { useAuth } from '@/context/AuthContext';
+import { apiService } from '@/services/apiService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { User, Mail, Phone, MapPin, CheckCircle } from 'lucide-react-native';
 
 export default function ProfileSettings() {
     const { colors } = useTheme();
-    const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<any>(null);
+    const { user, updateUser } = useAuth();
+    const [saving, setSaving] = useState(false);
+    const [formData, setFormData] = useState({
+        name: user?.name || '',
+        email: user?.email || '',
+        phone: user?.phone || '',
+        location: user?.location || '',
+    });
 
     useEffect(() => {
-        const fetchUser = async () => {
-            const userData = await AsyncStorage.getItem('church_app_user');
-            if (userData) {
-                setUser(JSON.parse(userData));
-            }
-            setLoading(false);
-        };
-        fetchUser();
-    }, []);
+        if (user) {
+            setFormData({
+                name: user.name || '',
+                email: user.email || '',
+                phone: user.phone || '',
+                location: user.location || '',
+            });
+        }
+    }, [user]);
+
+    const handleSave = async () => {
+        if (!user?.id) return;
+        try {
+            setSaving(true);
+            // Assuming apiService.updateUserProfile exists or using generic put
+            await apiService.put(`/users/${user.id}/profile`, formData);
+
+            const updatedUser = { ...user, ...formData };
+            updateUser(updatedUser);
+            Alert.alert('Success', 'Profile updated successfully');
+        } catch (error: any) {
+            Alert.alert('Error', error.message || 'Failed to update profile');
+        } finally {
+            setSaving(false);
+        }
+    };
 
     const styles = StyleSheet.create({
         container: {
@@ -80,14 +105,6 @@ export default function ProfileSettings() {
         }
     });
 
-    if (loading) {
-        return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator color={colors.primary} />
-            </View>
-        );
-    }
-
     return (
         <ScrollView style={styles.container}>
             <View style={styles.header}>
@@ -104,7 +121,8 @@ export default function ProfileSettings() {
                         <User size={20} color={colors.secondary} />
                         <TextInput
                             style={styles.input}
-                            value={user?.name}
+                            value={formData.name}
+                            onChangeText={(text) => setFormData({ ...formData, name: text })}
                             placeholder="Your Name"
                             placeholderTextColor={colors.border}
                         />
@@ -117,7 +135,8 @@ export default function ProfileSettings() {
                         <Mail size={20} color={colors.secondary} />
                         <TextInput
                             style={styles.input}
-                            value={user?.email}
+                            value={formData.email}
+                            onChangeText={(text) => setFormData({ ...formData, email: text })}
                             placeholder="Your Email"
                             keyboardType="email-address"
                             placeholderTextColor={colors.border}
@@ -131,6 +150,8 @@ export default function ProfileSettings() {
                         <Phone size={20} color={colors.secondary} />
                         <TextInput
                             style={styles.input}
+                            value={formData.phone}
+                            onChangeText={(text) => setFormData({ ...formData, phone: text })}
                             placeholder="+1 234 567 890"
                             keyboardType="phone-pad"
                             placeholderTextColor={colors.border}
@@ -144,14 +165,24 @@ export default function ProfileSettings() {
                         <MapPin size={20} color={colors.secondary} />
                         <TextInput
                             style={styles.input}
+                            value={formData.location}
+                            onChangeText={(text) => setFormData({ ...formData, location: text })}
                             placeholder="City, Country"
                             placeholderTextColor={colors.border}
                         />
                     </View>
                 </View>
 
-                <TouchableOpacity style={styles.saveButton}>
-                    <Text style={styles.saveButtonText}>Save Changes</Text>
+                <TouchableOpacity
+                    style={[styles.saveButton, saving && { opacity: 0.7 }]}
+                    onPress={handleSave}
+                    disabled={saving}
+                >
+                    {saving ? (
+                        <ActivityIndicator color="#FFF" />
+                    ) : (
+                        <Text style={styles.saveButtonText}>Save Changes</Text>
+                    )}
                 </TouchableOpacity>
             </View>
         </ScrollView>

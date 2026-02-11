@@ -18,6 +18,18 @@ export default function GalleryScreen() {
         fetchGallery();
     }, []);
 
+    const fetchGallery = async () => {
+        setLoading(true);
+        try {
+            const data = await apiService.getGalleryImages();
+            setImages(data);
+        } catch (error) {
+            console.error('Failed to fetch gallery:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const { socket } = useSocket();
 
     useEffect(() => {
