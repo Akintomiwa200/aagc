@@ -113,12 +113,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const googleAuth = async (idToken: string) => {
     setLoading(true);
-
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/google/callback`, { // Assuming this endpoint handles web oauth tokens
+      const response = await fetch(`${API_BASE_URL}/auth/oauth/mobile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: idToken }),
+        body: JSON.stringify({ provider: 'google', token: idToken }),
       });
 
       const data = await response.json();

@@ -1,11 +1,15 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly usersService: UsersService) { }
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly jwtService: JwtService,
+  ) { }
 
   async validateCredentials({ email, password }: LoginDto) {
     const user = await this.usersService.findByEmail(email);
@@ -15,8 +19,9 @@ export class AuthService {
     if (!match) throw new UnauthorizedException('Invalid credentials');
 
     const { password: _, ...safe } = user.toObject();
+    const payload = { sub: user._id, email: user.email, role: user.role };
     return {
-      token: 'demo-admin-token', // placeholder; swap with JWT later
+      token: this.jwtService.sign(payload),
       user: safe,
     };
   }
@@ -42,8 +47,9 @@ export class AuthService {
     }
 
     const { password: _, ...safe } = user.toObject();
+    const payload = { sub: user._id, email: user.email, role: user.role };
     return {
-      token: 'demo-oauth-token', // In production, generate JWT
+      token: this.jwtService.sign(payload),
       user: safe,
     };
   }
@@ -51,7 +57,35 @@ export class AuthService {
   async handleMobileOAuth(data: { provider: 'google' | 'apple'; token: string; email?: string; name?: string; picture?: string }) {
     // For mobile, we receive the OAuth token from the client
     // In production, verify the token with Google/Apple
-    // For now, we'll use the provided data
+
+    if (data.provider === 'google') {
+      try {
+        // Verify token with Google API
+        const response = await fetch(`https://www.googleapis.com/oauth2/v3/userinfo`, {
+          headers: { Authorization: `Bearer ${data.token}` },
+        });
+
+        if (!response.ok) {
+          // Try verifying as ID Token if access token fails
+          const idTokenResponse = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${data.token}`);
+          if (!idTokenResponse.ok) {
+            throw new UnauthorizedException('Invalid Google token');
+          }
+          const idTokenData = await idTokenResponse.json();
+          data.email = idTokenData.email;
+          data.name = idTokenData.name;
+          data.picture = idTokenData.picture;
+        } else {
+          const userData = await response.json();
+          data.email = userData.email;
+          data.name = userData.name || userData.given_name;
+          data.picture = userData.picture;
+        }
+      } catch (error) {
+        console.error('Google token verification failed:', error);
+        throw new UnauthorizedException('Google authentication failed');
+      }
+    }
 
     let user = await this.usersService.findByEmail(data.email || '');
 
@@ -71,8 +105,9 @@ export class AuthService {
     }
 
     const { password: _, ...safe } = user.toObject();
+    const payload = { sub: user._id, email: user.email, role: user.role };
     return {
-      token: 'demo-mobile-oauth-token',
+      token: this.jwtService.sign(payload),
       user: safe,
     };
   }

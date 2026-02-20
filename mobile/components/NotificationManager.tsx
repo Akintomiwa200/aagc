@@ -7,16 +7,21 @@ import { apiService } from '../services/apiService';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 
-// Configure how notifications are handled when the app is foregrounded
-Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-        shouldShowBanner: true,
-        shouldShowList: true,
-    }),
-});
+// expo-notifications remote push is not supported in Expo Go (SDK 53+).
+// We detect Expo Go via Constants.appOwnership and skip push registration.
+const IS_EXPO_GO = Constants.appOwnership === 'expo';
+
+if (!IS_EXPO_GO) {
+    // Configure how notifications are handled when the app is foregrounded
+    // Only set this up in dev builds / standalone apps where it actually works
+    Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: false,
+        }),
+    });
+}
 
 export const NotificationManager: React.FC = () => {
     const { user } = useAuth();
@@ -25,7 +30,8 @@ export const NotificationManager: React.FC = () => {
     const { socket } = useSocket();
 
     useEffect(() => {
-        if (user?.id) {
+        // Push token registration — skip entirely in Expo Go
+        if (!IS_EXPO_GO && user?.id) {
             registerForPushNotificationsAsync().then(token => {
                 if (token) {
                     apiService.updatePushToken(user.id, token).catch(err => {
@@ -35,36 +41,36 @@ export const NotificationManager: React.FC = () => {
             });
         }
 
-        // --- REAL-TIME SOCKET LISTENERS ---
+        // --- REAL-TIME SOCKET LISTENERS (works in all environments) ---
         if (socket) {
-            socket.on('new-notification', (data) => {
+            socket.on('new-notification', (data: any) => {
                 console.log('Real-time notification via socket:', data);
                 Alert.alert(
                     data.title || 'New Notification',
                     data.message || 'You have a new update from Apostolic Army Global.',
-                    [{ text: 'Dismiss' }, { text: 'View', onPress: () => {/* Navigate */ } }]
+                    [{ text: 'Dismiss' }, { text: 'View', onPress: () => { } }]
                 );
             });
 
-            socket.on('friend-request', (data) => {
+            socket.on('friend-request', (data: any) => {
                 Alert.alert('New Friend Request', `${data.senderName} wants to connect with you.`);
             });
 
-            socket.on('live-update', (data) => {
+            socket.on('live-update', (data: any) => {
                 Alert.alert('Live Now', data.message || 'A live session has started!');
             });
         }
 
-        // Listener for when a notification is received in the foreground (Push)
-        notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-            console.log('Notification Received:', notification);
-        });
+        // Push notification listeners — skip in Expo Go
+        if (!IS_EXPO_GO) {
+            notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
+                console.log('Notification Received:', notification);
+            });
 
-        // Listener for when a user interacts with a notification
-        responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-            console.log('Notification Response:', response);
-            // Handle navigation here if necessary
-        });
+            responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+                console.log('Notification Response:', response);
+            });
+        }
 
         return () => {
             if (notificationListener.current) {
@@ -84,8 +90,8 @@ export const NotificationManager: React.FC = () => {
     return null;
 };
 
-async function registerForPushNotificationsAsync() {
-    let token;
+async function registerForPushNotificationsAsync(): Promise<string | undefined> {
+    let token: string | undefined;
 
     if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('default', {
@@ -108,21 +114,17 @@ async function registerForPushNotificationsAsync() {
             return;
         }
 
-        // Get the token with project ID
         try {
             const projectId =
                 Constants?.expoConfig?.extra?.eas?.projectId ??
-                Constants?.easConfig?.projectId ??
-                'YOUR-PROJECT-ID-FALLBACK'; // Should be configured in app.json
+                (Constants as any)?.easConfig?.projectId;
 
-            if (!projectId || projectId === 'your-project-id') {
+            if (!projectId) {
                 console.log('EAS Project ID not found. Push tokens may not be available.');
                 return;
             }
 
-            token = (await Notifications.getExpoPushTokenAsync({
-                projectId,
-            })).data;
+            token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
             console.log('Push Token:', token);
         } catch (e) {
             console.error('Error getting push token:', e);

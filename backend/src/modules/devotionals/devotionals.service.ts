@@ -8,7 +8,7 @@ import { Devotional, DevotionalDocument } from './schemas/devotional.schema';
 export class DevotionalsService {
   constructor(
     @InjectModel(Devotional.name) private devotionalModel: Model<DevotionalDocument>,
-  ) {}
+  ) { }
 
   async create(dto: CreateDevotionalDto) {
     const created = new this.devotionalModel(dto);
@@ -23,10 +23,10 @@ export class DevotionalsService {
   async findOne(id: string) {
     const devotional = await this.devotionalModel.findById(id).lean();
     if (!devotional) throw new NotFoundException('Devotional not found');
-    
+
     // Increment views
     await this.devotionalModel.findByIdAndUpdate(id, { $inc: { views: 1 } });
-    
+
     return devotional;
   }
 
@@ -49,10 +49,19 @@ export class DevotionalsService {
 
     if (!devotional) {
       // Return the most recent published devotional if no today's devotional
-      return this.devotionalModel
+      const latest = await this.devotionalModel
         .findOne({ status: 'published' })
         .sort({ date: -1 })
         .lean();
+
+      // Return default placeholder if database has no devotionals yet
+      return latest ?? {
+        title: 'Walking in Victory',
+        content: 'Start your day with a powerful word from God. Today, we meditate on the promise of victory through Christ Jesus who strengthens us.',
+        verse: 'Philippians 4:13',
+        date: new Date().toISOString(),
+        status: 'published',
+      };
     }
 
     return devotional;

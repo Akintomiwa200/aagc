@@ -1,6 +1,6 @@
 import { ChurchEvent, Department, Devotional, EventType, Badge, ChurchBranch } from './types';
 
-export const APP_NAME = "Apostolic Army Global";
+export const APP_NAME = "Apostolic Army Global Church";
 
 export const BADGES: Badge[] = [
   { id: 'new_believer', name: 'New Believer', description: 'Joined the community', icon: 'User', requiredPoints: 0 },

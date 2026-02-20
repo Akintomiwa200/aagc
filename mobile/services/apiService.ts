@@ -1,10 +1,26 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
-const API_BASE_URL = Constants.expoConfig?.extra?.apiUrl
-  ? `${Constants.expoConfig.extra.apiUrl}/api`
-  : 'http://192.168.1.106:3001/api';
-const SOCKET_URL = Constants.expoConfig?.extra?.socketUrl || 'http://192.168.1.106:3001';
+const getBaseUrl = () => {
+  if (Constants.expoConfig?.extra?.apiUrl) {
+    // If the config url is localhost and we are on Android, swap to 10.0.2.2
+    if (Platform.OS === 'android' && Constants.expoConfig.extra.apiUrl.includes('localhost')) {
+      return Constants.expoConfig.extra.apiUrl.replace('localhost', '10.0.2.2');
+    }
+    return Constants.expoConfig.extra.apiUrl;
+  }
+
+  // Fallback defaults
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:3001';
+  }
+  return 'http://localhost:3001';
+};
+
+const BASE_URL = getBaseUrl();
+const API_BASE_URL = `${BASE_URL}/api`;
+const SOCKET_URL = BASE_URL;
 
 class ApiService {
   private token: string | null = null;
@@ -40,6 +56,8 @@ class ApiService {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
+    console.log(`[API] Requesting: ${API_BASE_URL}${endpoint}`);
+
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers,
@@ -50,7 +68,24 @@ class ApiService {
       throw new Error(error.message || 'Request failed');
     }
 
-    return response.json();
+    // Handle empty responses (204 No Content, or empty body)
+    const contentLength = response.headers.get('content-length');
+    const contentType = response.headers.get('content-type') || '';
+    if (response.status === 204 || contentLength === '0' || !contentType.includes('json')) {
+      return null as T;
+    }
+
+    // Safely parse JSON — guard against empty body
+    const text = await response.text();
+    if (!text || text.trim() === '') {
+      return null as T;
+    }
+
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      throw new Error(`Invalid JSON response from server`);
+    }
   }
 
   // Generic methods

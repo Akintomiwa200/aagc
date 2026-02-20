@@ -3,9 +3,9 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { 
+  const app = await NestFactory.create(AppModule, {
     cors: {
-      origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+      origin: true, // Allow all origins (reflects request origin, works with credentials)
       credentials: true,
     },
   });
@@ -19,7 +19,8 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(process.env.PORT ?? 3001);
-  console.log(`Application is running on: http://localhost:${process.env.PORT ?? 3001}`);
+  await app.listen(process.env.PORT ?? 3001, '0.0.0.0');
+  console.log(`Application is running on: http://0.0.0.0:${process.env.PORT ?? 3001}`);
+  console.log(`Local access:   http://localhost:${process.env.PORT ?? 3001}`);
 }
 bootstrap();

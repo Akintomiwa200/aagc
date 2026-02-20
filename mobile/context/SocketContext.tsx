@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { io, Socket } from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
 interface SocketContextType {
   socket: Socket | null;
@@ -10,8 +11,27 @@ interface SocketContextType {
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
 
-// Get socket URL from environment or use default
-const SOCKET_URL = process.env.SOCKET_URL || process.env.EXPO_PUBLIC_SOCKET_URL || 'http://192.168.1.106:3001';
+// Get socket URL from app.json config (same pattern as apiService.ts)
+const getSocketUrl = () => {
+  const configUrl =
+    Constants.expoConfig?.extra?.socketUrl ||
+    Constants.expoConfig?.extra?.apiUrl;
+
+  if (configUrl) {
+    if (Platform.OS === 'android' && configUrl.includes('localhost')) {
+      return configUrl.replace('localhost', '10.0.2.2');
+    }
+    return configUrl;
+  }
+
+  // Fallback defaults
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:3001';
+  }
+  return 'http://localhost:3001';
+};
+
+const SOCKET_URL = getSocketUrl();
 
 export function SocketProvider({ children }: { children: ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null);

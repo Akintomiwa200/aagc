@@ -78,8 +78,8 @@
     },
     "scheme": "aagc",
     "extra": {
-      "apiUrl": "http://192.168.1.106:3001",
-      "socketUrl": "http://192.168.1.106:3001",
+      "apiUrl": "http://10.224.163.99:3001",
+      "socketUrl": "http://10.224.163.99:3001",
       "router": {},
       "eas": {
         "projectId": "1ad077e8-d663-437a-8bca-ba717e3cab93"
