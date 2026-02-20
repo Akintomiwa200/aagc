@@ -5,11 +5,13 @@ import { useRouter } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
 import { apiService } from '@/services/apiService';
 import { useSocket } from '@/context/SocketContext';
+import { useAuth } from '@/context/AuthContext';
 
 export default function NotesScreen() {
     const { theme, colors } = useTheme();
     const isDark = theme === 'dark';
     const router = useRouter();
+    const { user } = useAuth();
     const [notes, setNotes] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [modalVisible, setModalVisible] = useState(false);
@@ -18,8 +20,10 @@ export default function NotesScreen() {
     const [noteContent, setNoteContent] = useState('');
 
     useEffect(() => {
-        fetchNotes();
-    }, []);
+        if (user) {
+            fetchNotes();
+        }
+    }, [user]);
 
     const { socket } = useSocket();
 
@@ -50,9 +54,10 @@ export default function NotesScreen() {
     }, [socket]);
 
     const fetchNotes = async () => {
+        if (!user) return;
         try {
-            const data = await apiService.getNotes();
-            setNotes(data);
+            const data = await apiService.getNotes(user.id);
+            setNotes(data || []);
         } catch (error) {
             console.error('Failed to fetch notes:', error);
         } finally {
@@ -85,7 +90,11 @@ export default function NotesScreen() {
                 await apiService.updateNote(currentNote.id, { title: noteTitle, content: noteContent });
             } else {
                 // Create
-                await apiService.createNote({ title: noteTitle, content: noteContent });
+                if (!user) {
+                    Alert.alert('Error', 'You must be logged in to create a note.');
+                    return;
+                }
+                await apiService.createNote({ title: noteTitle, content: noteContent, userId: user.id });
             }
             fetchNotes(); // Refresh list
             setModalVisible(false);

@@ -32,26 +32,23 @@ export interface Note {
     updatedAt: Date;
 }
 
-// Initialize with safe defaults
-const initialHighlights: Highlight[] = [];
-const initialBookmarks: Bookmark[] = [];
-const initialNotes: Note[] = [];
-
-// Move BIBLE_VERSIONS and HIGHLIGHT_COLORS outside the class as constants
 export const BIBLE_VERSIONS = [
-    { code: "kjv", name: "King James Version", language: "English" },
-    { code: "web", name: "World English Bible", language: "English" },
-    { code: "asv", name: "American Standard Version", language: "English" },
-    { code: "bbe", name: "Bible in Basic English", language: "English" },
-    { code: "niv", name: "New International Version", language: "English" },
-    { code: "esv", name: "English Standard Version", language: "English" },
-    { code: "nlt", name: "New Living Translation", language: "English" },
-    { code: "nasb", name: "New American Standard Bible", language: "English" },
-    { code: "amp", name: "Amplified Bible", language: "English" },
-    { code: "csb", name: "Christian Standard Bible", language: "English" },
-    { code: "msg", name: "The Message", language: "English" },
-    { code: "leb", name: "Lexham English Bible", language: "English" },
-];
+    { code: 'kjv', name: 'King James Version', language: 'English' },
+    { code: 'web', name: 'World English Bible', language: 'English' },
+    { code: 'asv', name: 'American Standard Version', language: 'English' },
+    { code: 'bbe', name: 'Bible in Basic English', language: 'English' },
+    { code: 'niv', name: 'New International Version', language: 'English' },
+    { code: 'esv', name: 'English Standard Version', language: 'English' },
+    { code: 'nlt', name: 'New Living Translation', language: 'English' },
+    { code: 'nasb', name: 'New American Standard Bible', language: 'English' },
+    { code: 'amp', name: 'Amplified Bible', language: 'English' },
+    { code: 'csb', name: 'Christian Standard Bible', language: 'English' },
+    { code: 'msg', name: 'The Message', language: 'English' },
+    { code: 'leb', name: 'Lexham English Bible', language: 'English' },
+    { code: 'tpt', name: 'The Passion Translation', language: 'English' },
+    { code: 'pcm', name: 'Holy Bible Nigerian Pidgin English', language: 'Pidgin' },
+    { code: 'ybcv', name: 'Bibeli Mimọ', language: 'Yoruba' },
+] as const;
 
 export const HIGHLIGHT_COLORS = [
     { id: 'yellow', color: '#FFD700', name: 'Yellow' },
@@ -60,292 +57,229 @@ export const HIGHLIGHT_COLORS = [
     { id: 'pink', color: '#FFB6C1', name: 'Pink' },
     { id: 'orange', color: '#FFA500', name: 'Orange' },
     { id: 'purple', color: '#DDA0DD', name: 'Purple' },
-];
+] as const;
+
+// Storage keys
+const KEYS = {
+    highlights: 'bible_highlights',
+    bookmarks: 'bible_bookmarks',
+    notes: 'bible_notes',
+    progress: 'reading_progress',
+    votdPrefix: 'votd_',
+    cachePrefix: 'bible_cache_',
+} as const;
 
 class BibleService {
-    private baseURL = 'https://bible-api.com';
+    private readonly baseURL = 'https://bible-api.com';
 
-    // Remove static keyword and reference the constants
-    BIBLE_VERSIONS = BIBLE_VERSIONS;
-    HIGHLIGHT_COLORS = HIGHLIGHT_COLORS;
-
+    // ── Chapter fetching with caching ───────────────────────────────────────
     async getChapter(book: string, chapter: number, version: string): Promise<BibleVerse[]> {
-        const cacheKey = `bible_cache_${book}_${chapter}_${version}`;
+        const cacheKey = `${KEYS.cachePrefix}${book}_${chapter}_${version}`;
+
         try {
-            // Check cache first
+            // Return cached data if available and valid
             const cached = await AsyncStorage.getItem(cacheKey);
             if (cached) {
-                return JSON.parse(cached);
+                const parsed: BibleVerse[] = JSON.parse(cached);
+                if (parsed.length > 0 && parsed[0].text) return parsed;
             }
 
-            // Clean book name (remove spaces for URL)
+            // Fetch from API — bible-api.com uses "bookname+chapter" format
             const cleanBook = book.replace(/\s+/g, '');
+            const res = await fetch(`${this.baseURL}/${cleanBook}+${chapter}?translation=${version}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-            const response = await fetch(
-                `${this.baseURL}/${cleanBook}+${chapter}?translation=${version}`
-            );
+            const data = await res.json();
+            if (!Array.isArray(data.verses) || data.verses.length === 0) return [];
 
-            if (!response.ok) {
-                throw new Error('Failed to fetch chapter');
-            }
+            const verses: BibleVerse[] = data.verses.map((v: any) => ({
+                id: `${book}-${chapter}-${v.verse}-${version}`,
+                book,
+                chapter,
+                verse: v.verse,
+                text: (v.text ?? '').trim(),
+                version,
+            }));
 
-            const data = await response.json();
-
-            if (data.verses && Array.isArray(data.verses)) {
-                const verses = data.verses.map((verse: any) => ({
-                    id: `${book}-${chapter}-${verse.verse}-${version}`,
-                    book,
-                    chapter,
-                    verse: verse.verse,
-                    text: verse.text ? verse.text.trim() : '',
-                    version,
-                }));
-
-                // Save to cache
-                await AsyncStorage.setItem(cacheKey, JSON.stringify(verses));
-                return verses;
-            }
-
-            return [];
+            await AsyncStorage.setItem(cacheKey, JSON.stringify(verses));
+            return verses;
         } catch (error) {
-            console.error('Failed to fetch chapter:', error);
-            // Try fetching from cache one last time on error
+            console.error('getChapter error:', error);
+            // Fall back to cache on network error
             const cached = await AsyncStorage.getItem(cacheKey);
             return cached ? JSON.parse(cached) : [];
         }
     }
 
-    // Verse of the Day
-    async getVerseOfTheDay(version: string = 'kjv'): Promise<BibleVerse | null> {
+    // ── Verse of the Day ────────────────────────────────────────────────────
+    async getVerseOfTheDay(version = 'kjv'): Promise<BibleVerse | null> {
+        const today = new Date().toISOString().split('T')[0];
+        const key = `${KEYS.votdPrefix}${today}_${version}`;
+
         try {
-            // Check if we already have today's verse
-            const today = new Date().toISOString().split('T')[0];
-            const cached = await AsyncStorage.getItem(`votd_${today}`);
+            const cached = await AsyncStorage.getItem(key);
             if (cached) return JSON.parse(cached);
 
-            const response = await fetch(`${this.baseURL}/?random=verse&translation=${version}`);
-            if (response.ok) {
-                const data = await response.json();
-                if (data.verses && data.verses.length > 0) {
-                    const verse = {
-                        id: `votd-${today}`,
-                        book: data.verses[0].book_name,
-                        chapter: data.verses[0].chapter,
-                        verse: data.verses[0].verse,
-                        text: data.verses[0].text.trim(),
-                        version: version
-                    };
-                    await AsyncStorage.setItem(`votd_${today}`, JSON.stringify(verse));
-                    return verse;
-                }
-            }
-            return null;
-        } catch (error) {
-            console.error('Failed to fetch VOTD:', error);
-            return null;
-        }
-    }
+            const res = await fetch(`${this.baseURL}/?random=verse&translation=${version}`);
+            if (!res.ok) return null;
 
-    // Highlight Management
-    async saveHighlight(highlight: Omit<Highlight, 'id' | 'createdAt'>): Promise<Highlight> {
-        try {
-            const highlights = await this.getHighlights();
-            const newHighlight: Highlight = {
-                ...highlight,
-                id: Date.now().toString(),
-                createdAt: new Date(),
+            const data = await res.json();
+            const raw = data.verses?.[0];
+            if (!raw) return null;
+
+            const verse: BibleVerse = {
+                id: `votd-${today}`,
+                book: raw.book_name,
+                chapter: raw.chapter,
+                verse: raw.verse,
+                text: raw.text.trim(),
+                version,
             };
 
-            const updatedHighlights = [...(highlights || []), newHighlight];
-            await AsyncStorage.setItem('bible_highlights', JSON.stringify(updatedHighlights));
-
-            return newHighlight;
+            await AsyncStorage.setItem(key, JSON.stringify(verse));
+            return verse;
         } catch (error) {
-            console.error('Error saving highlight:', error);
-            throw error;
+            console.error('getVerseOfTheDay error:', error);
+            return null;
         }
     }
 
+    // ── Highlights ──────────────────────────────────────────────────────────
     async getHighlights(): Promise<Highlight[]> {
         try {
-            const highlights = await AsyncStorage.getItem('bible_highlights');
-            return highlights ? JSON.parse(highlights) : initialHighlights;
-        } catch (error) {
-            console.error('Error getting highlights:', error);
-            return initialHighlights;
+            const data = await AsyncStorage.getItem(KEYS.highlights);
+            return data ? JSON.parse(data) : [];
+        } catch {
+            return [];
         }
     }
 
-    async getVerseHighlight(verseId: string): Promise<Highlight | undefined> {
-        try {
-            const highlights = await this.getHighlights();
-            return highlights?.find(h => h.verseId === verseId);
-        } catch (error) {
-            console.error('Error getting verse highlight:', error);
-            return undefined;
-        }
+    async saveHighlight(payload: Pick<Highlight, 'verseId' | 'color'>): Promise<Highlight> {
+        const existing = await this.getHighlights();
+        const highlight: Highlight = {
+            id: Date.now().toString(),
+            verseId: payload.verseId,
+            color: payload.color,
+            createdAt: new Date(),
+        };
+        await AsyncStorage.setItem(KEYS.highlights, JSON.stringify([...existing, highlight]));
+        return highlight;
     }
 
     async removeHighlight(highlightId: string): Promise<void> {
-        try {
-            const highlights = await this.getHighlights();
-            const updated = highlights?.filter(h => h.id !== highlightId) || [];
-            await AsyncStorage.setItem('bible_highlights', JSON.stringify(updated));
-        } catch (error) {
-            console.error('Error removing highlight:', error);
-        }
+        const existing = await this.getHighlights();
+        await AsyncStorage.setItem(
+            KEYS.highlights,
+            JSON.stringify(existing.filter(h => h.id !== highlightId))
+        );
     }
 
-    // Bookmarks Management
-    async saveBookmark(verseId: string): Promise<Bookmark> {
-        try {
-            const bookmarks = await this.getBookmarks();
-            const newBookmark: Bookmark = {
-                id: Date.now().toString(),
-                verseId,
-                createdAt: new Date(),
-            };
-
-            const updated = [...(bookmarks || []), newBookmark];
-            await AsyncStorage.setItem('bible_bookmarks', JSON.stringify(updated));
-
-            return newBookmark;
-        } catch (error) {
-            console.error('Error saving bookmark:', error);
-            throw error;
-        }
+    async getVerseHighlight(verseId: string): Promise<Highlight | undefined> {
+        const all = await this.getHighlights();
+        return all.find(h => h.verseId === verseId);
     }
 
+    // ── Bookmarks ───────────────────────────────────────────────────────────
     async getBookmarks(): Promise<Bookmark[]> {
         try {
-            const bookmarks = await AsyncStorage.getItem('bible_bookmarks');
-            return bookmarks ? JSON.parse(bookmarks) : initialBookmarks;
-        } catch (error) {
-            console.error('Error getting bookmarks:', error);
-            return initialBookmarks;
+            const data = await AsyncStorage.getItem(KEYS.bookmarks);
+            return data ? JSON.parse(data) : [];
+        } catch {
+            return [];
         }
     }
 
-    async isVerseBookmarked(verseId: string): Promise<boolean> {
-        try {
-            const bookmarks = await this.getBookmarks();
-            return bookmarks?.some(b => b.verseId === verseId) || false;
-        } catch (error) {
-            console.error('Error checking bookmark:', error);
-            return false;
-        }
+    async saveBookmark(verseId: string): Promise<Bookmark> {
+        const existing = await this.getBookmarks();
+        const bookmark: Bookmark = {
+            id: Date.now().toString(),
+            verseId,
+            createdAt: new Date(),
+        };
+        await AsyncStorage.setItem(KEYS.bookmarks, JSON.stringify([...existing, bookmark]));
+        return bookmark;
     }
 
     async removeBookmark(bookmarkId: string): Promise<void> {
-        try {
-            const bookmarks = await this.getBookmarks();
-            const updated = bookmarks?.filter(b => b.id !== bookmarkId) || [];
-            await AsyncStorage.setItem('bible_bookmarks', JSON.stringify(updated));
-        } catch (error) {
-            console.error('Error removing bookmark:', error);
-        }
+        const existing = await this.getBookmarks();
+        await AsyncStorage.setItem(
+            KEYS.bookmarks,
+            JSON.stringify(existing.filter(b => b.id !== bookmarkId))
+        );
     }
 
-    // Notes Management
-    async saveNote(note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>): Promise<Note> {
-        try {
-            const notes = await this.getNotes();
-            const newNote: Note = {
-                ...note,
-                id: Date.now().toString(),
-                createdAt: new Date(),
-                updatedAt: new Date(),
-            };
-
-            const updated = [...(notes || []), newNote];
-            await AsyncStorage.setItem('bible_notes', JSON.stringify(updated));
-
-            return newNote;
-        } catch (error) {
-            console.error('Error saving note:', error);
-            throw error;
-        }
+    async isVerseBookmarked(verseId: string): Promise<boolean> {
+        const all = await this.getBookmarks();
+        return all.some(b => b.verseId === verseId);
     }
 
+    // ── Notes ───────────────────────────────────────────────────────────────
     async getNotes(): Promise<Note[]> {
         try {
-            const notes = await AsyncStorage.getItem('bible_notes');
-            return notes ? JSON.parse(notes) : initialNotes;
-        } catch (error) {
-            console.error('Error getting notes:', error);
-            return initialNotes;
+            const data = await AsyncStorage.getItem(KEYS.notes);
+            return data ? JSON.parse(data) : [];
+        } catch {
+            return [];
         }
     }
 
-    async getVerseNote(verseId: string): Promise<Note | undefined> {
-        try {
-            const notes = await this.getNotes();
-            return notes?.find(n => n.verseId === verseId);
-        } catch (error) {
-            console.error('Error getting verse note:', error);
-            return undefined;
-        }
+    async saveNote(payload: Pick<Note, 'verseId' | 'text'>): Promise<Note> {
+        const existing = await this.getNotes();
+        const now = new Date();
+        const note: Note = {
+            id: Date.now().toString(),
+            verseId: payload.verseId,
+            text: payload.text,
+            createdAt: now,
+            updatedAt: now,
+        };
+        await AsyncStorage.setItem(KEYS.notes, JSON.stringify([...existing, note]));
+        return note;
     }
 
     async updateNote(noteId: string, text: string): Promise<Note> {
-        try {
-            const notes = await this.getNotes();
-            const noteIndex = notes?.findIndex(n => n.id === noteId) ?? -1;
-
-            if (noteIndex === -1) {
-                throw new Error('Note not found');
-            }
-
-            if (!notes) throw new Error('No notes found');
-
-            notes[noteIndex].text = text;
-            notes[noteIndex].updatedAt = new Date();
-
-            await AsyncStorage.setItem('bible_notes', JSON.stringify(notes));
-
-            return notes[noteIndex];
-        } catch (error) {
-            console.error('Error updating note:', error);
-            throw error;
-        }
+        const all = await this.getNotes();
+        const index = all.findIndex(n => n.id === noteId);
+        if (index === -1) throw new Error(`Note ${noteId} not found`);
+        all[index] = { ...all[index], text, updatedAt: new Date() };
+        await AsyncStorage.setItem(KEYS.notes, JSON.stringify(all));
+        return all[index];
     }
 
     async removeNote(noteId: string): Promise<void> {
-        try {
-            const notes = await this.getNotes();
-            const updated = notes?.filter(n => n.id !== noteId) || [];
-            await AsyncStorage.setItem('bible_notes', JSON.stringify(updated));
-        } catch (error) {
-            console.error('Error removing note:', error);
-        }
+        const existing = await this.getNotes();
+        await AsyncStorage.setItem(
+            KEYS.notes,
+            JSON.stringify(existing.filter(n => n.id !== noteId))
+        );
     }
 
-    // Search Functionality
+    async getVerseNote(verseId: string): Promise<Note | undefined> {
+        const all = await this.getNotes();
+        return all.find(n => n.verseId === verseId);
+    }
+
+    // ── Search ──────────────────────────────────────────────────────────────
     async searchScripture(query: string, version: string): Promise<BibleVerse[]> {
         try {
-            const response = await fetch(
+            const res = await fetch(
                 `${this.baseURL}/search?q=${encodeURIComponent(query)}&version=${version}`
             );
-
-            if (response.ok) {
-                const data = await response.json();
-                return data.results || [];
-            }
-
-            return [];
+            if (!res.ok) return [];
+            const data = await res.json();
+            return data.results ?? [];
         } catch (error) {
-            console.error('Search failed:', error);
+            console.error('searchScripture error:', error);
             return [];
         }
     }
 
-    // Get reading progress
+    // ── Reading Progress ────────────────────────────────────────────────────
     async getReadingProgress(): Promise<Record<string, number>> {
         try {
-            const progress = await AsyncStorage.getItem('reading_progress');
-            return progress ? JSON.parse(progress) : {};
-        } catch (error) {
-            console.error('Error getting reading progress:', error);
+            const data = await AsyncStorage.getItem(KEYS.progress);
+            return data ? JSON.parse(data) : {};
+        } catch {
             return {};
         }
     }
@@ -353,10 +287,12 @@ class BibleService {
     async saveReadingProgress(book: string, chapter: number): Promise<void> {
         try {
             const progress = await this.getReadingProgress();
-            const updatedProgress = { ...progress, [book]: chapter };
-            await AsyncStorage.setItem('reading_progress', JSON.stringify(updatedProgress));
+            await AsyncStorage.setItem(
+                KEYS.progress,
+                JSON.stringify({ ...progress, [book]: chapter })
+            );
         } catch (error) {
-            console.error('Error saving reading progress:', error);
+            console.error('saveReadingProgress error:', error);
         }
     }
 }

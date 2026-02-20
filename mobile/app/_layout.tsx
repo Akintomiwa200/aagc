@@ -127,8 +127,8 @@ function RootLayoutNav() {
                     <TouchableOpacity
                         style={{
                             position: 'absolute',
-                            bottom: 80,
-                            left: 20,
+                            bottom: 120,
+                            right: 20,
                             width: 56,
                             height: 56,
                             borderRadius: 28,

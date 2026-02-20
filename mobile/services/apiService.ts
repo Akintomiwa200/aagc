@@ -310,11 +310,12 @@ class ApiService {
   }
 
   // Notes
-  async getNotes() {
-    return this.request<any[]>('/notes');
+  async getNotes(userId?: string) {
+    const query = userId ? `?userId=${userId}` : '';
+    return this.request<any[]>(`/notes${query}`);
   }
 
-  async createNote(data: { title: string; content: string }) {
+  async createNote(data: { title: string; content: string; userId: string }) {
     return this.request<any>('/notes', {
       method: 'POST',
       body: JSON.stringify(data),
