@@ -23,8 +23,8 @@ export default function GalleryScreen() {
         try {
             const data = await apiService.getGalleryImages();
             setImages(data);
-        } catch (error) {
-            console.error('Failed to fetch gallery:', error);
+        } catch {
+            // Silently handle — empty gallery state shown
         } finally {
             setLoading(false);
         }

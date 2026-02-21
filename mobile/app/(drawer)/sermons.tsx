@@ -17,8 +17,8 @@ export default function SermonsScreen() {
             try {
                 const data = await apiService.getSermons();
                 setSermons(data);
-            } catch (error) {
-                console.error('Failed to fetch sermons:', error);
+            } catch {
+                // Silently handle — empty state shown
             } finally {
                 setLoading(false);
             }

@@ -33,12 +33,8 @@ export default function PrayersScreen() {
         try {
             const data = await apiService.getPrayers();
             setPrayers(data || []);
-        } catch (err: any) {
-            console.error('Failed to fetch prayers:', err);
-            Alert.alert(
-                'Connection Error',
-                `Could not load prayers: ${err?.message || 'Unknown error'}. Make sure the backend is running.`
-            );
+        } catch {
+            // Error handled by refreshing state or showing empty list
         } finally {
             setLoading(false);
         }
@@ -90,7 +86,7 @@ export default function PrayersScreen() {
 
     const handleCreatePrayer = async () => {
         if (!newPrayer.name.trim() || !newPrayer.request.trim()) {
-            Alert.alert('Error', 'Please fill in all fields');
+            Alert.alert('Fields Required', 'Please fill in both your name and prayer request.');
             return;
         }
 
@@ -103,10 +99,9 @@ export default function PrayersScreen() {
             });
             setNewPrayer({ name: '', request: '' });
             setModalVisible(false);
-            Alert.alert('Success', 'Prayer request submitted');
-        } catch (err: any) {
-            console.error('Failed to create prayer:', err);
-            Alert.alert('Submission Failed', `Could not submit prayer: ${err?.message || 'Unknown error'}`);
+            Alert.alert('Success', 'Your prayer request has been submitted.');
+        } catch {
+            Alert.alert('Oops', 'Could not submit your prayer right now. Please try again.');
         } finally {
             setSubmitting(false);
         }

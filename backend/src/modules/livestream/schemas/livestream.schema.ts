@@ -22,6 +22,15 @@ export class LiveStream {
 
     @Prop()
     scheduledStartTime: Date;
+
+    @Prop({ default: 0 })
+    viewerCount: number;
+
+    @Prop({ default: true })
+    chatEnabled: boolean;
+
+    @Prop()
+    speaker: string;
 }
 
 export const LiveStreamSchema = SchemaFactory.createForClass(LiveStream);

@@ -1,15 +1,25 @@
-import React from 'react';
-import { View, Text, StyleSheet, Switch, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Switch, ScrollView, TouchableOpacity, SafeAreaView, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
 import { useSettings } from '@/context/SettingsContext';
-import { Moon, Bell, Type, Shield, CircleHelp as HelpCircle, Info, User, Lock, Eye, Languages, Database, LogOut, ChevronRight, Zap, Heart } from 'lucide-react-native';
+import { useAuth } from '@/context/AuthContext';
+import { Moon, Bell, Type, Shield, CircleHelp as HelpCircle, Info, User, Lock, Eye, Languages, Database, LogOut, ChevronRight, Zap, Heart, X, Check } from 'lucide-react-native';
 
 export default function SettingsScreen() {
     const { theme, toggleTheme, colors } = useTheme();
     const { settings, updateSettings } = useSettings();
+    const { logout } = useAuth();
     const router = useRouter();
     const isDark = theme === 'dark';
+
+    const [showLangModal, setShowLangModal] = useState(false);
+    const [showTextModal, setShowTextModal] = useState(false);
+
+    const handleLogout = async () => {
+        await logout();
+        router.replace('/login');
+    };
 
     const styles = StyleSheet.create({
         container: {
@@ -121,7 +131,13 @@ export default function SettingsScreen() {
                             label="Security & Password"
                             onPress={() => router.push('/settings/security')}
                         />
-                        <SettingRow icon={Languages} label="Language" value="English" isLast />
+                        <SettingRow
+                            icon={Languages}
+                            label="Language"
+                            value={settings.language || 'English'}
+                            onPress={() => setShowLangModal(true)}
+                            isLast
+                        />
                     </View>
                 </View>
 
@@ -135,7 +151,13 @@ export default function SettingsScreen() {
                             switchValue={isDark}
                             onSwitchChange={toggleTheme}
                         />
-                        <SettingRow icon={Type} label="Text Size" value="Default" isLast />
+                        <SettingRow
+                            icon={Type}
+                            label="Text Size"
+                            value={settings.textSize || 'Default'}
+                            onPress={() => setShowTextModal(true)}
+                            isLast
+                        />
                     </View>
                 </View>
 
@@ -192,13 +214,61 @@ export default function SettingsScreen() {
                     </View>
                 </View>
 
-                <TouchableOpacity style={styles.logoutButton}>
+                <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                     <LogOut size={20} color="#EF4444" />
                     <Text style={styles.logoutText}>Log Out</Text>
                 </TouchableOpacity>
 
                 <View style={{ height: 40 }} />
             </ScrollView>
+
+            {/* Language Modal */}
+            <Modal visible={showLangModal} transparent animationType="slide">
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+                    <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text }}>Language</Text>
+                            <TouchableOpacity onPress={() => setShowLangModal(false)}>
+                                <X size={24} color={colors.secondary} />
+                            </TouchableOpacity>
+                        </View>
+                        {['English', 'Spanish', 'French', 'Portuguese'].map(lang => (
+                            <TouchableOpacity
+                                key={lang}
+                                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.border }}
+                                onPress={() => { updateSettings({ language: lang }); setShowLangModal(false); }}
+                            >
+                                <Text style={{ fontSize: 16, color: colors.text }}>{lang}</Text>
+                                {(settings.language || 'English') === lang && <Check size={20} color={colors.primary} />}
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Text Size Modal */}
+            <Modal visible={showTextModal} transparent animationType="slide">
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+                    <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text }}>Text Size</Text>
+                            <TouchableOpacity onPress={() => setShowTextModal(false)}>
+                                <X size={24} color={colors.secondary} />
+                            </TouchableOpacity>
+                        </View>
+                        {['Small', 'Default', 'Large', 'Extra Large'].map(size => (
+                            <TouchableOpacity
+                                key={size}
+                                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.border }}
+                                onPress={() => { updateSettings({ textSize: size }); setShowTextModal(false); }}
+                            >
+                                <Text style={{ fontSize: 16, color: colors.text }}>{size}</Text>
+                                {(settings.textSize || 'Default') === size && <Check size={20} color={colors.primary} />}
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }

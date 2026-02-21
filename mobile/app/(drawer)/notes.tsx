@@ -58,8 +58,8 @@ export default function NotesScreen() {
         try {
             const data = await apiService.getNotes(user.id);
             setNotes(data || []);
-        } catch (error) {
-            console.error('Failed to fetch notes:', error);
+        } catch {
+            // Silently handle — empty notes state shown
         } finally {
             setLoading(false);
         }
@@ -80,7 +80,7 @@ export default function NotesScreen() {
 
     const handleSaveNote = async () => {
         if (!noteTitle.trim()) {
-            Alert.alert('Error', 'Please provide a title.');
+            Alert.alert('Title Required', 'Please give your note a title.');
             return;
         }
 
@@ -91,7 +91,7 @@ export default function NotesScreen() {
             } else {
                 // Create
                 if (!user) {
-                    Alert.alert('Error', 'You must be logged in to create a note.');
+                    Alert.alert('Sign In Required', 'Please sign in to create notes.');
                     return;
                 }
                 await apiService.createNote({ title: noteTitle, content: noteContent, userId: user.id });
@@ -99,7 +99,7 @@ export default function NotesScreen() {
             fetchNotes(); // Refresh list
             setModalVisible(false);
         } catch (error) {
-            Alert.alert('Error', 'Failed to save note.');
+            Alert.alert('Oops', 'Could not save your note. Please try again.');
         }
     };
 
@@ -114,7 +114,7 @@ export default function NotesScreen() {
                         await apiService.deleteNote(id);
                         setNotes(prev => prev.filter(n => n.id !== id));
                     } catch (error) {
-                        Alert.alert('Error', 'Failed to delete note.');
+                        Alert.alert('Oops', 'Could not delete this note. Please try again.');
                     }
                 }
             }

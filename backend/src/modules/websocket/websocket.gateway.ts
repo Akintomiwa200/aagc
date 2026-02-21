@@ -52,6 +52,18 @@ export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect {
   handleDisconnect(client: Socket) {
     this.logger.log(`Client disconnected: ${client.id}`);
     this.connectedClients.delete(client.id);
+
+    // Remove from all livestream rooms
+    this.livestreamViewers.forEach((viewers, streamId) => {
+      if (viewers.has(client.id)) {
+        viewers.delete(client.id);
+        const viewerCount = viewers.size;
+        this.server.to(`livestream-${streamId}`).emit('livestream-viewer-count', { streamId, viewerCount });
+        if (viewerCount === 0) {
+          this.livestreamViewers.delete(streamId);
+        }
+      }
+    });
   }
 
   private async sendInitialData(client: Socket) {
@@ -207,7 +219,51 @@ export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   // LiveStream-related events
+  private livestreamViewers = new Map<string, Set<string>>(); // streamId -> Set of socketIds
+
+  @SubscribeMessage('livestream-join')
+  async handleLivestreamJoin(client: Socket, data: { streamId: string }) {
+    const { streamId } = data;
+    if (!this.livestreamViewers.has(streamId)) {
+      this.livestreamViewers.set(streamId, new Set());
+    }
+    this.livestreamViewers.get(streamId)!.add(client.id);
+    client.join(`livestream-${streamId}`);
+
+    const viewerCount = this.livestreamViewers.get(streamId)!.size;
+    this.server.to(`livestream-${streamId}`).emit('livestream-viewer-count', { streamId, viewerCount });
+    console.log(`Client ${client.id} joined livestream ${streamId}, viewers: ${viewerCount}`);
+  }
+
+  @SubscribeMessage('livestream-leave')
+  async handleLivestreamLeave(client: Socket, data: { streamId: string }) {
+    const { streamId } = data;
+    if (this.livestreamViewers.has(streamId)) {
+      this.livestreamViewers.get(streamId)!.delete(client.id);
+      const viewerCount = this.livestreamViewers.get(streamId)!.size;
+      this.server.to(`livestream-${streamId}`).emit('livestream-viewer-count', { streamId, viewerCount });
+
+      if (viewerCount === 0) {
+        this.livestreamViewers.delete(streamId);
+      }
+    }
+    client.leave(`livestream-${streamId}`);
+  }
+
+  @SubscribeMessage('livestream-chat')
+  async handleLivestreamChat(client: Socket, data: { streamId: string; message: string; userName: string }) {
+    const chatMessage = {
+      id: Date.now().toString(),
+      user: data.userName || 'Anonymous',
+      text: data.message,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: new Date().toISOString(),
+    };
+    this.server.to(`livestream-${data.streamId}`).emit('livestream-chat-message', chatMessage);
+  }
+
   async emitLiveStreamUpdated(stream: any) {
     this.server.emit('livestream-updated', stream);
   }
+
 }

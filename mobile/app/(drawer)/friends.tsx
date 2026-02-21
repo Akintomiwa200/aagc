@@ -1,215 +1,116 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
-import { Search, UserPlus, MoreVertical, MessageSquare } from 'lucide-react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import {
+    View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput,
+    ActivityIndicator, RefreshControl, Alert,
+} from 'react-native';
+import { Search, UserPlus, MessageSquare, WifiOff, RefreshCw, Users } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
 import { apiService } from '@/services/apiService';
 import { useSocket } from '@/context/SocketContext';
 
 export default function FriendsScreen() {
-    const { theme } = useTheme();
+    const { colors, isDark } = useTheme();
     const router = useRouter();
-    const isDark = theme === 'dark';
-    const [friends, setFriends] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [suggestions, setSuggestions] = useState<any[]>([]);
-    const [loadingSuggestions, setLoadingSuggestions] = useState(false);
-
-    useEffect(() => {
-        fetchFriends();
-        fetchSuggestions();
-    }, []);
-
-    const fetchSuggestions = async () => {
-        setLoadingSuggestions(true);
-        try {
-            const data = await apiService.getSuggestedFriends();
-            setSuggestions(data);
-        } catch (error) {
-            console.error('Failed to fetch suggestions:', error);
-        } finally {
-            setLoadingSuggestions(false);
-        }
-    };
-
-    const fetchFriends = async () => {
-        try {
-            const data = await apiService.getFriends();
-            setFriends(data);
-        } catch (error) {
-            console.error('Failed to fetch friends:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const { socket } = useSocket();
 
+    const [friends, setFriends] = useState<any[]>([]);
+    const [suggestions, setSuggestions] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [sendingId, setSendingId] = useState<string | null>(null);
+
+    const fetchAll = useCallback(async () => {
+        try {
+            setError(null);
+            const [friendsData, suggestionsData] = await Promise.all([
+                apiService.getFriends().catch(() => []),
+                apiService.getSuggestedFriends().catch(() => []),
+            ]);
+            setFriends(Array.isArray(friendsData) ? friendsData : []);
+            setSuggestions(Array.isArray(suggestionsData) ? suggestionsData : []);
+        } catch (err) {
+            setError('Unable to load your friends. Please check your connection and try again.');
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }, []);
+
+    useEffect(() => { fetchAll(); }, [fetchAll]);
+
+    const onRefresh = () => { setRefreshing(true); fetchAll(); };
+
+    // Socket listeners
     useEffect(() => {
         if (!socket) return;
-
-        const handleMemberCreated = (member: any) => {
-            // This might not be a friend yet, but depends on logic
-            // For now, let's just refresh if needed or ignore
+        const handleUpdated = (member: any) => {
+            setFriends(prev => prev.map(f => (f._id || f.id) === (member._id || member.id) ? { ...f, ...member } : f));
         };
-
-        const handleMemberUpdated = (member: any) => {
-            setFriends(prev => prev.map(f => f.id === member.id || f._id === member._id ? { ...f, ...member } : f));
+        const handleDeleted = (data: any) => {
+            setFriends(prev => prev.filter(f => (f._id || f.id) !== data.userId));
         };
-
-        const handleMemberDeleted = (data: any) => {
-            setFriends(prev => prev.filter(f => f.id !== data.userId && f._id !== data.userId));
-        };
-
-        socket.on('member-created', handleMemberCreated);
-        socket.on('member-updated', handleMemberUpdated);
-        socket.on('member-deleted', handleMemberDeleted);
-
-        return () => {
-            socket.off('member-created', handleMemberCreated);
-            socket.off('member-updated', handleMemberUpdated);
-            socket.off('member-deleted', handleMemberDeleted);
-        };
+        socket.on('member-updated', handleUpdated);
+        socket.on('member-deleted', handleDeleted);
+        return () => { socket.off('member-updated', handleUpdated); socket.off('member-deleted', handleDeleted); };
     }, [socket]);
 
-    const filteredFriends = friends.filter(friend =>
-        friend.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const handleSendRequest = async (item: any) => {
+        const itemId = item._id || item.id;
+        setSendingId(itemId);
+        try {
+            await apiService.sendFriendRequest(itemId);
+            setSuggestions(prev => prev.filter(s => (s._id || s.id) !== itemId));
+            Alert.alert('Request Sent', `Friend request sent to ${item.name}!`);
+        } catch {
+            Alert.alert('Oops', 'Could not send the friend request right now. Please try again later.');
+        } finally {
+            setSendingId(null);
+        }
+    };
+
+    const filteredFriends = friends.filter(f =>
+        f.name?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const styles = StyleSheet.create({
-        container: {
-            flex: 1,
-            backgroundColor: isDark ? '#000000' : '#F9FAFB',
-        },
-        header: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: 16,
-            backgroundColor: isDark ? '#000000' : '#FFFFFF',
-        },
-        title: {
-            fontSize: 24,
-            fontWeight: 'bold',
-            color: isDark ? '#FFFFFF' : '#111827',
-        },
-        searchContainer: {
-            padding: 16,
-            backgroundColor: isDark ? '#000000' : '#FFFFFF',
-        },
-        searchBar: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: isDark ? '#1F2937' : '#F3F4F6',
-            borderRadius: 12,
-            paddingHorizontal: 12,
-            paddingVertical: 10,
-        },
-        searchInput: {
-            flex: 1,
-            marginLeft: 8,
-            fontSize: 16,
-            color: isDark ? '#FFFFFF' : '#111827',
-        },
-        listContent: {
-            padding: 16,
-        },
-        friendItem: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
-            padding: 12,
-            borderRadius: 16,
-            marginBottom: 12,
-            borderWidth: 1,
-            borderColor: isDark ? '#374151' : '#E5E7EB',
-        },
-        avatar: {
-            width: 50,
-            height: 50,
-            borderRadius: 25,
-            backgroundColor: '#7C3AED',
-            justifyContent: 'center',
-            alignItems: 'center',
-        },
-        avatarText: {
-            color: '#FFFFFF',
-            fontSize: 20,
-            fontWeight: 'bold',
-        },
-        friendInfo: {
-            flex: 1,
-            marginLeft: 12,
-        },
-        friendName: {
-            fontSize: 16,
-            fontWeight: 'bold',
-            color: isDark ? '#FFFFFF' : '#111827',
-        },
-        friendStatus: {
-            fontSize: 14,
-            color: isDark ? '#9CA3AF' : '#6B7280',
-        },
-        actions: {
-            flexDirection: 'row',
-            gap: 8,
-        },
-        iconButton: {
-            padding: 8,
-            backgroundColor: isDark ? '#374151' : '#F3F4F6',
-            borderRadius: 20,
-        },
-        fab: {
-            position: 'absolute',
-            bottom: 24,
-            right: 24,
-            width: 56,
-            height: 56,
-            borderRadius: 28,
-            backgroundColor: '#7C3AED',
-            justifyContent: 'center',
-            alignItems: 'center',
-            elevation: 4,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.25,
-            shadowRadius: 3.84,
-        },
-        emptyState: {
-            alignItems: 'center',
-            marginTop: 40,
-        },
-        emptyText: {
-            color: isDark ? '#9CA3AF' : '#6B7280',
-            marginTop: 8,
-        },
-        sectionTitle: {
-            fontSize: 18,
-            fontWeight: 'bold',
-            color: isDark ? '#FFFFFF' : '#111827',
-        }
-    });
+    // Full-screen error state
+    if (error && friends.length === 0 && !loading) {
+        return (
+            <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center', padding: 40 }]}>
+                <WifiOff size={48} color={colors.secondary} style={{ opacity: 0.5 }} />
+                <Text style={[styles.errorText, { color: colors.secondary }]}>{error}</Text>
+                <TouchableOpacity style={[styles.retryBtn, { backgroundColor: colors.primary }]} onPress={() => { setLoading(true); fetchAll(); }}>
+                    <RefreshCw size={18} color="#FFF" />
+                    <Text style={styles.retryBtnText}>Try Again</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
 
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.title}>Friends</Text>
-                <TouchableOpacity onPress={() => router.push('/friend-requests')}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={{ color: '#7C3AED', fontWeight: '600', marginRight: 4 }}>Requests</Text>
-                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444' }} />
-                    </View>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+            {/* Header */}
+            <View style={[styles.header, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Text style={[styles.title, { color: colors.text }]}>Friends</Text>
+                <TouchableOpacity
+                    onPress={() => router.push('/friend-requests')}
+                    style={[styles.requestsBadge, { backgroundColor: colors.primary + '15' }]}
+                >
+                    <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 }}>Requests</Text>
+                    <View style={styles.redDot} />
                 </TouchableOpacity>
             </View>
 
-            <View style={styles.searchContainer}>
-                <View style={styles.searchBar}>
-                    <Search size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+            {/* Search */}
+            <View style={[styles.searchWrap, { backgroundColor: colors.card }]}>
+                <View style={[styles.searchBar, { backgroundColor: isDark ? '#1F2937' : '#F3F4F6' }]}>
+                    <Search size={18} color={colors.secondary} />
                     <TextInput
-                        style={styles.searchInput}
+                        style={[styles.searchInput, { color: colors.text }]}
                         placeholder="Search friends..."
-                        placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
+                        placeholderTextColor={colors.secondary}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                     />
@@ -217,94 +118,100 @@ export default function FriendsScreen() {
             </View>
 
             {loading ? (
-                <ActivityIndicator size="large" color="#7C3AED" style={{ marginTop: 20 }} />
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                    <Text style={{ marginTop: 12, color: colors.secondary, fontWeight: '600' }}>Loading Friends...</Text>
+                </View>
             ) : (
                 <FlatList
                     data={filteredFriends}
-                    keyExtractor={(item) => item.id || item._id}
+                    keyExtractor={(item) => item._id || item.id}
                     contentContainerStyle={styles.listContent}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
                     ListEmptyComponent={
                         <View style={styles.emptyState}>
-                            <UserPlus size={48} color={isDark ? '#374151' : '#E5E7EB'} />
-                            <Text style={[styles.emptyText, { fontWeight: 'bold', fontSize: 18, color: isDark ? '#FFFFFF' : '#111827' }]}>
-                                No friends yet
+                            <Users size={48} color={colors.border} />
+                            <Text style={[styles.emptyTitle, { color: colors.text }]}>No Friends Yet</Text>
+                            <Text style={[styles.emptySubtitle, { color: colors.secondary }]}>
+                                Start connecting with your church community!
                             </Text>
-                            <Text style={styles.emptyText}>Start connecting with your church community!</Text>
                         </View>
                     }
                     renderItem={({ item }) => (
-                        <View style={styles.friendItem}>
-                            <View style={styles.avatar}>
+                        <View style={[styles.friendCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                            <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
                                 <Text style={styles.avatarText}>{item.name?.charAt(0) || '?'}</Text>
                             </View>
                             <View style={styles.friendInfo}>
-                                <Text style={styles.friendName}>{item.name}</Text>
-                                <Text style={styles.friendStatus}>{item.status || 'Online'}</Text>
+                                <Text style={[styles.friendName, { color: colors.text }]}>{item.name}</Text>
+                                <Text style={[styles.friendStatus, { color: colors.secondary }]}>{item.status || 'Member'}</Text>
                             </View>
-                            <View style={styles.actions}>
-                                <TouchableOpacity style={styles.iconButton}>
-                                    <MessageSquare size={20} color={isDark ? '#D1D5DB' : '#4B5563'} />
-                                </TouchableOpacity>
-                                <TouchableOpacity style={styles.iconButton}>
-                                    <MoreVertical size={20} color={isDark ? '#D1D5DB' : '#4B5563'} />
-                                </TouchableOpacity>
-                            </View>
+                            <TouchableOpacity style={[styles.iconBtn, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}>
+                                <MessageSquare size={18} color={colors.secondary} />
+                            </TouchableOpacity>
                         </View>
                     )}
                     ListFooterComponent={
-                        <View style={{ marginTop: filteredFriends.length === 0 ? 0 : 24, marginBottom: 100 }}>
-                            {suggestions.length > 0 ? (
-                                <>
-                                    <Text style={[styles.sectionTitle, { marginBottom: 16 }]}>
-                                        {filteredFriends.length === 0 ? "Suggested People" : "Suggested for you"}
-                                    </Text>
-                                    {suggestions.map((item) => (
-                                        <View key={item.id || item._id} style={styles.friendItem}>
-                                            <View style={styles.avatar}>
+                        suggestions.length > 0 ? (
+                            <View style={{ marginTop: 24, marginBottom: 100 }}>
+                                <Text style={[styles.sectionTitle, { color: colors.text }]}>People You May Know</Text>
+                                {suggestions.map(item => {
+                                    const itemId = item._id || item.id;
+                                    return (
+                                        <View key={itemId} style={[styles.friendCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                                            <View style={[styles.avatar, { backgroundColor: '#6366F1' }]}>
                                                 <Text style={styles.avatarText}>{item.name?.charAt(0) || '?'}</Text>
                                             </View>
                                             <View style={styles.friendInfo}>
-                                                <Text style={styles.friendName}>{item.name}</Text>
-                                                <Text style={styles.friendStatus}>Potential match</Text>
+                                                <Text style={[styles.friendName, { color: colors.text }]}>{item.name}</Text>
+                                                <Text style={[styles.friendStatus, { color: colors.secondary }]}>Suggested</Text>
                                             </View>
                                             <TouchableOpacity
-                                                style={[styles.iconButton, { backgroundColor: '#7C3AED20' }]}
-                                                onPress={async () => {
-                                                    try {
-                                                        await apiService.sendFriendRequest(item.id || item._id);
-                                                        setSuggestions(prev => prev.filter(s => (s.id || s._id) !== (item.id || item._id)));
-                                                        alert('Friend request sent!');
-                                                    } catch (error) {
-                                                        alert('Failed to send request');
-                                                    }
-                                                }}
+                                                style={[styles.addBtn, { backgroundColor: colors.primary + '15' }]}
+                                                onPress={() => handleSendRequest(item)}
+                                                disabled={sendingId === itemId}
                                             >
-                                                <UserPlus size={20} color="#7C3AED" />
+                                                {sendingId === itemId ? (
+                                                    <ActivityIndicator size="small" color={colors.primary} />
+                                                ) : (
+                                                    <UserPlus size={18} color={colors.primary} />
+                                                )}
                                             </TouchableOpacity>
                                         </View>
-                                    ))}
-                                </>
-                            ) : (
-                                filteredFriends.length === 0 && (
-                                    <View style={[styles.emptyState, { marginTop: 20 }]}>
-                                        <Text style={styles.emptyText}>No suggestions available right now.</Text>
-                                        <TouchableOpacity
-                                            style={[styles.iconButton, { marginTop: 12, paddingHorizontal: 20, borderRadius: 12, backgroundColor: '#7C3AED' }]}
-                                            onPress={fetchSuggestions}
-                                        >
-                                            <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>Refresh Discovery</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                )
-                            )}
-                        </View>
+                                    );
+                                })}
+                            </View>
+                        ) : <View style={{ height: 100 }} />
                     }
                 />
             )}
-
-            <TouchableOpacity style={styles.fab}>
-                <UserPlus size={24} color="#FFFFFF" />
-            </TouchableOpacity>
         </View>
     );
 }
+
+const styles = StyleSheet.create({
+    container: { flex: 1 },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1 },
+    title: { fontSize: 24, fontWeight: '900' },
+    requestsBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
+    redDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#EF4444' },
+    searchWrap: { paddingHorizontal: 16, paddingVertical: 12 },
+    searchBar: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, gap: 8 },
+    searchInput: { flex: 1, fontSize: 15 },
+    listContent: { paddingHorizontal: 16, paddingTop: 8 },
+    friendCard: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 18, marginBottom: 10, borderWidth: 1, gap: 12 },
+    avatar: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
+    avatarText: { color: '#FFFFFF', fontSize: 20, fontWeight: 'bold' },
+    friendInfo: { flex: 1 },
+    friendName: { fontSize: 16, fontWeight: '700' },
+    friendStatus: { fontSize: 13, fontWeight: '500', marginTop: 2 },
+    iconBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+    addBtn: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center' },
+    sectionTitle: { fontSize: 17, fontWeight: '800', marginBottom: 12 },
+    emptyState: { alignItems: 'center', paddingVertical: 48, gap: 8 },
+    emptyTitle: { fontSize: 20, fontWeight: 'bold' },
+    emptySubtitle: { fontSize: 14, textAlign: 'center' },
+    errorText: { fontSize: 16, textAlign: 'center', marginTop: 16, marginBottom: 24, lineHeight: 24 },
+    retryBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 16 },
+    retryBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
+});

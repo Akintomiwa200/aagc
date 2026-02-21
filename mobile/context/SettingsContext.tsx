@@ -15,6 +15,8 @@ interface Settings {
     showOnlineStatus: boolean;
     socialTagging: boolean;
     usageAnalytics: boolean;
+    language: string;
+    textSize: string;
 }
 
 interface SettingsContextType {
@@ -35,6 +37,8 @@ const defaultSettings: Settings = {
     showOnlineStatus: true,
     socialTagging: false,
     usageAnalytics: true,
+    language: 'English',
+    textSize: 'Default',
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);

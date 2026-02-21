@@ -31,8 +31,8 @@ export default function GivingScreen() {
                 const donations = await apiService.getDonations(userData.id || userData._id);
                 setHistory(donations);
             }
-        } catch (error) {
-            console.error('Failed to fetch user or history:', error);
+        } catch {
+            // Silently fail — user can pull to refresh
         } finally {
             setLoadingHistory(false);
         }
@@ -83,8 +83,7 @@ export default function GivingScreen() {
             setSelectedAmount(null);
             setCustomAmount('');
         } catch (error) {
-            Alert.alert('Error', 'Failed to process donation. Please try again.');
-            console.error(error);
+            Alert.alert('Oops', 'We could not process your gift right now. Please check your connection and try again.');
         } finally {
             setProcessing(false);
         }

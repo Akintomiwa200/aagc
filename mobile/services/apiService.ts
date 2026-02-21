@@ -107,6 +107,8 @@ class ApiService {
     });
   }
 
+
+
   async delete(endpoint: string): Promise<void> {
     return this.request<void>(endpoint, { method: 'DELETE' });
   }

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
@@ -8,8 +7,8 @@ import {
     TouchableOpacity,
     RefreshControl,
     Dimensions,
-    Image,
-    FlatList
+    ActivityIndicator,
+    Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -27,67 +26,112 @@ import {
     TrendingUp,
     Clock,
     Eye,
-    MoreVertical,
-    Music,
-    Video,
-    FileText,
-    Award,
+    CheckCircle,
     Target,
-    Compass,
-    Shield,
-    Star,
-    ArrowUpRight,
-    CheckCircle
+    WifiOff,
+    RefreshCw
 } from 'lucide-react-native';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
 import { apiService } from '@/services/apiService';
 import { useSocket } from '@/context/SocketContext';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 
-
-const QuickLink = ({ icon: Icon, title, route, color, badge, colors, router, styles }: any) => (
-    <TouchableOpacity style={styles.linkCard} onPress={() => router.push(route)}>
-        <View style={[styles.linkIcon, { backgroundColor: color + '15' }]}>
-            {Icon && <Icon size={24} color={color} />}
-        </View>
-        <Text style={styles.linkTitle}>{title}</Text>
-        {badge ? (
-            <View style={{
-                position: 'absolute',
-                top: 8,
-                right: 8,
-                backgroundColor: colors.primary,
-                borderRadius: 10,
-                paddingHorizontal: 6,
-                paddingVertical: 2,
-            }}>
-                <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '600' }}>{badge}</Text>
+const QuickLink = ({ icon: Icon, title, route, color, badge, colors, router, isDark }: any) => {
+    return (
+        <TouchableOpacity
+            style={[
+                quickStyles.linkCard,
+                { backgroundColor: colors.card, borderColor: colors.border }
+            ]}
+            onPress={() => router.push(route)}
+        >
+            <View style={[quickStyles.linkIcon, { backgroundColor: color + '15' }]}>
+                {Icon && <Icon size={24} color={color} />}
             </View>
-        ) : null}
-    </TouchableOpacity>
-);
+            <Text style={[quickStyles.linkTitle, { color: colors.text }]}>{title}</Text>
+            {badge ? (
+                <View style={[quickStyles.badge, { backgroundColor: colors.primary }]}>
+                    <Text style={quickStyles.badgeText}>{badge > 99 ? '99+' : badge}</Text>
+                </View>
+            ) : null}
+        </TouchableOpacity>
+    );
+};
+
+const quickStyles = StyleSheet.create({
+    linkCard: {
+        width: (width - 52) / 2,
+        padding: 16,
+        borderRadius: 20,
+        borderWidth: 1,
+        alignItems: 'flex-start',
+        gap: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    linkIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    linkTitle: {
+        fontSize: 15,
+        fontWeight: 'bold',
+    },
+    badge: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        borderRadius: 12,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        minWidth: 24,
+        alignItems: 'center',
+    },
+    badgeText: {
+        color: '#FFFFFF',
+        fontSize: 10,
+        fontWeight: 'bold',
+    }
+});
+
 
 export default function HomeScreen() {
     const router = useRouter();
     const { theme, colors } = useTheme();
     const isDark = theme === 'dark';
+    const { user } = useAuth();
 
     const [refreshing, setRefreshing] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
     const [dailyRhema, setDailyRhema] = useState<any>(null);
     const [latestSermon, setLatestSermon] = useState<any>(null);
     const [todayEvents, setTodayEvents] = useState<any[]>([]);
+
+    // Real Stats
     const [prayerCount, setPrayerCount] = useState(0);
     const [activeUsers, setActiveUsers] = useState(0);
-    const [streak, setStreak] = useState(0);
-    const [featuredContent, setFeaturedContent] = useState<any[]>([]);
 
     const fetchData = useCallback(async () => {
         try {
-            const [rhemaData, sermonData, eventsData] = await Promise.all([
-                apiService.getTodayDevotional(),
-                apiService.getSermons(),
-                apiService.getEvents()
+            setError(null);
+
+            // Fetch real data simultaneously
+            const [rhemaData, sermonData, eventsData, prayersData] = await Promise.all([
+                apiService.getTodayDevotional().catch(() => null),
+                apiService.getSermons().catch(() => []),
+                apiService.getEvents().catch(() => []),
+                apiService.get('/prayers').catch(() => [])
             ]);
 
             setDailyRhema(rhemaData);
@@ -96,43 +140,22 @@ export default function HomeScreen() {
                 setLatestSermon(sermonData[0]);
             }
 
-            setTodayEvents(eventsData || []);
+            // Filter events for today (assuming ISO date strings)
+            const todayStr = new Date().toISOString().split('T')[0];
+            const filteredEvents = (eventsData || []).filter((e: any) => e.date && e.date.startsWith(todayStr));
+            setTodayEvents(filteredEvents);
 
-            // Static stats for now - replace with API calls
-            setPrayerCount(42);
-            setActiveUsers(156);
-            setStreak(7);
+            // Set prayer count from real api
+            if (prayersData && prayersData.length) {
+                const todayPrayers = prayersData.filter((p: any) => p.createdAt && p.createdAt.startsWith(todayStr));
+                setPrayerCount(todayPrayers.length);
+            }
 
-            // Featured content (static for now)
-            setFeaturedContent([
-                {
-                    id: '1',
-                    title: 'Spiritual Warfare Series',
-                    type: 'series',
-                    duration: '4h 30m',
-                    icon: Shield,
-                    color: '#8B5CF6'
-                },
-                {
-                    id: '2',
-                    title: 'Worship Playlist',
-                    type: 'music',
-                    duration: '12 tracks',
-                    icon: Music,
-                    color: '#EF4444'
-                },
-                {
-                    id: '3',
-                    title: 'Bible Study Guide',
-                    type: 'guide',
-                    duration: 'PDF',
-                    icon: FileText,
-                    color: '#10B981'
-                }
-            ]);
-
-        } catch (error) {
-            console.log('Failed to fetch home data', error);
+        } catch (err: any) {
+            console.error('Failed to fetch home data', err);
+            setError('Unable to connect securely right now. Please check your internet connection.');
+        } finally {
+            setLoading(false);
         }
     }, []);
 
@@ -146,24 +169,18 @@ export default function HomeScreen() {
         if (!socket) return;
 
         const handleInitialData = (data: any) => {
-            if (data.sermons && data.sermons.length > 0) {
-                setLatestSermon(data.sermons[0]);
-            }
-            if (data.prayerCount) {
-                setPrayerCount(data.prayerCount);
-            }
-            if (data.activeUsers) {
-                setActiveUsers(data.activeUsers);
-            }
+            if (data.activeUsers) setActiveUsers(data.activeUsers);
         };
 
         socket.on('initial-data', handleInitialData);
-        socket.on('prayer-created', () => fetchData());
+        socket.on('prayer-created', () => {
+            setPrayerCount(prev => prev + 1);
+        });
         socket.on('user-activity', (users: number) => setActiveUsers(users));
 
         return () => {
             socket.off('initial-data', handleInitialData);
-            socket.off('prayer-updated');
+            socket.off('prayer-created');
             socket.off('user-activity');
         };
     }, [socket]);
@@ -174,66 +191,52 @@ export default function HomeScreen() {
         setRefreshing(false);
     }, [fetchData]);
 
-    const renderEventItem = ({ item }: { item: any }) => (
-        <TouchableOpacity style={styles.eventItem}>
-            <View style={[styles.eventTimeBadge, { backgroundColor: colors.primary + '20' }]}>
+    const renderEventItem = (item: any, index: number) => (
+        <TouchableOpacity key={item.id || index} style={[styles.eventItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[styles.eventTimeBadge, { backgroundColor: colors.primary + '15' }]}>
                 <Clock size={12} color={colors.primary} />
-                <Text style={[styles.eventTime, { color: colors.primary }]}>{item.time}</Text>
+                <Text style={[styles.eventTime, { color: colors.primary }]}>{item.time || 'All Day'}</Text>
             </View>
-            <Text style={styles.eventTitle}>{item.title}</Text>
-            <Text style={styles.eventLocation}>{item.location}</Text>
+            <Text style={[styles.eventTitle, { color: colors.text }]}>{item.title}</Text>
+            <Text style={[styles.eventLocation, { color: colors.secondary }]}>{item.location || 'Church Campus'}</Text>
+            <ChevronRight size={16} color={colors.border} style={{ position: 'absolute', right: 16, top: '50%' }} />
         </TouchableOpacity>
     );
-
-    const renderFeaturedItem = ({ item }: { item: any }) => {
-        const Icon = item.icon;
-        return (
-            <TouchableOpacity style={styles.featuredCard}>
-                <View style={[styles.featuredIcon, { backgroundColor: item.color + '20' }]}>
-                    <Icon size={24} color={item.color} />
-                </View>
-                <Text style={styles.featuredTitle}>{item.title}</Text>
-                <Text style={styles.featuredSubtitle}>{item.duration}</Text>
-                <View style={styles.featuredBadge}>
-                    <Text style={styles.featuredBadgeText}>{item.type}</Text>
-                </View>
-            </TouchableOpacity>
-        );
-    };
 
     const styles = StyleSheet.create({
         container: {
             flex: 1,
             backgroundColor: colors.background,
         },
-        header: {
+        headerGradient: {
             paddingHorizontal: 20,
             paddingTop: 20,
-            paddingBottom: 30,
-            backgroundColor: colors.primary,
+            paddingBottom: 40,
             borderBottomLeftRadius: 32,
             borderBottomRightRadius: 32,
-            shadowColor: colors.primary,
-            shadowOffset: { width: 0, height: 10 },
-            shadowOpacity: 0.3,
-            shadowRadius: 20,
-            elevation: 10,
         },
         headerTop: {
             flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: 24,
+            marginBottom: 20,
         },
         welcomeText: {
             fontSize: 14,
             color: 'rgba(255,255,255,0.8)',
             fontWeight: '600',
+            textTransform: 'uppercase',
+            letterSpacing: 1,
         },
         userName: {
-            fontSize: 24,
+            fontSize: 26,
             fontWeight: 'bold',
             color: '#FFFFFF',
+            marginTop: 4,
+        },
+        iconButtonWrapper: {
+            flexDirection: 'row',
+            gap: 12,
         },
         iconButton: {
             width: 44,
@@ -246,36 +249,42 @@ export default function HomeScreen() {
         statsContainer: {
             flexDirection: 'row',
             justifyContent: 'space-between',
-            marginTop: 16,
-            paddingHorizontal: 20,
+            marginTop: 8,
+            backgroundColor: 'rgba(255,255,255,0.15)',
+            borderRadius: 20,
+            padding: 16,
         },
         statItem: {
             alignItems: 'center',
+            flex: 1,
         },
         statValue: {
-            fontSize: 20,
+            fontSize: 22,
             fontWeight: 'bold',
             color: '#FFFFFF',
         },
         statLabel: {
             fontSize: 12,
-            color: 'rgba(255,255,255,0.7)',
+            color: 'rgba(255,255,255,0.8)',
             marginTop: 4,
+            fontWeight: '500',
         },
         spotlightCard: {
             backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
             borderRadius: 24,
             padding: 20,
-            marginTop: -20,
+            marginTop: -25,
             marginHorizontal: 20,
             shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
+            shadowOffset: { width: 0, height: 8 },
             shadowOpacity: 0.1,
-            shadowRadius: 12,
-            elevation: 5,
+            shadowRadius: 16,
+            elevation: 8,
             flexDirection: 'row',
             alignItems: 'center',
             gap: 16,
+            borderWidth: isDark ? 1 : 0,
+            borderColor: 'rgba(255,255,255,0.1)'
         },
         sermonStats: {
             flexDirection: 'row',
@@ -290,6 +299,7 @@ export default function HomeScreen() {
         sermonStatText: {
             fontSize: 12,
             color: colors.secondary,
+            fontWeight: '500',
         },
         playIcon: {
             width: 56,
@@ -298,6 +308,11 @@ export default function HomeScreen() {
             backgroundColor: colors.primary,
             justifyContent: 'center',
             alignItems: 'center',
+            shadowColor: colors.primary,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+            elevation: 5,
         },
         section: {
             paddingHorizontal: 20,
@@ -311,26 +326,32 @@ export default function HomeScreen() {
         },
         sectionTitle: {
             fontSize: 20,
-            fontWeight: 'bold',
+            fontWeight: '900',
             color: colors.text,
+            letterSpacing: 0.5,
         },
         seeAll: {
             fontSize: 14,
             color: colors.primary,
-            fontWeight: '600',
+            fontWeight: 'bold',
         },
         rhemaCard: {
             backgroundColor: colors.card,
-            borderRadius: 20,
-            padding: 20,
+            borderRadius: 24,
+            padding: 24,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.05,
+            shadowRadius: 10,
+            elevation: 3,
             borderWidth: 1,
             borderColor: colors.border,
         },
         rhemaHeader: {
             flexDirection: 'row',
             justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            marginBottom: 12,
+            alignItems: 'center',
+            marginBottom: 16,
         },
         rhemaTitle: {
             fontSize: 18,
@@ -339,166 +360,119 @@ export default function HomeScreen() {
             flex: 1,
         },
         rhemaText: {
-            fontSize: 14,
+            fontSize: 15,
             color: colors.secondary,
-            lineHeight: 22,
+            lineHeight: 24,
+            fontWeight: '500',
         },
         rhemaMeta: {
             flexDirection: 'row',
-            justifyContent: 'space-between',
             alignItems: 'center',
-            marginTop: 16,
+            marginTop: 20,
             paddingTop: 16,
             borderTopWidth: 1,
             borderTopColor: colors.border,
         },
         rhemaVerse: {
-            fontSize: 12,
+            fontSize: 14,
             color: colors.primary,
-            fontWeight: '600',
+            fontWeight: 'bold',
+            flex: 1,
         },
         rhemaDate: {
             fontSize: 12,
             color: colors.secondary,
+            fontWeight: '600',
+            backgroundColor: colors.border,
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+            borderRadius: 8,
         },
         quickLinksGrid: {
             flexDirection: 'row',
             flexWrap: 'wrap',
             gap: 12,
-            marginBottom: 16,
-        },
-        linkCard: {
-            width: (width - 52) / 2,
-            padding: 16,
-            borderRadius: 20,
-            backgroundColor: colors.card,
-            borderWidth: 1,
-            borderColor: colors.border,
-            alignItems: 'center',
-            gap: 12,
-        },
-        linkIcon: {
-            width: 48,
-            height: 48,
-            borderRadius: 16,
-            justifyContent: 'center',
-            alignItems: 'center',
-        },
-        linkTitle: {
-            fontSize: 14,
-            fontWeight: 'bold',
-            color: colors.text,
-        },
-        eventsContainer: {
-            marginTop: 8,
         },
         eventItem: {
-            backgroundColor: colors.card,
-            borderRadius: 16,
-            padding: 16,
-            marginBottom: 8,
+            borderRadius: 20,
+            padding: 20,
+            marginBottom: 12,
             borderWidth: 1,
-            borderColor: colors.border,
         },
         eventTimeBadge: {
             flexDirection: 'row',
             alignItems: 'center',
-            gap: 4,
-            paddingHorizontal: 8,
-            paddingVertical: 4,
+            gap: 6,
+            paddingHorizontal: 10,
+            paddingVertical: 6,
             borderRadius: 12,
             alignSelf: 'flex-start',
-            marginBottom: 8,
+            marginBottom: 12,
         },
         eventTime: {
-            fontSize: 11,
-            fontWeight: '600',
+            fontSize: 12,
+            fontWeight: 'bold',
         },
         eventTitle: {
-            fontSize: 15,
+            fontSize: 16,
             fontWeight: 'bold',
-            color: colors.text,
-            marginBottom: 4,
+            marginBottom: 6,
         },
         eventLocation: {
-            fontSize: 13,
-            color: colors.secondary,
+            fontSize: 14,
+            fontWeight: '500',
         },
         noEvents: {
             textAlign: 'center',
             color: colors.secondary,
-            fontSize: 14,
-            padding: 20,
-        },
-        featuredGrid: {
-            marginTop: 8,
-        },
-        featuredCard: {
-            width: (width - 52) / 2,
+            fontSize: 15,
+            padding: 24,
             backgroundColor: colors.card,
-            borderRadius: 20,
-            padding: 16,
+            borderRadius: 16,
             borderWidth: 1,
             borderColor: colors.border,
-            marginBottom: 12,
+            overflow: 'hidden',
         },
-        featuredIcon: {
-            width: 48,
-            height: 48,
-            borderRadius: 16,
+        errorContainer: {
+            flex: 1,
             justifyContent: 'center',
             alignItems: 'center',
-            marginBottom: 12,
+            padding: 40,
+            marginTop: 60,
         },
-        featuredTitle: {
-            fontSize: 15,
-            fontWeight: 'bold',
-            color: colors.text,
-            marginBottom: 4,
-        },
-        featuredSubtitle: {
-            fontSize: 12,
+        errorText: {
             color: colors.secondary,
-            marginBottom: 8,
+            fontSize: 16,
+            textAlign: 'center',
+            marginTop: 16,
+            marginBottom: 24,
+            lineHeight: 24,
         },
-        featuredBadge: {
-            backgroundColor: colors.primary + '15',
-            paddingHorizontal: 8,
-            paddingVertical: 4,
-            borderRadius: 8,
-            alignSelf: 'flex-start',
-        },
-        featuredBadgeText: {
-            fontSize: 10,
-            color: colors.primary,
-            fontWeight: '600',
-        },
-        streakCard: {
+        retryButton: {
             backgroundColor: colors.primary,
-            borderRadius: 20,
-            padding: 20,
-            marginTop: 8,
-        },
-        streakContent: {
             flexDirection: 'row',
             alignItems: 'center',
-            justifyContent: 'space-between',
+            gap: 8,
+            paddingHorizontal: 24,
+            paddingVertical: 12,
+            borderRadius: 16,
+            shadowColor: colors.primary,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+            elevation: 4,
         },
-        streakText: {
+        retryText: {
             color: '#FFFFFF',
-            fontSize: 14,
-            fontWeight: '600',
-        },
-        streakValue: {
-            color: '#FFFFFF',
-            fontSize: 32,
             fontWeight: 'bold',
+            fontSize: 16,
         },
-        streakLabel: {
-            color: 'rgba(255,255,255,0.8)',
-            fontSize: 12,
-            marginTop: 4,
-        },
+        loadingContainer: {
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginTop: 100,
+        }
     });
 
     return (
@@ -506,178 +480,140 @@ export default function HomeScreen() {
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
                 }
             >
-                {/* Enhanced Header with Stats */}
-                <View style={styles.header}>
+                <LinearGradient
+                    colors={isDark ? ['#1F2937', '#111827'] : [colors.primary, '#6366F1']}
+                    style={styles.headerGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                >
                     <View style={styles.headerTop}>
                         <View>
                             <Text style={styles.welcomeText}>Grace & Peace,</Text>
-                            <Text style={styles.userName}>Apostolic Army</Text>
+                            <Text style={styles.userName}>{user?.name ? user.name.split(' ')[0] : 'Believer'}</Text>
                         </View>
-                        <View style={{ flexDirection: 'row', gap: 8 }}>
-                            <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/notifications')}>
-                                <Bell size={22} color="#FFFFFF" />
+                        <View style={styles.iconButtonWrapper}>
+                            <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/notifications' as any)}>
+                                <Bell size={20} color="#FFFFFF" />
+                                <View style={{ position: 'absolute', top: 12, right: 12, width: 8, height: 8, backgroundColor: '#EF4444', borderRadius: 4 }} />
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/profile')}>
-                                <Users size={22} color="#FFFFFF" />
+                                <Users size={20} color="#FFFFFF" />
                             </TouchableOpacity>
                         </View>
                     </View>
 
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                        <MapPin size={14} color="rgba(255,255,255,0.7)" />
-                        <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: '500' }}>
-                            Global Headquarters
-                        </Text>
-                    </View>
-
-                    {/* Stats Row */}
                     <View style={styles.statsContainer}>
                         <View style={styles.statItem}>
                             <Text style={styles.statValue}>{activeUsers}</Text>
                             <Text style={styles.statLabel}>Online Now</Text>
                         </View>
+                        <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.2)' }} />
                         <View style={styles.statItem}>
                             <Text style={styles.statValue}>{prayerCount}</Text>
                             <Text style={styles.statLabel}>Prayers Today</Text>
                         </View>
-                        <View style={styles.statItem}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                <TrendingUp size={16} color="#FFFFFF" />
-                                <Text style={styles.statValue}>12%</Text>
-                            </View>
-                            <Text style={styles.statLabel}>Growth</Text>
-                        </View>
                     </View>
-                </View>
+                </LinearGradient>
 
-                {/* Latest Sermon Spotlight */}
-                <TouchableOpacity style={styles.spotlightCard} onPress={() => router.push('/sermons')}>
-                    <View style={styles.playIcon}>
-                        <Play size={24} color="#FFFFFF" fill="#FFFFFF" />
+                {loading ? (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color={colors.primary} />
+                        <Text style={{ marginTop: 16, color: colors.secondary, fontWeight: '600' }}>Preparing Your Feed...</Text>
                     </View>
-                    <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 12, fontWeight: 'bold', color: colors.primary, letterSpacing: 1, marginBottom: 4 }}>
-                            FEATURED SERMON
-                        </Text>
-                        <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.text }} numberOfLines={1}>
-                            {latestSermon?.title || 'The Power of Faith'}
-                        </Text>
-                        <Text style={{ fontSize: 13, color: colors.secondary, marginBottom: 8 }}>
-                            {latestSermon?.speaker || 'Pastor John Smith'}
-                        </Text>
-                        <View style={styles.sermonStats}>
-                            <View style={styles.sermonStat}>
-                                <Clock size={12} color={colors.secondary} />
-                                <Text style={styles.sermonStatText}>{latestSermon?.duration || '45:22'}</Text>
-                            </View>
-                            <View style={styles.sermonStat}>
-                                <Eye size={12} color={colors.secondary} />
-                                <Text style={styles.sermonStatText}>{latestSermon?.views || '1.2K'} views</Text>
-                            </View>
-                        </View>
-                    </View>
-                    <ChevronRight size={20} color={colors.border} />
-                </TouchableOpacity>
-
-                {/* Daily Rhema Section */}
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>📖 Daily Rhema</Text>
-                        <TouchableOpacity onPress={() => router.push('/devotional')}>
-                            <Text style={styles.seeAll}>View Archive</Text>
+                ) : error ? (
+                    <View style={styles.errorContainer}>
+                        <WifiOff size={48} color={colors.secondary} opacity={0.5} />
+                        <Text style={styles.errorText}>{error}</Text>
+                        <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+                            <RefreshCw size={18} color="#FFFFFF" />
+                            <Text style={styles.retryText}>Try Again</Text>
                         </TouchableOpacity>
                     </View>
-                    <TouchableOpacity
-                        style={styles.rhemaCard}
-                        onPress={() => router.push('/devotional')}
-                    >
-                        <View style={styles.rhemaHeader}>
-                            <Text style={styles.rhemaTitle}>{dailyRhema?.title || 'Walking in Victory'}</Text>
-                            <CheckCircle size={20} color={colors.primary} />
-                        </View>
-                        <Text style={styles.rhemaText} numberOfLines={4}>
-                            {dailyRhema?.content || dailyRhema?.body ||
-                                'Start your day with a powerful word from God. Today, we meditate on the promise of victory through Christ...'}
-                        </Text>
-                        <View style={styles.rhemaMeta}>
-                            <Text style={styles.rhemaVerse}>{dailyRhema?.verse || 'Philippians 4:13'}</Text>
-                            <Text style={styles.rhemaDate}>Today</Text>
-                        </View>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Quick Actions */}
-                <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { marginBottom: 16 }]}>🚀 Quick Actions</Text>
-                    <View style={styles.quickLinksGrid}>
-                        <QuickLink icon={Book} title="Bible" route="/bible" color="#7C3AED" colors={colors} router={router} styles={styles} />
-                        <QuickLink icon={Heart} title="Giving" route="/giving" color="#EC4899" badge="New" colors={colors} router={router} styles={styles} />
-                        <QuickLink icon={Zap} title="Live Meet" route="/live-meet" color="#F59E0B" colors={colors} router={router} styles={styles} />
-                        <QuickLink icon={MessageSquare} title="Prayers" route="/prayers" color="#10B981" badge={prayerCount} colors={colors} router={router} styles={styles} />
-                        <QuickLink icon={Users} title="Community" route="/friends" color="#3B82F6" badge={activeUsers} colors={colors} router={router} styles={styles} />
-                        <QuickLink icon={Calendar} title="Events" route="/events" color="#6366F1" badge={todayEvents.length} colors={colors} router={router} styles={styles} />
-                    </View>
-                </View>
-
-                {/* Today's Events */}
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>📅 Today's Events</Text>
-                        <TouchableOpacity onPress={() => router.push('/events')}>
-                            <Text style={styles.seeAll}>View All</Text>
-                        </TouchableOpacity>
-                    </View>
-                    <View style={styles.eventsContainer}>
-                        {todayEvents.length > 0 ? (
-                            <FlatList
-                                data={todayEvents}
-                                renderItem={renderEventItem}
-                                keyExtractor={(item) => item.id}
-                                scrollEnabled={false}
-                            />
-                        ) : (
-                            <Text style={styles.noEvents}>No events scheduled for today</Text>
+                ) : (
+                    <>
+                        {latestSermon && (
+                            <TouchableOpacity style={styles.spotlightCard} onPress={() => router.push('/sermons')}>
+                                <View style={styles.playIcon}>
+                                    <Play size={24} color="#FFFFFF" fill="#FFFFFF" style={{ marginLeft: 4 }} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary }} />
+                                        <Text style={{ fontSize: 11, fontWeight: 'bold', color: colors.primary, letterSpacing: 1 }}>
+                                            LATEST MESSAGE
+                                        </Text>
+                                    </View>
+                                    <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.text, marginBottom: 4 }} numberOfLines={1}>
+                                        {latestSermon.title}
+                                    </Text>
+                                    <Text style={{ fontSize: 14, color: colors.secondary }}>
+                                        {latestSermon.speaker || 'Pastor John Smith'}
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
                         )}
-                    </View>
-                </View>
 
-                {/* Featured Content */}
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>⭐ Featured</Text>
-                        <TouchableOpacity onPress={() => router.push('/library' as any)}>
-                            <Text style={styles.seeAll}>Explore</Text>
-                        </TouchableOpacity>
-                    </View>
-                    <FlatList
-                        data={featuredContent}
-                        renderItem={renderFeaturedItem}
-                        keyExtractor={(item) => item.id}
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.featuredGrid}
-                        ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
-                    />
-                </View>
-
-                {/* Streak Card */}
-                <View style={styles.section}>
-                    <View style={styles.streakCard}>
-                        <View style={styles.streakContent}>
-                            <View>
-                                <Text style={styles.streakText}>Your Prayer Streak</Text>
-                                <Text style={styles.streakValue}>{streak} days</Text>
-                                <Text style={styles.streakLabel}>Keep going! You're on fire 🔥</Text>
+                        <View style={styles.section}>
+                            <View style={styles.sectionHeader}>
+                                <Text style={styles.sectionTitle}>Daily Rhema</Text>
+                                <TouchableOpacity onPress={() => router.push('/devotional')}>
+                                    <Text style={styles.seeAll}>Archive</Text>
+                                </TouchableOpacity>
                             </View>
-                            <Target size={48} color="rgba(255,255,255,0.3)" />
+                            {dailyRhema ? (
+                                <TouchableOpacity style={styles.rhemaCard} onPress={() => router.push('/devotional')}>
+                                    <View style={styles.rhemaHeader}>
+                                        <Text style={styles.rhemaTitle}>{dailyRhema.title}</Text>
+                                        <CheckCircle size={22} color={colors.primary} />
+                                    </View>
+                                    <Text style={styles.rhemaText} numberOfLines={3}>
+                                        {dailyRhema.content || dailyRhema.body}
+                                    </Text>
+                                    <View style={styles.rhemaMeta}>
+                                        <Text style={styles.rhemaVerse}>{dailyRhema.verse}</Text>
+                                        <Text style={styles.rhemaDate}>Today</Text>
+                                    </View>
+                                </TouchableOpacity>
+                            ) : (
+                                <View style={[styles.rhemaCard, { justifyContent: 'center', alignItems: 'center', paddingVertical: 40 }]}>
+                                    <Book size={32} color={colors.border} />
+                                    <Text style={{ marginTop: 12, color: colors.secondary, fontWeight: '500' }}>No Devotional Today</Text>
+                                </View>
+                            )}
                         </View>
-                    </View>
-                </View>
 
-                <View style={{ height: 100 }} />
+                        <View style={styles.section}>
+                            <Text style={[styles.sectionTitle, { marginBottom: 16 }]}>Quick Actions</Text>
+                            <View style={styles.quickLinksGrid}>
+                                <QuickLink icon={Book} title="Bible" route="/bible" color="#7C3AED" colors={colors} router={router} isDark={isDark} />
+                                <QuickLink icon={Heart} title="Giving" route="/giving" color="#EC4899" colors={colors} router={router} isDark={isDark} />
+                                <QuickLink icon={Zap} title="Live Meet" route="/live-meet" color="#F59E0B" colors={colors} router={router} isDark={isDark} />
+                                <QuickLink icon={MessageSquare} title="Prayers" route="/prayers" color="#10B981" badge={prayerCount} colors={colors} router={router} isDark={isDark} />
+                            </View>
+                        </View>
+
+                        <View style={styles.section}>
+                            <View style={styles.sectionHeader}>
+                                <Text style={styles.sectionTitle}>Today's Gathering</Text>
+                                <TouchableOpacity onPress={() => router.push('/events')}>
+                                    <Text style={styles.seeAll}>Calendar</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <View>
+                                {todayEvents.length > 0 ? (
+                                    todayEvents.map((item, index) => renderEventItem(item, index))
+                                ) : (
+                                    <Text style={styles.noEvents}>No church events scheduled for today. Have a blessed day!</Text>
+                                )}
+                            </View>
+                        </View>
+
+                        <View style={{ height: 100 }} />
+                    </>
+                )}
             </ScrollView>
         </SafeAreaView>
     );

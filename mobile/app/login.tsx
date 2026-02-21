@@ -1,38 +1,34 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, SafeAreaView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Mail, Lock, LogIn } from 'lucide-react-native';
 import * as WebBrowser from 'expo-web-browser';
-// import * as Google from '@react-native-google-signin/google-signin'; // Latest native sign-in
-import * as GoogleProvider from 'expo-auth-session/providers/google';
+import { makeRedirectUri } from 'expo-auth-session';
 import { useTheme } from '../context/ThemeContext';
 import { apiService } from '../services/apiService';
-import { makeRedirectUri } from 'expo-auth-session';
 
 WebBrowser.maybeCompleteAuthSession();
 
+const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
+
+// The Expo auth proxy — a valid HTTPS URL that Google accepts as redirect_uri
+const PROXY_REDIRECT_URI = 'https://auth.expo.io/@herkintormiwer/aagc-mobile';
+
 export default function LoginScreen() {
     const router = useRouter();
-    const { colors, isDark } = useTheme();
+    const { colors } = useTheme();
+    const [googleLoading, setGoogleLoading] = useState(false);
 
-    // For Google Authentication:
-    // 1. Create IDs at https://console.cloud.google.com/
-    // 2. Add them to your .env file as EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID, etc.
-    // Verify keys are loaded
+    // The deep-link URI for THIS app running in Expo Go
+    // Chrome Custom Tabs will intercept URLs matching this scheme
+    const appReturnUrl = makeRedirectUri();
+
     React.useEffect(() => {
-        if (!process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID) {
-            console.warn('Missing EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID');
-        }
+        console.log('=== Google Auth Debug ===');
+        console.log('Proxy redirect URI (for Google):', PROXY_REDIRECT_URI);
+        console.log('App return URL (for browser interception):', appReturnUrl);
+        console.log('Web Client ID:', GOOGLE_WEB_CLIENT_ID ? 'SET ✓' : 'MISSING ✗');
+        console.log('========================');
     }, []);
-
-    const [request, response, promptAsync] = GoogleProvider.useAuthRequest({
-        androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-        iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-        // Use the Expo Auth Proxy manually to bypass Google's private IP restriction
-        // This HTTPS URL is safe for Google and redirects back to Exp://
-        redirectUri: 'https://auth.expo.io/@herkintormiwer/aagc-mobile',
-    });
 
     React.useEffect(() => {
         checkSession();
@@ -41,109 +37,108 @@ export default function LoginScreen() {
     const checkSession = async () => {
         const token = await apiService.getToken();
         if (token) {
-            // Validate token or just redirect if present
             router.replace('/(drawer)/(tabs)');
         }
     };
 
-    React.useEffect(() => {
-        if (response?.type === 'success') {
-            const { authentication } = response;
-            if (authentication) {
-                handleMobileOAuth(authentication);
-            }
-        } else if (response?.type === 'error') {
-            console.log('Auth Error Summary:', response.error);
-            Alert.alert('Authentication Error', response.error?.message || 'Permission denied or configuration error');
+    const handleGoogleLogin = async () => {
+        if (!GOOGLE_WEB_CLIENT_ID || GOOGLE_WEB_CLIENT_ID.includes('provide-your-')) {
+            Alert.alert(
+                'Configuration Required',
+                'Google Client IDs are not configured. Please add them to the .env file.',
+            );
+            return;
         }
-    }, [response]);
 
-    const [googleLoading, setGoogleLoading] = useState(false);
-
-    const handleMobileOAuth = async (authentication: any) => {
         setGoogleLoading(true);
+
         try {
-            // Use accessToken to fetch user info from Google
-            const { accessToken, idToken } = authentication;
-
-            // Prefer idToken for backend verification if available, otherwise accessToken
-            const tokenToSend = idToken || accessToken;
-
-            const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                headers: { Authorization: `Bearer ${accessToken}` },
+            // Build the Google OAuth URL
+            // - redirect_uri is the Expo proxy (HTTPS, accepted by Google)
+            // - The proxy will redirect to exp://IP:PORT which Chrome Custom Tabs intercepts
+            const params = new URLSearchParams({
+                client_id: GOOGLE_WEB_CLIENT_ID,
+                redirect_uri: PROXY_REDIRECT_URI,
+                response_type: 'token',
+                scope: 'openid email profile',
+                prompt: 'select_account',
             });
-            const userInfo = await res.json();
+            const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 
-            console.log('Sending token to backend:', { endpoint: '/auth/oauth/mobile', token: tokenToSend.substring(0, 10) + '...' });
+            console.log('Opening Google OAuth...');
 
-            // Call our backend with the token and user info
-            // Ensure apiService handles non-JSON errors gracefully or we catch it here
-            const result = await apiService.mobileOAuth(
-                'google',
-                tokenToSend,
-                userInfo.email,
-                userInfo.name || userInfo.given_name,
-                userInfo.picture
-            ).catch(err => {
-                console.error('Backend Mobile OAuth Error:', err);
-                throw new Error('Backend authentication failed');
-            });
+            // Open the browser — listen for the exp:// return (NOT the proxy URL)
+            // Flow: Google → auth.expo.io (proxy) → exp://IP:PORT (intercepted by Chrome Custom Tabs)
+            const result = await WebBrowser.openAuthSessionAsync(authUrl, appReturnUrl);
 
-            console.log('Backend response:', result);
+            console.log('Browser result type:', result.type);
 
-            if (result.token) {
-                router.replace('/(drawer)/(tabs)');
+            if (result.type === 'success' && 'url' in result) {
+                console.log('Received redirect URL');
+
+                // Parse the access_token from the URL fragment (#access_token=...)
+                const url = result.url;
+                const fragment = url.split('#')[1] || '';
+                const queryPart = url.split('?')[1] || '';
+                const combined = fragment || queryPart;
+
+                // Try to get access_token from fragment (implicit flow) or query params
+                let accessToken: string | null = null;
+
+                if (combined) {
+                    const params = new URLSearchParams(combined);
+                    accessToken = params.get('access_token');
+                }
+
+                if (!accessToken) {
+                    console.log('No access token found in URL:', url);
+                    Alert.alert('Auth Error', 'Could not retrieve your Google account details. Please try again.');
+                    return;
+                }
+
+                console.log('Got access token, fetching user info...');
+
+                // Fetch user info from Google
+                const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { Authorization: `Bearer ${accessToken}` },
+                });
+
+                if (!userInfoRes.ok) {
+                    throw new Error('Failed to fetch user info from Google');
+                }
+
+                const userInfo = await userInfoRes.json();
+                console.log('Google user:', { email: userInfo.email, name: userInfo.name });
+
+                // Send to our backend
+                const backendResult = await apiService.mobileOAuth(
+                    'google',
+                    accessToken,
+                    userInfo.email,
+                    userInfo.name || userInfo.given_name,
+                    userInfo.picture,
+                );
+
+                if (backendResult?.token) {
+                    console.log('Login successful!');
+                    router.replace('/(drawer)/(tabs)');
+                } else {
+                    Alert.alert('Error', 'Login succeeded but no session was created.');
+                }
+            } else if (result.type === 'cancel' || result.type === 'dismiss') {
+                // User cancelled — don't show an error
+                console.log('User cancelled sign-in');
+            } else {
+                console.log('Unexpected result:', result);
             }
         } catch (error: any) {
             console.error('Google login error:', error);
-            Alert.alert('Error', 'Google login failed. Please ensure your Client IDs are correct.');
+            Alert.alert(
+                'Sign-In Failed',
+                'Could not complete sign-in. Please check your internet connection and try again.',
+            );
         } finally {
             setGoogleLoading(false);
-        }
-    };
-
-    const handleGoogleLogin = async () => {
-        const androidId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
-        const iosId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
-        const webId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
-
-        const isPlaceholder = (id?: string) => !id || id.includes('provide-your-');
-
-        if (isPlaceholder(androidId) && isPlaceholder(iosId) && isPlaceholder(webId)) {
-            Alert.alert(
-                'Configuration Required',
-                'Google Client IDs are not configured. Please create them in the Google Cloud Console and update your mobile/.env file.',
-                [{ text: 'OK' }]
-            );
-            console.log('Client IDs are missing or using placeholders in .env');
-            return;
-        }
-
-        if (!request) {
-            Alert.alert(
-                'Auth Not Ready',
-                'Google authentication is being initialized. Please try again in a moment.',
-                [{ text: 'OK' }]
-            );
-            console.log('Request object is null. Check if Client IDs are valid.');
-            return;
-        }
-
-        console.log('Initiating Google Login...');
-        if (request?.redirectUri) {
-            console.log('Redirect URI:', request.redirectUri);
-        }
-        try {
-            const result = await promptAsync();
-            if (result.type !== 'success') {
-                console.log('Google prompt result:', result);
-                if (result.type === 'error') {
-                    Alert.alert('Auth Error', result.error?.message || 'Failed to sign in with Google');
-                }
-            }
-        } catch (e: any) {
-            console.error('Prompt error:', e);
-            Alert.alert('Error', 'An unexpected error occurred during Google Sign-In.');
         }
     };
 
@@ -171,45 +166,11 @@ export default function LoginScreen() {
             fontSize: 16,
             color: colors.secondary,
         },
-        inputContainer: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: colors.card,
-            borderRadius: 16,
-            paddingHorizontal: 16,
-            marginBottom: 16,
-            borderWidth: 1,
-            borderColor: colors.border,
-        },
-        inputIcon: {
-            marginRight: 12,
-        },
-        input: {
-            flex: 1,
-            paddingVertical: 16,
-            color: colors.text,
-            fontSize: 16,
-        },
-        button: {
-            backgroundColor: colors.primary,
-            borderRadius: 16,
-            padding: 18,
-            alignItems: 'center',
-            marginTop: 8,
-            flexDirection: 'row',
-            justifyContent: 'center',
-            gap: 8,
-        },
-        buttonText: {
-            color: '#FFFFFF',
-            fontSize: 16,
-            fontWeight: 'bold',
-        },
         socialButton: {
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: colors.primary, // Make it look like the primary button
+            backgroundColor: colors.primary,
             borderRadius: 16,
             padding: 18,
             gap: 12,
@@ -224,25 +185,24 @@ export default function LoginScreen() {
             fontSize: 16,
             fontWeight: 'bold',
         },
-        googleIcon: {
-            width: 20,
-            height: 20,
-            // You can use a real Google icon here
-        },
-        footer: {
-            flexDirection: 'row',
-            justifyContent: 'center',
-            marginTop: 32,
-        },
-        footerText: {
-            color: colors.secondary,
-            fontSize: 14,
-        },
         linkText: {
             color: colors.primary,
             fontSize: 14,
             fontWeight: 'bold',
-        }
+        },
+        debugInfo: {
+            marginTop: 24,
+            padding: 16,
+            backgroundColor: colors.card,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: colors.border,
+            gap: 6,
+        },
+        debugText: {
+            fontSize: 11,
+            color: colors.secondary,
+        },
     });
 
     return (
@@ -254,7 +214,7 @@ export default function LoginScreen() {
                 </View>
 
                 <TouchableOpacity
-                    style={styles.socialButton}
+                    style={[styles.socialButton, { opacity: googleLoading ? 0.7 : 1 }]}
                     onPress={handleGoogleLogin}
                     disabled={googleLoading}
                 >
@@ -276,6 +236,16 @@ export default function LoginScreen() {
                         Skip for now
                     </Text>
                 </TouchableOpacity>
+
+                {/* Debug info - only visible during development */}
+                {__DEV__ && (
+                    <View style={styles.debugInfo}>
+                        <Text style={[styles.debugText, { fontWeight: 'bold', color: colors.text }]}>Debug Info:</Text>
+                        <Text style={styles.debugText}>Google redirect: {PROXY_REDIRECT_URI}</Text>
+                        <Text style={styles.debugText}>App return URL: {appReturnUrl}</Text>
+                        <Text style={styles.debugText}>Client ID: {GOOGLE_WEB_CLIENT_ID ? '✓ Set' : '✗ Missing'}</Text>
+                    </View>
+                )}
             </View>
         </SafeAreaView>
     );

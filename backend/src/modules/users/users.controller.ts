@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Post, Put, Delete, Inject, forwardRef } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Delete, Inject, forwardRef, Req, UnauthorizedException } from '@nestjs/common';
+import type { Request } from 'express';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { AppGateway } from '../websocket/websocket.gateway';
@@ -21,6 +22,15 @@ export class UsersController {
   @Get()
   list() {
     return this.usersService.findAll();
+  }
+
+  @Get('me')
+  async getMe(@Req() req: Request) {
+    const user = req.user as any;
+    if (!user || (!user.id && !user.sub)) {
+      throw new UnauthorizedException('Not authenticated');
+    }
+    return this.usersService.getProfile(user.id || user.sub);
   }
 
   @Get(':id')
