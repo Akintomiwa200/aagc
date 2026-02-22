@@ -39,7 +39,7 @@ You need minimal TWO Client IDs: one for the **Web** (Backend/Expo Proxy) and on
 6.  **Authorized redirect URIs**:
     *   `http://localhost:3000/auth/callback`
     *   `http://localhost:3001/api/auth/google/callback`
-    *   `https://auth.expo.io/@your-username/your-app-slug` (If using Expo AuthSession proxy)
+    *   `https://auth.expo.io/@herkintormiwer/aagc-mobile` (If using Expo AuthSession proxy)
 7.  Click **Create**.
 8.  **Copy the Client ID** and **Client Secret**.
 
