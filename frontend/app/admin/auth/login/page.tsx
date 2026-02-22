@@ -43,7 +43,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const result = await login(email, password, rememberMe);
+      const result = await login(email, password);
 
       if (result.success) {
         setSuccess('Login successful! Redirecting...');

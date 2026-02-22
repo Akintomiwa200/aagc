@@ -11,6 +11,7 @@ import {
   MessageSquare,
   Heart,
   Music,
+  AlertCircle,
   ArrowUpRight,
   ArrowDownRight,
   BarChart3,

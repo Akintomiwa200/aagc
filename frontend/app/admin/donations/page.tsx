@@ -1,307 +1,332 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { DollarSign, Download, Search, Filter, TrendingUp, Calendar, CreditCard, User } from 'lucide-react';
+import {
+    DollarSign, Download, Search, TrendingUp,
+    Calendar, CreditCard, User, CheckCircle,
+    Clock, XCircle, Filter,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { apiService } from '@/lib/api';
-import { useEffect, useCallback } from 'react';
 
+// ─── TYPES ────────────────────────────────────────────────────────────────────
 interface Donation {
-    id: string;
-    donorName: string;
-    email?: string;
-    amount: number;
-    date: string;
-    method: 'online' | 'cash' | 'check' | 'bank_transfer';
-    category?: 'tithe' | 'offering' | 'building' | 'missions' | 'other';
-    status: 'completed' | 'pending' | 'failed';
+    id:            string;
+    donorName:     string;
+    email?:        string;
+    amount:        number;
+    currency?:     string;
+    date:          string;
+    method:        'online' | 'cash' | 'check' | 'bank_transfer' | 'opay' | 'palmpay' | 'kuda' | 'card' | string;
+    category?:     'tithe' | 'offering' | 'firstfruit' | 'project' | 'welfare' | 'missions' | 'other' | string;
+    status:        'completed' | 'pending' | 'failed';
     transactionId?: string;
 }
 
+type FilterType = 'all' | 'completed' | 'pending' | 'failed';
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+const CURRENCY_SYMBOLS: Record<string, string> = {
+    NGN: '₦', USD: '$', GBP: '£', EUR: '€',
+    CAD: 'CA$', GHS: '₵', KES: 'KSh', ZAR: 'R',
+};
+
+const fmtAmount = (amount: number, currency = 'NGN') => {
+    const sym = CURRENCY_SYMBOLS[currency] ?? currency + ' ';
+    return `${sym}${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
+const METHOD_LABELS: Record<string, string> = {
+    online: 'Online', cash: 'Cash', check: 'Cheque',
+    bank_transfer: 'Bank Transfer', opay: 'OPay',
+    palmpay: 'PalmPay', kuda: 'Kuda', card: 'Debit Card',
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+    tithe: 'Tithe 🙏', offering: 'Offering 🕊️', firstfruit: 'First Fruit 🌾',
+    project: 'Church Project ⛪', welfare: 'Welfare ❤️', missions: 'Missions 🌍',
+};
+
+const STATUS_CONFIG = {
+    completed: {
+        label: 'Completed',
+        icon:  CheckCircle,
+        badge: 'bg-green-900/40 text-green-300 border-green-800',
+        dot:   'bg-green-400',
+    },
+    pending: {
+        label: 'Pending',
+        icon:  Clock,
+        badge: 'bg-yellow-900/40 text-yellow-300 border-yellow-800',
+        dot:   'bg-yellow-400',
+    },
+    failed: {
+        label: 'Failed',
+        icon:  XCircle,
+        badge: 'bg-red-900/40 text-red-300 border-red-800',
+        dot:   'bg-red-400',
+    },
+};
+
+const FILTER_TABS: { key: FilterType; label: string; color: string; activeClass: string }[] = [
+    { key: 'all',       label: 'All',       color: 'border-gray-700 text-gray-300',  activeClass: 'bg-gray-700 text-white border-gray-700'       },
+    { key: 'completed', label: 'Completed', color: 'border-gray-700 text-gray-300',  activeClass: 'bg-green-600 text-white border-green-600'     },
+    { key: 'pending',   label: 'Pending',   color: 'border-gray-700 text-gray-300',  activeClass: 'bg-yellow-600 text-white border-yellow-600'   },
+    { key: 'failed',    label: 'Failed',    color: 'border-gray-700 text-gray-300',  activeClass: 'bg-red-600 text-white border-red-600'         },
+];
+
+// ─── STAT CARD ────────────────────────────────────────────────────────────────
+function StatCard({ label, value, icon: Icon, color }: {
+    label: string; value: string | number; icon: any; color: string;
+}) {
+    return (
+        <Card className="bg-gray-900/60 border-gray-800">
+            <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <p className="text-gray-400 text-sm mb-1">{label}</p>
+                        <p className={`text-2xl font-bold ${color}`}>{value}</p>
+                    </div>
+                    <div className={`p-2 rounded-xl bg-gray-800`}>
+                        <Icon className={`h-6 w-6 ${color}`} />
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
+// ─── DONATION CARD ────────────────────────────────────────────────────────────
+function DonationCard({ donation, index }: { donation: Donation; index: number }) {
+    const statusCfg = STATUS_CONFIG[donation.status] ?? STATUS_CONFIG.pending;
+    const StatusIcon = statusCfg.icon;
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.04, duration: 0.3 }}
+        >
+            <Card className="bg-gray-900/60 border-gray-800 hover:border-gray-700 transition-colors">
+                <CardContent className="p-5">
+                    <div className="flex items-start justify-between gap-4">
+
+                        {/* Left — donor info */}
+                        <div className="flex-1 min-w-0">
+
+                            {/* Name + badges */}
+                            <div className="flex flex-wrap items-center gap-2 mb-3">
+                                <User className="h-4 w-4 text-gray-400 shrink-0" />
+                                <span className="text-white font-semibold text-base truncate">
+                                    {donation.donorName}
+                                </span>
+                                <Badge className={`text-xs border ${statusCfg.badge}`}>
+                                    <StatusIcon className="h-3 w-3 mr-1" />
+                                    {statusCfg.label}
+                                </Badge>
+                                {donation.category && (
+                                    <Badge className="bg-purple-900/40 text-purple-300 border-purple-800 text-xs border">
+                                        {CATEGORY_LABELS[donation.category] ?? donation.category}
+                                    </Badge>
+                                )}
+                            </div>
+
+                            {/* Detail rows */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-1 gap-x-6 text-sm text-gray-400">
+                                {donation.email && (
+                                    <span className="truncate">📧 {donation.email}</span>
+                                )}
+                                <span>
+                                    📅 {new Date(donation.date).toLocaleDateString(undefined, {
+                                        day: 'numeric', month: 'short', year: 'numeric',
+                                    })}
+                                </span>
+                                <span>💳 {METHOD_LABELS[donation.method] ?? donation.method}</span>
+                                {donation.currency && donation.currency !== 'NGN' && (
+                                    <span>🌍 {donation.currency}</span>
+                                )}
+                                {donation.transactionId && (
+                                    <span className="text-xs text-gray-500 col-span-2 truncate">
+                                        Ref: {donation.transactionId}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Right — amount */}
+                        <div className="text-right shrink-0">
+                            <p className={`text-xl font-bold ${
+                                donation.status === 'completed' ? 'text-green-400'
+                                : donation.status === 'pending'   ? 'text-yellow-400'
+                                : 'text-red-400'
+                            }`}>
+                                {fmtAmount(donation.amount, donation.currency)}
+                            </p>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+        </motion.div>
+    );
+}
+
+// ─── PAGE ─────────────────────────────────────────────────────────────────────
 export default function DonationsPage() {
     const [searchTerm, setSearchTerm] = useState('');
-    const [filter, setFilter] = useState<'all' | 'completed' | 'pending' | 'failed'>('all');
-    const [donations, setDonations] = useState<Donation[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [filter, setFilter]         = useState<FilterType>('all');
+    const [donations, setDonations]   = useState<Donation[]>([]);
+    const [loading, setLoading]       = useState(true);
 
     const fetchDonations = useCallback(async () => {
         try {
             setLoading(true);
             const data = await apiService.getDonations();
             setDonations(data.map((d: any) => ({
-                id: d._id || d.id,
-                donorName: d.donorName || d.user?.name || 'Anonymous',
-                email: d.email || d.user?.email,
-                amount: d.amount,
-                date: d.date || d.createdAt,
-                method: d.method,
-                category: d.category,
-                status: d.status,
-                transactionId: d.transactionId
+                id:            d._id || d.id,
+                donorName:     d.donorName || d.user?.name || 'Anonymous',
+                email:         d.email || d.user?.email,
+                amount:        d.amount,
+                currency:      d.currency ?? 'NGN',
+                date:          d.date || d.createdAt,
+                method:        d.method ?? d.paymentMethod ?? 'online',
+                category:      d.category ?? d.type,
+                status:        d.status,
+                transactionId: d.transactionId ?? d.reference,
             })));
-        } catch (error) {
-            console.error('Failed to fetch donations:', error);
+        } catch (err) {
+            console.error('Failed to fetch donations:', err);
         } finally {
             setLoading(false);
         }
     }, []);
 
-    useEffect(() => {
-        fetchDonations();
-    }, [fetchDonations]);
+    useEffect(() => { fetchDonations(); }, [fetchDonations]);
 
-    const filteredDonations = donations.filter(donation => {
-        const matchesFilter = filter === 'all' || donation.status === filter;
-        const matchesSearch =
-            donation.donorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            donation.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            donation.transactionId?.toLowerCase().includes(searchTerm.toLowerCase());
-        return matchesFilter && matchesSearch;
+    // ── Derived stats ──────────────────────────────────────────────────────
+    const completed      = donations.filter(d => d.status === 'completed');
+    const totalAmount    = completed.reduce((s, d) => s + d.amount, 0);
+    const thisMonth      = completed.filter(d =>
+        new Date(d.date).getMonth()    === new Date().getMonth() &&
+        new Date(d.date).getFullYear() === new Date().getFullYear()
+    ).reduce((s, d) => s + d.amount, 0);
+    const pendingCount   = donations.filter(d => d.status === 'pending').length;
+
+    // ── Filtered list ──────────────────────────────────────────────────────
+    const filtered = donations.filter(d => {
+        const matchStatus = filter === 'all' || d.status === filter;
+        const q = searchTerm.toLowerCase();
+        const matchSearch =
+            d.donorName.toLowerCase().includes(q) ||
+            d.email?.toLowerCase().includes(q) ||
+            d.transactionId?.toLowerCase().includes(q) ||
+            (d.category ?? '').toLowerCase().includes(q);
+        return matchStatus && matchSearch;
     });
 
-    const totalAmount = donations.filter(d => d.status === 'completed').reduce((sum, d) => sum + d.amount, 0);
-    const monthlyAmount = donations
-        .filter(d => d.status === 'completed' && new Date(d.date).getMonth() === new Date().getMonth())
-        .reduce((sum, d) => sum + d.amount, 0);
-
-    const exportToCSV = () => {
-        const csv = [
-            ['Date', 'Donor Name', 'Email', 'Amount', 'Method', 'Category', 'Status', 'Transaction ID'],
+    // ── CSV export ─────────────────────────────────────────────────────────
+    const exportCSV = () => {
+        const rows = [
+            ['Date', 'Donor Name', 'Email', 'Amount', 'Currency', 'Method', 'Category', 'Status', 'Reference'],
             ...donations.map(d => [
-                d.date,
-                d.donorName,
-                d.email || '',
-                d.amount.toFixed(2),
-                d.method,
-                d.category || '',
-                d.status,
-                d.transactionId || ''
-            ])
-        ].map(row => row.join(',')).join('\n');
+                d.date, d.donorName, d.email ?? '',
+                d.amount.toFixed(2), d.currency ?? 'NGN',
+                d.method, d.category ?? '', d.status, d.transactionId ?? '',
+            ]),
+        ].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
 
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `donations-${new Date().toISOString().split('T')[0]}.csv`;
+        const a = Object.assign(document.createElement('a'), {
+            href:     URL.createObjectURL(new Blob([rows], { type: 'text/csv' })),
+            download: `donations-${new Date().toISOString().split('T')[0]}.csv`,
+        });
         a.click();
     };
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'completed':
-                return 'bg-green-900/30 text-green-300';
-            case 'pending':
-                return 'bg-yellow-900/30 text-yellow-300';
-            case 'failed':
-                return 'bg-red-900/30 text-red-300';
-            default:
-                return 'bg-gray-900/30 text-gray-300';
-        }
-    };
-
-    const getMethodIcon = (method: string) => {
-        switch (method) {
-            case 'online':
-                return CreditCard;
-            case 'cash':
-                return DollarSign;
-            case 'check':
-                return DollarSign;
-            case 'bank_transfer':
-                return DollarSign;
-            default:
-                return DollarSign;
-        }
-    };
-
+    // ─── RENDER ───────────────────────────────────────────────────────────────
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
+
+            {/* ── Page header ─────────────────────────────────────────────── */}
+            <div className="flex items-start justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-white">Donations</h1>
-                    <p className="text-gray-400 mt-1">Track and manage church donations</p>
+                    <p className="text-gray-400 mt-1 text-sm">Track and manage all church giving</p>
                 </div>
                 <Button
-                    onClick={exportToCSV}
                     variant="outline"
-                    className="border-gray-700"
+                    onClick={exportCSV}
+                    className="border-gray-700 text-gray-300 hover:bg-gray-800 shrink-0"
                 >
                     <Download className="h-4 w-4 mr-2" />
                     Export CSV
                 </Button>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card className="glass border-gray-800">
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-gray-400 text-sm">Total Donations</p>
-                                <p className="text-2xl font-bold text-white">${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                            </div>
-                            <DollarSign className="h-8 w-8 text-green-400" />
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="glass border-gray-800">
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-gray-400 text-sm">This Month</p>
-                                <p className="text-2xl font-bold text-blue-300">${monthlyAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                            </div>
-                            <Calendar className="h-8 w-8 text-blue-400" />
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="glass border-gray-800">
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-gray-400 text-sm">Total Transactions</p>
-                                <p className="text-2xl font-bold text-purple-300">{donations.length}</p>
-                            </div>
-                            <TrendingUp className="h-8 w-8 text-purple-400" />
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="glass border-gray-800">
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-gray-400 text-sm">Pending</p>
-                                <p className="text-2xl font-bold text-yellow-300">
-                                    {donations.filter(d => d.status === 'pending').length}
-                                </p>
-                            </div>
-                            <Calendar className="h-8 w-8 text-yellow-400" />
-                        </div>
-                    </CardContent>
-                </Card>
+            {/* ── Stats ───────────────────────────────────────────────────── */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatCard label="Total Received"     value={fmtAmount(totalAmount)}  icon={DollarSign}  color="text-green-400"  />
+                <StatCard label="This Month"         value={fmtAmount(thisMonth)}    icon={Calendar}    color="text-blue-400"   />
+                <StatCard label="Total Transactions" value={donations.length}        icon={TrendingUp}  color="text-purple-400" />
+                <StatCard label="Pending"            value={pendingCount}            icon={Clock}       color="text-yellow-400" />
             </div>
 
-            {/* Filters and Search */}
-            <div className="flex flex-col sm:flex-row gap-4">
+            {/* ── Search + filter ──────────────────────────────────────────── */}
+            <div className="flex flex-col sm:flex-row gap-3">
+                {/* Search */}
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
-                        placeholder="Search donations..."
+                        placeholder="Search by name, email or reference…"
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10 bg-gray-800/50 border-gray-700 text-white"
+                        onChange={e => setSearchTerm(e.target.value)}
+                        className="pl-10 bg-gray-800/60 border-gray-700 text-white placeholder:text-gray-500"
                     />
                 </div>
-                <div className="flex gap-2">
-                    <Button
-                        variant={filter === 'all' ? 'default' : 'outline'}
-                        onClick={() => setFilter('all')}
-                        className={filter === 'all' ? 'bg-gradient-to-r from-blue-600 to-purple-600' : 'border-gray-700'}
-                    >
-                        All
-                    </Button>
-                    <Button
-                        variant={filter === 'completed' ? 'solid' : 'outline'}
-                        onClick={() => setFilter('completed')}
-                        className={filter === 'completed' ? 'bg-green-600' : 'border-gray-700'}
-                    >
-                        Completed
-                    </Button>
-                    <Button
-                        variant={filter === 'pending' ? 'solid' : 'outline'}
-                        onClick={() => setFilter('pending')}
-                        className={filter === 'pending' ? 'bg-yellow-600' : 'border-gray-700'}
-                    >
-                        Pending
-                    </Button>
-                    <Button
-                        variant={filter === 'failed' ? 'solid' : 'outline'}
-                        onClick={() => setFilter('failed')}
-                        className={filter === 'failed' ? 'bg-red-600' : 'border-gray-700'}
-                    >
-                        Failed
-                    </Button>
+
+                {/* Filter tabs — use 'default' or 'outline' only (valid shadcn variants) */}
+                <div className="flex gap-2 flex-wrap">
+                    {FILTER_TABS.map(tab => (
+                        <Button
+                            key={tab.key}
+                            variant={filter === tab.key ? 'default' : 'outline'}
+                            onClick={() => setFilter(tab.key)}
+                            className={filter === tab.key ? tab.activeClass : tab.color}
+                        >
+                            {tab.label}
+                        </Button>
+                    ))}
                 </div>
             </div>
 
-            {/* Donations List */}
-            <div className="grid gap-4">
-                {filteredDonations.map((donation, index) => {
-                    const MethodIcon = getMethodIcon(donation.method);
-                    return (
-                        <motion.div
-                            key={donation.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.05 }}
-                        >
-                            <Card className="glass border-gray-800">
-                                <CardContent className="p-6">
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <MethodIcon className="h-5 w-5 text-blue-400" />
-                                                <h3 className="text-lg font-semibold text-white">{donation.donorName}</h3>
-                                                <Badge className={getStatusColor(donation.status)}>
-                                                    {donation.status}
-                                                </Badge>
-                                                {donation.category && (
-                                                    <Badge className="bg-purple-900/30 text-purple-300">
-                                                        {donation.category}
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                            <div className="space-y-1 text-sm text-gray-400">
-                                                <div className="flex items-center gap-2">
-                                                    <DollarSign className="h-4 w-4" />
-                                                    <span className="text-xl font-bold text-green-300">
-                                                        ${donation.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                    </span>
-                                                </div>
-                                                {donation.email && (
-                                                    <div className="flex items-center gap-2">
-                                                        <User className="h-4 w-4" />
-                                                        {donation.email}
-                                                    </div>
-                                                )}
-                                                <div className="flex items-center gap-2">
-                                                    <Calendar className="h-4 w-4" />
-                                                    {new Date(donation.date).toLocaleDateString()}
-                                                </div>
-                                                <div className="text-xs text-gray-500 capitalize">
-                                                    Method: {donation.method.replace('_', ' ')}
-                                                </div>
-                                                {donation.transactionId && (
-                                                    <div className="text-xs text-gray-500">
-                                                        Transaction ID: {donation.transactionId}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </motion.div>
-                    );
-                })}
-            </div>
-
-            {filteredDonations.length === 0 && (
-                <Card className="glass border-gray-800">
-                    <CardContent className="p-12 text-center">
-                        <DollarSign className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-                        <p className="text-gray-400">No donations found</p>
+            {/* ── Donations list ───────────────────────────────────────────── */}
+            {loading ? (
+                <div className="grid gap-4">
+                    {[...Array(4)].map((_, i) => (
+                        <Card key={i} className="bg-gray-900/60 border-gray-800 animate-pulse">
+                            <CardContent className="p-5 h-24" />
+                        </Card>
+                    ))}
+                </div>
+            ) : filtered.length > 0 ? (
+                <div className="grid gap-4">
+                    {filtered.map((donation, i) => (
+                        <DonationCard key={donation.id} donation={donation} index={i} />
+                    ))}
+                </div>
+            ) : (
+                <Card className="bg-gray-900/60 border-gray-800">
+                    <CardContent className="p-14 text-center">
+                        <DollarSign className="h-12 w-12 text-gray-700 mx-auto mb-4" />
+                        <p className="text-gray-400 font-medium">No donations found</p>
+                        <p className="text-gray-600 text-sm mt-1">
+                            {searchTerm ? 'Try a different search term' : 'No records match this filter'}
+                        </p>
                     </CardContent>
                 </Card>
             )}
         </div>
     );
 }
-
-

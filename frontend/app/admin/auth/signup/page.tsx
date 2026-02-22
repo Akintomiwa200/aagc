@@ -62,12 +62,9 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      const result = await signup({
-        name,
-        email,
-        password,
-      });
+      const result = await signup(name, email, password);
 
+      
       if (result.success) {
         setSuccess('Access request submitted successfully!');
         setTimeout(() => {
@@ -274,4 +271,4 @@ export default function SignupPage() {
       </div>
     </div>
   );
-}
+}             

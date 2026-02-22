@@ -283,28 +283,28 @@ export default function PrayersPage() {
                 </div>
                 <div className="flex gap-2">
                     <Button
-                        variant={filter === 'all' ? 'solid' : 'outline'}
+                        variant={filter === 'all' ? 'default' : 'outline'}
                         onClick={() => setFilter('all')}
                         className={filter === 'all' ? 'bg-gradient-to-r from-blue-600 to-purple-600' : 'border-gray-700'}
                     >
                         All
                     </Button>
                     <Button
-                        variant={filter === 'pending' ? 'solid' : 'outline'}
+                        variant={filter === 'pending' ? 'default' : 'outline'}
                         onClick={() => setFilter('pending')}
                         className={filter === 'pending' ? 'bg-yellow-600' : 'border-gray-700'}
                     >
                         Pending
                     </Button>
                     <Button
-                        variant={filter === 'ongoing' ? 'solid' : 'outline'}
+                        variant={filter === 'ongoing' ? 'default' : 'outline'}
                         onClick={() => setFilter('ongoing')}
                         className={filter === 'ongoing' ? 'bg-blue-600' : 'border-gray-700'}
                     >
                         Ongoing
                     </Button>
                     <Button
-                        variant={filter === 'answered' ? 'solid' : 'outline'}
+                        variant={filter === 'answered' ? 'default' : 'outline'}
                         onClick={() => setFilter('answered')}
                         className={filter === 'answered' ? 'bg-green-600' : 'border-gray-700'}
                     >

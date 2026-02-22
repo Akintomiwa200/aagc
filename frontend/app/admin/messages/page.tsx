@@ -218,28 +218,28 @@ export default function MessagesPage() {
                 </div>
                 <div className="flex gap-2">
                     <Button
-                        variant={filter === 'all' ? 'solid' : 'outline'}
+                        variant={filter === 'all' ? 'default' : 'outline'}
                         onClick={() => setFilter('all')}
                         className={filter === 'all' ? 'bg-gradient-to-r from-blue-600 to-purple-600' : 'border-gray-700'}
                     >
                         All
                     </Button>
                     <Button
-                        variant={filter === 'unread' ? 'solid' : 'outline'}
+                        variant={filter === 'unread' ? 'default' : 'outline'}
                         onClick={() => setFilter('unread')}
                         className={filter === 'unread' ? 'bg-blue-600' : 'border-gray-700'}
                     >
                         Unread
                     </Button>
                     <Button
-                        variant={filter === 'read' ? 'solid' : 'outline'}
+                        variant={filter === 'read' ? 'default' : 'outline'}
                         onClick={() => setFilter('read')}
                         className={filter === 'read' ? 'bg-gray-600' : 'border-gray-700'}
                     >
                         Read
                     </Button>
                     <Button
-                        variant={filter === 'replied' ? 'solid' : 'outline'}
+                        variant={filter === 'replied' ? 'default' : 'outline'}
                         onClick={() => setFilter('replied')}
                         className={filter === 'replied' ? 'bg-green-600' : 'border-gray-700'}
                     >

@@ -42,7 +42,7 @@ export function Header() {
               {item.label}
             </Link>
           ))}
-          <Button variant="solid" size="sm" asChild>
+          <Button variant="default" size="sm" asChild>
             <Link href="/admin/auth/login">Admin</Link>
           </Button>
         </div>
@@ -75,7 +75,7 @@ export function Header() {
                 {item.label}
               </Link>
             ))}
-            <Button variant="solid" size="sm" asChild className="w-full">
+            <Button variant="default" size="sm" asChild className="w-full">
               <Link href="/admin/auth/login">Admin</Link>
             </Button>
           </div>
