@@ -18,7 +18,11 @@
   interface AuthContextType {
     user: User | null;
     loading: boolean;
-    login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
+    login: (
+  email: string,
+  password: string,
+  rememberMe?: boolean
+) => Promise<{ success: boolean; message: string }>;
     signup: (email: string, password: string, name: string) => Promise<{ success: boolean; message: string }>;
     googleAuth: (idToken: string) => Promise<{ success: boolean; message: string }>;
     logout: () => void;
