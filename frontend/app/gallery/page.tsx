@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Calendar, Users, Church, Award, MapPin, Clock, Filter, Download, Share2, ChevronRight, Search, X, Heart } from 'lucide-react';
 import Image from 'next/image';
+import { apiService } from '@/lib/api';
+import { useSocket } from '@/contexts/SocketContext';
 
 // Types for our gallery data
 interface GalleryImage {
@@ -17,6 +19,16 @@ interface GalleryImage {
   width: number;
   height: number;
   featured?: boolean;
+}
+
+interface BackendGalleryItem {
+  id?: string;
+  _id?: string;
+  title?: string;
+  description?: string;
+  imageUrl?: string;
+  tags?: string[];
+  createdAt?: string;
 }
 
 interface Department {
@@ -347,12 +359,80 @@ export default function GalleryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [liveImages, setLiveImages] = useState<GalleryImage[]>([]);
+  const { socket } = useSocket();
+
+  const mapBackendImage = (item: BackendGalleryItem): GalleryImage => ({
+    id: item.id || item._id || '',
+    src: item.imageUrl || '',
+    alt: item.title || 'Gallery image',
+    title: item.title || 'Untitled',
+    description: item.description,
+    date: item.createdAt || new Date().toISOString(),
+    category: 'main',
+    tags: item.tags || [],
+    width: 800,
+    height: 600,
+    featured: false,
+  });
+
+  useEffect(() => {
+    const fetchLiveImages = async () => {
+      try {
+        const data = await apiService.getGalleryImages();
+        const normalized = Array.isArray(data)
+          ? data
+              .map(mapBackendImage)
+              .filter((item) => Boolean(item.id && item.src))
+          : [];
+        setLiveImages(normalized);
+      } catch (error) {
+        console.error('Failed to fetch gallery images:', error);
+      }
+    };
+
+    fetchLiveImages();
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const onCreated = (item: BackendGalleryItem) => {
+      const mapped = mapBackendImage(item);
+      if (!mapped.id || !mapped.src) return;
+      setLiveImages((prev) => [mapped, ...prev]);
+    };
+
+    const onUpdated = (item: BackendGalleryItem) => {
+      const mapped = mapBackendImage(item);
+      if (!mapped.id || !mapped.src) return;
+      setLiveImages((prev) =>
+        prev.map((existing) => (existing.id === mapped.id ? mapped : existing))
+      );
+    };
+
+    const onDeleted = (data: { imageId: string }) => {
+      setLiveImages((prev) => prev.filter((item) => item.id !== data.imageId));
+    };
+
+    socket.on('gallery-image-created', onCreated);
+    socket.on('gallery-image-updated', onUpdated);
+    socket.on('gallery-image-deleted', onDeleted);
+
+    return () => {
+      socket.off('gallery-image-created', onCreated);
+      socket.off('gallery-image-updated', onUpdated);
+      socket.off('gallery-image-deleted', onDeleted);
+    };
+  }, [socket]);
+
+  const galleryImages = liveImages.length > 0 ? liveImages : dummyImages;
 
   // Group images by date for main gallery
-  const groupedByDate = groupImagesByDate(dummyImages);
+  const groupedByDate = groupImagesByDate(galleryImages);
   
   // Filter images based on selected category and search
-  const filteredImages = dummyImages.filter(image => {
+  const filteredImages = galleryImages.filter(image => {
     const matchesCategory = selectedCategory === 'all' || image.category === selectedCategory;
     const matchesSearch = searchQuery === '' || 
       image.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -377,7 +457,7 @@ export default function GalleryPage() {
 
   // Function to get images by category
   const getImagesByCategory = (category: GalleryImage['category']) => {
-    return dummyImages.filter(img => img.category === category);
+    return galleryImages.filter(img => img.category === category);
   };
 
   // Backend integration placeholder - this will be replaced with actual API calls

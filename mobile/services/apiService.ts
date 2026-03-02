@@ -20,10 +20,10 @@ const getBaseUrl = () => {
 
 const BASE_URL = getBaseUrl();
 const API_BASE_URL = `${BASE_URL}/api`;
-const SOCKET_URL = BASE_URL;
-
 class ApiService {
   private token: string | null = null;
+  private readonly requestTimeoutMs = 15000;
+  private readonly getRetryAttempts = 2;
 
   async setToken(token: string) {
     this.token = token;
@@ -42,6 +42,38 @@ class ApiService {
     await AsyncStorage.removeItem('auth_token');
   }
 
+  private sleep(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private isNetworkFailure(error: unknown) {
+    if (!(error instanceof Error)) return false;
+    const message = error.message.toLowerCase();
+    return (
+      message.includes('network request failed') ||
+      message.includes('failed to fetch') ||
+      message.includes('networkerror') ||
+      message.includes('socket hang up') ||
+      message.includes('connection')
+    );
+  }
+
+  private toUserFacingError(error: unknown) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return new Error('Request timed out. Please check your internet connection and try again.');
+    }
+
+    if (this.isNetworkFailure(error)) {
+      return new Error('Unable to reach the server. Please verify your internet connection and try again.');
+    }
+
+    if (error instanceof Error) {
+      return error;
+    }
+
+    return new Error('Unexpected network error. Please try again.');
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
@@ -56,36 +88,62 @@ class ApiService {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    console.log(`[API] Requesting: ${API_BASE_URL}${endpoint}`);
+    const method = (options.method || 'GET').toUpperCase();
+    const maxAttempts = method === 'GET' ? this.getRetryAttempts + 1 : 1;
+    let lastError: unknown = null;
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...options,
-      headers,
-    });
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.requestTimeoutMs);
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.message || 'Request failed');
+      try {
+        console.log(`[API] Requesting: ${API_BASE_URL}${endpoint} (attempt ${attempt}/${maxAttempts})`);
+
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+          ...options,
+          headers,
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ message: 'Request failed' }));
+          throw new Error(error.message || 'Request failed');
+        }
+
+        // Handle empty responses (204 No Content, or empty body)
+        const contentLength = response.headers.get('content-length');
+        const contentType = response.headers.get('content-type') || '';
+        if (response.status === 204 || contentLength === '0' || !contentType.includes('json')) {
+          return null as T;
+        }
+
+        // Safely parse JSON — guard against empty body
+        const text = await response.text();
+        if (!text || text.trim() === '') {
+          return null as T;
+        }
+
+        try {
+          return JSON.parse(text) as T;
+        } catch {
+          throw new Error(`Invalid JSON response from server`);
+        }
+      } catch (error) {
+        lastError = error;
+        const canRetry = method === 'GET' && attempt < maxAttempts && (this.isNetworkFailure(error) || (error instanceof Error && error.name === 'AbortError'));
+
+        if (canRetry) {
+          await this.sleep(300 * attempt);
+          continue;
+        }
+
+        throw this.toUserFacingError(error);
+      } finally {
+        clearTimeout(timeoutId);
+      }
     }
 
-    // Handle empty responses (204 No Content, or empty body)
-    const contentLength = response.headers.get('content-length');
-    const contentType = response.headers.get('content-type') || '';
-    if (response.status === 204 || contentLength === '0' || !contentType.includes('json')) {
-      return null as T;
-    }
-
-    // Safely parse JSON — guard against empty body
-    const text = await response.text();
-    if (!text || text.trim() === '') {
-      return null as T;
-    }
-
-    try {
-      return JSON.parse(text) as T;
-    } catch {
-      throw new Error(`Invalid JSON response from server`);
-    }
+    throw this.toUserFacingError(lastError);
   }
 
   // Generic methods
@@ -339,4 +397,3 @@ class ApiService {
 }
 
 export const apiService = new ApiService();
-

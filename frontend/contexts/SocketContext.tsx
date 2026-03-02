@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { useAuth } from './AuthContext';
 
 interface SocketContextType {
   socket: Socket | null;
@@ -19,19 +18,8 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
-  // Get auth context - SocketProvider is wrapped by AuthProvider in layout
-  const { isAuthenticated } = useAuth();
-
   useEffect(() => {
-    if (!isAuthenticated) {
-      // Clean up existing socket if not authenticated
-      if (socket) {
-        socket.disconnect();
-        setSocket(null);
-        setIsConnected(false);
-      }
-      return;
-    }
+    const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
 
     // Initialize socket connection
     const newSocket = io(SOCKET_URL, {
@@ -39,6 +27,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,
+      ...(adminToken ? { auth: { token: adminToken } } : {}),
     } as any);
 
     newSocket.on('connect', () => {
@@ -63,8 +52,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       setSocket(null);
       setIsConnected(false);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated]);
+  }, []);
 
   const joinRoom = (room: string) => {
     if (socket && isConnected) {
@@ -95,4 +83,3 @@ export function useSocket() {
   }
   return context;
 }
-

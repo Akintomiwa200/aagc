@@ -4,9 +4,11 @@ import { Calendar, MapPin, Clock, ArrowRight, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import Link from 'next/link';
 import { apiService } from "@/lib/api";
+import { useSocket } from "@/contexts/SocketContext";
 
 interface Event {
-  id: string;
+  id?: string;
+  _id?: string;
   title: string;
   date: string;
   time: string;
@@ -27,6 +29,9 @@ const categoryColors: Record<string, string> = {
 export default function EventsSection() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const { socket } = useSocket();
+
+  const getEventId = (event: Event) => event.id || event._id || '';
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -41,6 +46,31 @@ export default function EventsSection() {
     };
     fetchEvents();
   }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const onCreated = (event: Event) => {
+      setEvents(prev => [event, ...prev]);
+    };
+    const onUpdated = (event: Event) => {
+      const eventId = getEventId(event);
+      setEvents(prev => prev.map(existing => (getEventId(existing) === eventId ? event : existing)));
+    };
+    const onDeleted = (data: { eventId: string }) => {
+      setEvents(prev => prev.filter(existing => getEventId(existing) !== data.eventId));
+    };
+
+    socket.on('event-created', onCreated);
+    socket.on('event-updated', onUpdated);
+    socket.on('event-deleted', onDeleted);
+
+    return () => {
+      socket.off('event-created', onCreated);
+      socket.off('event-updated', onUpdated);
+      socket.off('event-deleted', onDeleted);
+    };
+  }, [socket]);
 
   return (
     <section className="relative bg-gray-50 py-20 px-6 lg:px-16 overflow-hidden">
@@ -79,7 +109,7 @@ export default function EventsSection() {
           <div className="grid gap-6 lg:grid-cols-3">
             {events.map((event, idx) => (
               <div
-                key={event.id || idx}
+                key={getEventId(event) || idx}
                 className="group bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2"
                 style={{
                   animation: `fadeInUp 0.6s ease-out ${idx * 0.1}s both`
@@ -128,7 +158,7 @@ export default function EventsSection() {
                     {event.detail}
                   </p>
 
-                  <Link href={`/events/${event.id}`} className="w-full flex items-center justify-center gap-2 bg-gray-100 hover:bg-green-600 text-gray-700 hover:text-white py-3 rounded-xl font-medium transition-all group/btn">
+                  <Link href={`/events/${getEventId(event)}`} className="w-full flex items-center justify-center gap-2 bg-gray-100 hover:bg-green-600 text-gray-700 hover:text-white py-3 rounded-xl font-medium transition-all group/btn">
                     RSVP Now
                     <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
                   </Link>

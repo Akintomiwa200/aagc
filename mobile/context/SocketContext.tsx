@@ -3,6 +3,7 @@ import { io, Socket } from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import { useAuth } from './AuthContext';
 
 interface SocketContextType {
   socket: Socket | null;
@@ -37,31 +38,35 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [token, setToken] = useState<string | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
-    // Load auth token
-    AsyncStorage.getItem('auth_token').then(setToken).catch(console.error);
-  }, []);
+    let active = true;
+    AsyncStorage.getItem('auth_token')
+      .then(value => {
+        if (active) setToken(value);
+      })
+      .catch(console.error);
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   useEffect(() => {
-    if (!token) {
-      if (socket) {
-        socket.disconnect();
-        setSocket(null);
-        setIsConnected(false);
-      }
-      return;
-    }
-
-    const newSocket = io(SOCKET_URL, {
+    const options: any = {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
-      reconnectionAttempts: 5,
-      auth: {
-        token,
-      },
-    });
+      reconnectionDelayMax: 10000,
+      reconnectionAttempts: 20,
+      timeout: 15000,
+    };
+
+    if (token) {
+      options.auth = { token };
+    }
+
+    const newSocket = io(SOCKET_URL, options);
 
     newSocket.on('connect', () => {
       console.log('Socket connected:', newSocket.id);

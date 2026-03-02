@@ -4,9 +4,11 @@ import { Calendar, MapPin, Clock, ArrowRight, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { apiService } from "@/lib/api";
+import { useSocket } from "@/contexts/SocketContext";
 
 interface Event {
-  id: string; // Added ID
+  id?: string;
+  _id?: string;
   title: string;
   date: string;
   time: string;
@@ -40,6 +42,8 @@ export default function EventsSection() {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const { socket } = useSocket();
+  const getEventId = (event: Event) => event.id || event._id || '';
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -55,6 +59,31 @@ export default function EventsSection() {
     };
     fetchEvents();
   }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const onCreated = (event: Event) => {
+      setEvents(prev => [event, ...prev].slice(0, 3));
+    };
+    const onUpdated = (event: Event) => {
+      const eventId = getEventId(event);
+      setEvents(prev => prev.map(existing => (getEventId(existing) === eventId ? event : existing)));
+    };
+    const onDeleted = (data: { eventId: string }) => {
+      setEvents(prev => prev.filter(existing => getEventId(existing) !== data.eventId));
+    };
+
+    socket.on('event-created', onCreated);
+    socket.on('event-updated', onUpdated);
+    socket.on('event-deleted', onDeleted);
+
+    return () => {
+      socket.off('event-created', onCreated);
+      socket.off('event-updated', onUpdated);
+      socket.off('event-deleted', onDeleted);
+    };
+  }, [socket]);
 
   const getCategoryColor = (category: string) => {
     return categoryColors[category] || categoryColors.default;
@@ -101,7 +130,7 @@ export default function EventsSection() {
           <div className="grid gap-6 lg:grid-cols-3">
             {events.map((event, idx) => (
               <div
-                key={event.id || idx}
+                key={getEventId(event) || idx}
                 className="group card dark:card rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2"
                 onMouseEnter={() => setActiveIndex(idx)}
                 onMouseLeave={() => setActiveIndex(null)}
@@ -157,7 +186,7 @@ export default function EventsSection() {
                     {event.detail}
                   </p>
 
-                  <Link href={`/events/${event.id}`} className="w-full flex items-center justify-center gap-2 bg-gray-100 dark:bg-gray-700 hover:bg-green-600 dark:hover:bg-emerald-600 text-gray-700 dark:text-gray-300 hover:text-white py-3 rounded-xl font-medium transition-all group/btn">
+                  <Link href={`/events/${getEventId(event)}`} className="w-full flex items-center justify-center gap-2 bg-gray-100 dark:bg-gray-700 hover:bg-green-600 dark:hover:bg-emerald-600 text-gray-700 dark:text-gray-300 hover:text-white py-3 rounded-xl font-medium transition-all group/btn">
                     Event Details
                     <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
                   </Link>

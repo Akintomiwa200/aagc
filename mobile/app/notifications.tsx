@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { Bell } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { apiService } from '../services/apiService';
@@ -12,6 +12,7 @@ export default function NotificationsScreen() {
     const isDark = theme === 'dark';
     const [notifications, setNotifications] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (user?.id) {
@@ -41,8 +42,10 @@ export default function NotificationsScreen() {
         try {
             const data = await apiService.getNotifications(user?.id);
             setNotifications(data);
+            setError(null);
         } catch (error) {
             console.error('Failed to fetch notifications:', error);
+            setError(error instanceof Error ? error.message : 'Unable to load notifications right now.');
         } finally {
             setLoading(false);
         }
@@ -54,6 +57,7 @@ export default function NotificationsScreen() {
             setNotifications(prev => prev.map(n => (n.id === id || n._id === id) ? { ...n, isRead: true } : n));
         } catch (error) {
             console.error('Failed to mark read', error);
+            Alert.alert('Network Error', error instanceof Error ? error.message : 'Could not update notification.');
         }
     };
 
@@ -138,7 +142,7 @@ export default function NotificationsScreen() {
                     ListEmptyComponent={
                         <View style={styles.emptyState}>
                             <Bell size={48} color={isDark ? '#374151' : '#E5E7EB'} />
-                            <Text style={styles.emptyText}>No notifications yet.</Text>
+                            <Text style={styles.emptyText}>{error || 'No notifications yet.'}</Text>
                         </View>
                     }
                     renderItem={({ item }) => (

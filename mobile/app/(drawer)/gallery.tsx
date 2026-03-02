@@ -13,6 +13,7 @@ export default function GalleryScreen() {
     const isDark = theme === 'dark';
     const [images, setImages] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         fetchGallery();
@@ -22,9 +23,12 @@ export default function GalleryScreen() {
         setLoading(true);
         try {
             const data = await apiService.getGalleryImages();
-            setImages(data);
+            setImages(Array.isArray(data) ? data : []);
+            setError(null);
         } catch {
             // Silently handle — empty gallery state shown
+            setImages([]);
+            setError('Unable to load gallery right now. Pull to refresh when network is stable.');
         } finally {
             setLoading(false);
         }
@@ -39,12 +43,15 @@ export default function GalleryScreen() {
             setImages(prev => [image, ...prev]);
         };
 
+        const getId = (item: any) => item?.id || item?._id;
+
         const handleImageUpdated = (image: any) => {
-            setImages(prev => prev.map(img => img.id === image.id || img._id === image._id ? image : img));
+            const imageId = getId(image);
+            setImages(prev => prev.map(img => getId(img) === imageId ? image : img));
         };
 
         const handleImageDeleted = (data: any) => {
-            setImages(prev => prev.filter(img => img.id !== data.imageId && img._id !== data.imageId));
+            setImages(prev => prev.filter(img => getId(img) !== data.imageId));
         };
 
         socket.on('gallery-image-created', handleImageCreated);
@@ -102,17 +109,19 @@ export default function GalleryScreen() {
             ) : (
                 <FlatList
                     data={images}
-                    keyExtractor={(item) => item.id}
+                    keyExtractor={(item, index) => (item?.id || item?._id || String(index))}
                     numColumns={COLUMN_COUNT}
                     ListEmptyComponent={
                         <View style={styles.emptyState}>
-                            <Text style={styles.emptyText}>No photos available.</Text>
+                            <Text style={styles.emptyText}>
+                                {error || 'No photos available.'}
+                            </Text>
                         </View>
                     }
                     renderItem={({ item }) => (
                         <TouchableOpacity style={styles.imageContainer}>
                             <Image
-                                source={{ uri: item.url }}
+                                source={{ uri: item.imageUrl || item.url }}
                                 style={styles.image}
                                 resizeMode="cover"
                             />

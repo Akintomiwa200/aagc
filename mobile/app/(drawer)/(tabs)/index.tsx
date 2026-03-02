@@ -127,26 +127,34 @@ export default function HomeScreen() {
             setError(null);
 
             // Fetch real data simultaneously
-            const [rhemaData, sermonData, eventsData, prayersData] = await Promise.all([
-                apiService.getTodayDevotional().catch(() => null),
-                apiService.getSermons().catch(() => []),
-                apiService.getEvents().catch(() => []),
-                apiService.get('/prayers').catch(() => [])
+            const [rhemaRes, sermonRes, eventsRes, prayersRes] = await Promise.allSettled([
+                apiService.getTodayDevotional(),
+                apiService.getSermons(),
+                apiService.getEvents(),
+                apiService.get<any[]>('/prayers'),
             ]);
+
+            const rhemaData = rhemaRes.status === 'fulfilled' ? rhemaRes.value : null;
+            const sermonData = sermonRes.status === 'fulfilled' ? sermonRes.value : [];
+            const eventsData = eventsRes.status === 'fulfilled' ? eventsRes.value : [];
+            const prayersData = prayersRes.status === 'fulfilled' ? prayersRes.value : [];
+
+            const failedCount = [rhemaRes, sermonRes, eventsRes, prayersRes].filter(item => item.status === 'rejected').length;
+            setError(failedCount > 0 ? 'Some live data could not be refreshed. Pull down to retry.' : null);
 
             setDailyRhema(rhemaData);
 
-            if (sermonData && sermonData.length > 0) {
+            if (Array.isArray(sermonData) && sermonData.length > 0) {
                 setLatestSermon(sermonData[0]);
             }
 
             // Filter events for today (assuming ISO date strings)
             const todayStr = new Date().toISOString().split('T')[0];
-            const filteredEvents = (eventsData || []).filter((e: any) => e.date && e.date.startsWith(todayStr));
+            const filteredEvents = (Array.isArray(eventsData) ? eventsData : []).filter((e: any) => e.date && e.date.startsWith(todayStr));
             setTodayEvents(filteredEvents);
 
             // Set prayer count from real api
-            if (prayersData && prayersData.length) {
+            if (Array.isArray(prayersData) && prayersData.length) {
                 const todayPrayers = prayersData.filter((p: any) => p.createdAt && p.createdAt.startsWith(todayStr));
                 setPrayerCount(todayPrayers.length);
             }

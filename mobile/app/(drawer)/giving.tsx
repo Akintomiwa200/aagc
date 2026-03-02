@@ -277,7 +277,9 @@ export default function GivingScreen() {
     const uid = user.id || user._id;
     const h = (data: any) => { if (data.userId === uid) setHistory(p => [data, ...p]); };
     socket.on('donation-created', h);
-    return () => socket.off('donation-created', h);
+    return () => {
+      socket.off('donation-created', h);
+    };
   }, [socket, user]);
 
   // ── Derived values ─────────────────────────────────────────────────────────
@@ -292,10 +294,10 @@ export default function GivingScreen() {
   // ── Record donation on backend ─────────────────────────────────────────────
   const recordDonation = useCallback(async () => {
     if (!user) return;
+    if (!givingType) return;
     try {
       await apiService.createDonation({
         type: givingType, amount: finalAmount,
-        currency, paymentMethod, reference: txRef,
         userId: user.id || user._id,
       });
       const d = await apiService.getDonations(user.id || user._id);

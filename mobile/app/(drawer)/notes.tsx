@@ -18,6 +18,7 @@ export default function NotesScreen() {
     const [currentNote, setCurrentNote] = useState<any>(null); // null = creating new
     const [noteTitle, setNoteTitle] = useState('');
     const [noteContent, setNoteContent] = useState('');
+    const getNoteId = (note: any) => note?.id || note?._id;
 
     useEffect(() => {
         if (user) {
@@ -35,11 +36,12 @@ export default function NotesScreen() {
         };
 
         const handleNoteUpdated = (note: any) => {
-            setNotes(prev => prev.map(n => n.id === note.id || n._id === note._id ? note : n));
+            const noteId = getNoteId(note);
+            setNotes(prev => prev.map(n => getNoteId(n) === noteId ? note : n));
         };
 
         const handleNoteDeleted = (data: any) => {
-            setNotes(prev => prev.filter(n => n.id !== data.noteId && n._id !== data.noteId));
+            setNotes(prev => prev.filter(n => getNoteId(n) !== data.noteId));
         };
 
         socket.on('note-created', handleNoteCreated);
@@ -87,7 +89,7 @@ export default function NotesScreen() {
         try {
             if (currentNote) {
                 // Update
-                await apiService.updateNote(currentNote.id, { title: noteTitle, content: noteContent });
+                await apiService.updateNote(getNoteId(currentNote), { title: noteTitle, content: noteContent });
             } else {
                 // Create
                 if (!user) {
@@ -112,7 +114,7 @@ export default function NotesScreen() {
                 onPress: async () => {
                     try {
                         await apiService.deleteNote(id);
-                        setNotes(prev => prev.filter(n => n.id !== id));
+                        setNotes(prev => prev.filter(n => getNoteId(n) !== id));
                     } catch (error) {
                         Alert.alert('Oops', 'Could not delete this note. Please try again.');
                     }
@@ -317,7 +319,7 @@ export default function NotesScreen() {
             ) : (
                 <FlatList
                     data={notes}
-                    keyExtractor={(item) => item.id}
+                    keyExtractor={(item, index) => getNoteId(item) || String(index)}
                     contentContainerStyle={styles.listContent}
                     ListEmptyComponent={
                         <View style={styles.emptyState}>
@@ -330,7 +332,7 @@ export default function NotesScreen() {
                             <Text style={styles.notePreview} numberOfLines={2}>{item.content}</Text>
                             <View style={styles.itemFooter}>
                                 <Text style={styles.date}>{new Date(item.updatedAt || Date.now()).toLocaleDateString()}</Text>
-                                <TouchableOpacity onPress={() => handleDeleteNote(item.id)}>
+                                <TouchableOpacity onPress={() => handleDeleteNote(getNoteId(item))}>
                                     <Trash2 size={18} color="#EF4444" />
                                 </TouchableOpacity>
                             </View>

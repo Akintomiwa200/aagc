@@ -13,12 +13,17 @@ export default function EventsScreen() {
     const [events, setEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const getEventId = (event: any) => event?.id || event?._id;
 
     const fetchEvents = useCallback(async () => {
         try {
             const data = await apiService.getEvents();
             setEvents(data);
+            setError(null);
         } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to load events.';
+            setError(message);
             console.error('Failed to fetch events:', error);
         } finally {
             setLoading(false);
@@ -39,11 +44,12 @@ export default function EventsScreen() {
         };
 
         const handleEventUpdated = (event: any) => {
-            setEvents(prev => prev.map(e => e.id === event.id || e._id === event._id ? event : e));
+            const eventId = getEventId(event);
+            setEvents(prev => prev.map(e => getEventId(e) === eventId ? event : e));
         };
 
         const handleEventDeleted = (data: any) => {
-            setEvents(prev => prev.filter(e => e.id !== data.eventId && e._id !== data.eventId));
+            setEvents(prev => prev.filter(e => getEventId(e) !== data.eventId));
         };
 
         socket.on('event-created', handleEventCreated);
@@ -228,13 +234,21 @@ export default function EventsScreen() {
                 </TouchableOpacity>
             </View>
 
+            {error ? (
+                <View style={[styles.eventCard, { borderColor: '#F59E0B' }]}>
+                    <Text style={[styles.emptyText, { color: isDark ? '#FCD34D' : '#92400E' }]}>
+                        {error}
+                    </Text>
+                </View>
+            ) : null}
+
             {loading ? (
                 <View style={styles.emptyState}>
                     <Text style={styles.emptyText}>Loading events...</Text>
                 </View>
             ) : filteredEvents.length > 0 ? (
                 filteredEvents.map((event) => (
-                    <Link key={event.id} href={`/event/${event.id}`} asChild>
+                    <Link key={getEventId(event)} href={`/event/${getEventId(event)}`} asChild>
                         <TouchableOpacity style={styles.eventCard}>
                             <View style={styles.eventImageContainer}>
                                 <Text style={styles.eventEmoji}>{event.image || '📅'}</Text>

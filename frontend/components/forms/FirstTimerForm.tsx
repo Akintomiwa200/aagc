@@ -1,8 +1,9 @@
 // components/forms/FirstTimerForm.tsx
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { User, Mail, Phone, MapPin, Heart, AlertCircle, CheckCircle } from "lucide-react";
+import { apiService } from "@/lib/api";
 
 interface FormData {
   firstName: string;
@@ -37,6 +38,7 @@ export default function FirstTimerForm({ onSuccess, onLoading }: FirstTimerFormP
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Automatically set today's date
   const [visitDate] = useState(() => {
@@ -79,34 +81,26 @@ export default function FirstTimerForm({ onSuccess, onLoading }: FirstTimerFormP
 
     // Notify parent about loading
     if (onLoading) onLoading(true);
+    setIsSubmitting(true);
 
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Simulate API response
-      const mockApiResponse = {
-        success: true,
-        data: {
-          id: 'REG-' + Date.now(),
-          timestamp: new Date().toISOString(),
-          visitDate: visitDate,
-          ...formData
-        }
-      };
-      
-      if (mockApiResponse.success) {
-        console.log('Form submitted successfully:', mockApiResponse.data);
-        
-        // Set submitted state
-        setIsSubmitted(true);
-        
-        // Notify parent about success
-        if (onSuccess) onSuccess(formData.firstName);
-        
-      } else {
-        throw new Error('Submission failed');
-      }
+      await apiService.submitConnectionCard({
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        type: 'first-timer',
+        message: [
+          `Visit Date: ${visitDate}`,
+          formData.city ? `City: ${formData.city.trim()}` : '',
+          formData.address ? `Address: ${formData.address.trim()}` : '',
+          formData.wantFollowUp ? 'Follow-up requested: Yes' : 'Follow-up requested: No',
+          formData.prayerRequest ? `Prayer Request: ${formData.prayerRequest.trim()}` : '',
+        ].filter(Boolean).join('\n'),
+      });
+
+      setIsSubmitted(true);
+      if (onSuccess) onSuccess(formData.firstName);
       
     } catch (error) {
       console.error('Error submitting form:', error);
@@ -119,6 +113,7 @@ export default function FirstTimerForm({ onSuccess, onLoading }: FirstTimerFormP
     } finally {
       // Notify parent about loading complete
       if (onLoading) onLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -387,10 +382,10 @@ export default function FirstTimerForm({ onSuccess, onLoading }: FirstTimerFormP
           <button
             onClick={handleSubmit}
             type="button"
-            disabled={!!submitError}
+            disabled={isSubmitting}
             className={`w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2`}
           >
-            Submit Registration
+            {isSubmitting ? 'Submitting...' : 'Submit Registration'}
           </button>
           
           <p className="text-center text-sm text-gray-500 mt-4">

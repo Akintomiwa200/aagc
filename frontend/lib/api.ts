@@ -1,38 +1,123 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 class ApiService {
+    private readonly requestTimeoutMs = 15000;
+    private readonly getRetryAttempts = 1;
+
+    private sleep(ms: number) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    private isNetworkFailure(error: unknown) {
+        if (!(error instanceof Error)) return false;
+        const message = error.message.toLowerCase();
+        return (
+            message.includes('network request failed') ||
+            message.includes('failed to fetch') ||
+            message.includes('networkerror') ||
+            message.includes('connection')
+        );
+    }
+
+    private toUserFacingError(error: unknown) {
+        if (error instanceof Error && error.name === 'AbortError') {
+            return new Error('Request timed out. Please check your internet connection and try again.');
+        }
+
+        if (this.isNetworkFailure(error)) {
+            return new Error('Unable to reach the server. Please verify your internet connection and try again.');
+        }
+
+        if (error instanceof Error) {
+            return error;
+        }
+
+        return new Error('Unexpected error. Please try again.');
+    }
+
+    private async parseResponse<T>(response: Response): Promise<T> {
+        const contentLength = response.headers.get('content-length');
+        const contentType = response.headers.get('content-type') || '';
+
+        if (response.status === 204 || contentLength === '0' || !contentType.includes('json')) {
+            return null as T;
+        }
+
+        const text = await response.text();
+        if (!text || text.trim() === '') {
+            return null as T;
+        }
+
+        try {
+            return JSON.parse(text) as T;
+        } catch {
+            throw new Error('Invalid JSON response from server');
+        }
+    }
+
     private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
             ...(options.headers as Record<string, string>),
         };
 
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-            ...options,
-            headers,
-        });
+        const method = (options.method || 'GET').toUpperCase();
+        const maxAttempts = method === 'GET' ? this.getRetryAttempts + 1 : 1;
+        let lastError: unknown = null;
 
-        if (!response.ok) {
-            // Try to parse error message
-            const errorBody = await response.json().catch(() => ({}));
-            throw new Error(errorBody.message || `Request failed with status ${response.status}`);
+        for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), this.requestTimeoutMs);
+            try {
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                    ...options,
+                    headers,
+                    signal: controller.signal,
+                });
+
+                if (!response.ok) {
+                    const errorBody = await response.json().catch(() => ({}));
+                    throw new Error(errorBody.message || `Request failed with status ${response.status}`);
+                }
+
+                return this.parseResponse<T>(response);
+            } catch (error) {
+                lastError = error;
+                const canRetry = method === 'GET' && attempt < maxAttempts && (this.isNetworkFailure(error) || (error instanceof Error && error.name === 'AbortError'));
+                if (canRetry) {
+                    await this.sleep(250 * attempt);
+                    continue;
+                }
+                throw this.toUserFacingError(error);
+            } finally {
+                clearTimeout(timeoutId);
+            }
         }
 
-        return response.json();
+        throw this.toUserFacingError(lastError);
     }
 
     private async multipartRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-            ...options,
-            // Fetch will automatically set the correct Content-Type with boundary for FormData
-        });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), this.requestTimeoutMs);
+        try {
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                ...options,
+                signal: controller.signal,
+                // Fetch will automatically set the correct Content-Type with boundary for FormData
+            });
 
-        if (!response.ok) {
-            const errorBody = await response.json().catch(() => ({}));
-            throw new Error(errorBody.message || `Request failed with status ${response.status}`);
+            if (!response.ok) {
+                const errorBody = await response.json().catch(() => ({}));
+                throw new Error(errorBody.message || `Request failed with status ${response.status}`);
+            }
+
+            return this.parseResponse<T>(response);
+        } catch (error) {
+            throw this.toUserFacingError(error);
+        } finally {
+            clearTimeout(timeoutId);
         }
-
-        return response.json();
     }
 
     // Events
@@ -162,17 +247,10 @@ class ApiService {
 
     // Admin Sermons
     async uploadSermon(data: FormData) {
-        // FormData needs special handling, don't set Content-Type header manually
-        const response = await fetch(`${API_BASE_URL}/sermons`, {
+        return this.multipartRequest<any>('/sermons', {
             method: 'POST',
             body: data,
-            // headers: { 'Authorization': ... } // Handled by cookies?
         });
-        if (!response.ok) {
-            const errorBody = await response.json().catch(() => ({}));
-            throw new Error(errorBody.message || `Request failed with status ${response.status}`);
-        }
-        return response.json();
     }
 
     async deleteSermon(id: string) {
@@ -311,15 +389,10 @@ class ApiService {
     }
 
     async uploadGalleryImage(data: FormData) {
-        const response = await fetch(`${API_BASE_URL}/gallery`, {
+        return this.multipartRequest<any>('/gallery', {
             method: 'POST',
             body: data,
         });
-        if (!response.ok) {
-            const errorBody = await response.json().catch(() => ({}));
-            throw new Error(errorBody.message || `Request failed with status ${response.status}`);
-        }
-        return response.json();
     }
 
     async deleteGalleryImage(id: string) {

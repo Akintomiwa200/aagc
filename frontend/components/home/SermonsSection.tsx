@@ -4,9 +4,11 @@ import { Play, Download, Share2, Calendar, User, Clock, Loader2 } from "lucide-r
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { apiService } from "@/lib/api";
+import { useSocket } from "@/contexts/SocketContext";
 
 interface Sermon {
-  id: string; // Added ID
+  id?: string;
+  _id?: string;
   title: string;
   preacher: string;
   date: string;
@@ -30,6 +32,8 @@ const seriesColors: Record<string, string> = {
 export default function SermonsSection() {
   const [sermons, setSermons] = useState<Sermon[]>([]);
   const [loading, setLoading] = useState(true);
+  const { socket } = useSocket();
+  const getSermonId = (sermon: Sermon) => sermon.id || sermon._id || '';
 
   useEffect(() => {
     const fetchSermons = async () => {
@@ -44,6 +48,29 @@ export default function SermonsSection() {
     };
     fetchSermons();
   }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const onCreated = (sermon: Sermon) => setSermons(prev => [sermon, ...prev]);
+    const onUpdated = (sermon: Sermon) => {
+      const sermonId = getSermonId(sermon);
+      setSermons(prev => prev.map(existing => (getSermonId(existing) === sermonId ? sermon : existing)));
+    };
+    const onDeleted = (data: { sermonId: string }) => {
+      setSermons(prev => prev.filter(existing => getSermonId(existing) !== data.sermonId));
+    };
+
+    socket.on('sermon-created', onCreated);
+    socket.on('sermon-updated', onUpdated);
+    socket.on('sermon-deleted', onDeleted);
+
+    return () => {
+      socket.off('sermon-created', onCreated);
+      socket.off('sermon-updated', onUpdated);
+      socket.off('sermon-deleted', onDeleted);
+    };
+  }, [socket]);
 
   return (
     <section className="relative py-20 px-6 lg:px-16 overflow-hidden">
@@ -90,7 +117,7 @@ export default function SermonsSection() {
           <div className="grid gap-6 md:grid-cols-2">
             {sermons.map((sermon, idx) => (
               <div
-                key={sermon.id || idx}
+                key={getSermonId(sermon) || idx}
                 className="group rounded-3xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 bg-white"
                 style={{
                   animation: `fadeInUp 0.6s ease-out ${idx * 0.1}s both`,
@@ -116,7 +143,7 @@ export default function SermonsSection() {
 
                   {/* Play Button Overlay */}
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <Link href={`/sermons/${sermon.id}`} className="bg-white/90 backdrop-blur-sm rounded-full p-4 group-hover:scale-110 transition-transform">
+                    <Link href={`/sermons/${getSermonId(sermon)}`} className="bg-white/90 backdrop-blur-sm rounded-full p-4 group-hover:scale-110 transition-transform">
                       <Play className="h-8 w-8 text-gray-900 fill-gray-900" />
                     </Link>
                   </div>
@@ -158,7 +185,7 @@ export default function SermonsSection() {
                   </p>
 
                   <div className="flex items-center gap-2 pt-4 border-t border-gray-200">
-                    <Link href={`/sermons/${sermon.id}`} className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-medium transition-all">
+                    <Link href={`/sermons/${getSermonId(sermon)}`} className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-medium transition-all">
                       <Play className="h-4 w-4" />
                       Play Now
                     </Link>
