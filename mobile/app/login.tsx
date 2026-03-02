@@ -2,37 +2,113 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, SafeAreaView } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { makeRedirectUri } from 'expo-auth-session';
+import * as Google from 'expo-auth-session/providers/google';
 import { useTheme } from '../context/ThemeContext';
 import { apiService } from '../services/apiService';
 
 WebBrowser.maybeCompleteAuthSession();
 
+const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '';
+const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
 
-// The Expo auth proxy — a valid HTTPS URL that Google accepts as redirect_uri
-const PROXY_REDIRECT_URI = 'https://auth.expo.io/@herkintormiwer/aagc-mobile';
+const isConfigured = (value: string) => Boolean(value && !value.includes('provide-your-'));
 
 export default function LoginScreen() {
     const router = useRouter();
     const { colors } = useTheme();
     const [googleLoading, setGoogleLoading] = useState(false);
 
-    // The deep-link URI for THIS app running in Expo Go
-    // Chrome Custom Tabs will intercept URLs matching this scheme
-    const appReturnUrl = makeRedirectUri();
+    const [request, response, promptAsync] = Google.useAuthRequest({
+        // Fallback clientId keeps Expo Go/dev usable even when a platform ID is missing.
+        clientId: isConfigured(GOOGLE_WEB_CLIENT_ID) ? GOOGLE_WEB_CLIENT_ID : undefined,
+        webClientId: isConfigured(GOOGLE_WEB_CLIENT_ID) ? GOOGLE_WEB_CLIENT_ID : undefined,
+        androidClientId: isConfigured(GOOGLE_ANDROID_CLIENT_ID) ? GOOGLE_ANDROID_CLIENT_ID : undefined,
+        iosClientId: isConfigured(GOOGLE_IOS_CLIENT_ID) ? GOOGLE_IOS_CLIENT_ID : undefined,
+        selectAccount: true,
+        scopes: ['openid', 'profile', 'email'],
+    });
 
     React.useEffect(() => {
         console.log('=== Google Auth Debug ===');
-        console.log('Proxy redirect URI (for Google):', PROXY_REDIRECT_URI);
-        console.log('App return URL (for browser interception):', appReturnUrl);
-        console.log('Web Client ID:', GOOGLE_WEB_CLIENT_ID ? 'SET ✓' : 'MISSING ✗');
+        console.log('Google request loaded:', request ? 'YES' : 'NO');
+        console.log('Google redirect URI:', request?.redirectUri || 'N/A');
+        console.log('Android Client ID:', isConfigured(GOOGLE_ANDROID_CLIENT_ID) ? 'SET ✓' : 'MISSING ✗');
+        console.log('iOS Client ID:', isConfigured(GOOGLE_IOS_CLIENT_ID) ? 'SET ✓' : 'MISSING ✗');
+        console.log('Web Client ID:', isConfigured(GOOGLE_WEB_CLIENT_ID) ? 'SET ✓' : 'MISSING ✗');
         console.log('========================');
-    }, []);
+    }, [request]);
 
     React.useEffect(() => {
         checkSession();
     }, []);
+
+    React.useEffect(() => {
+        const completeGoogleLogin = async () => {
+            if (!response) {
+                return;
+            }
+
+            if (response.type === 'error') {
+                console.error('Google auth response error:', response.error);
+                Alert.alert('Sign-In Failed', 'Google authentication failed. Please try again.');
+                setGoogleLoading(false);
+                return;
+            }
+
+            if (response.type !== 'success') {
+                setGoogleLoading(false);
+                return;
+            }
+
+            try {
+                const accessToken = response.authentication?.accessToken || response.params?.access_token || null;
+                const idToken = response.authentication?.idToken || response.params?.id_token || null;
+                const oauthToken = idToken || accessToken;
+
+                if (!oauthToken) {
+                    Alert.alert('Auth Error', 'Could not retrieve a valid Google token. Please try again.');
+                    return;
+                }
+
+                let email: string | undefined;
+                let name: string | undefined;
+                let picture: string | undefined;
+
+                if (accessToken) {
+                    const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                        headers: { Authorization: `Bearer ${accessToken}` },
+                    });
+
+                    if (userInfoRes.ok) {
+                        const userInfo = await userInfoRes.json();
+                        email = userInfo.email;
+                        name = userInfo.name || userInfo.given_name;
+                        picture = userInfo.picture;
+                    }
+                }
+
+                const backendResult = await apiService.mobileOAuth('google', oauthToken, email, name, picture);
+
+                if (backendResult?.token) {
+                    router.replace('/(drawer)/(tabs)');
+                    return;
+                }
+
+                Alert.alert('Error', 'Login succeeded but no session was created.');
+            } catch (error) {
+                console.error('Google login error:', error);
+                Alert.alert(
+                    'Sign-In Failed',
+                    'Could not complete sign-in. Please check your internet connection and try again.',
+                );
+            } finally {
+                setGoogleLoading(false);
+            }
+        };
+
+        completeGoogleLogin();
+    }, [response]);
 
     const checkSession = async () => {
         const token = await apiService.getToken();
@@ -42,7 +118,7 @@ export default function LoginScreen() {
     };
 
     const handleGoogleLogin = async () => {
-        if (!GOOGLE_WEB_CLIENT_ID || GOOGLE_WEB_CLIENT_ID.includes('provide-your-')) {
+        if (!isConfigured(GOOGLE_WEB_CLIENT_ID) && !isConfigured(GOOGLE_ANDROID_CLIENT_ID) && !isConfigured(GOOGLE_IOS_CLIENT_ID)) {
             Alert.alert(
                 'Configuration Required',
                 'Google Client IDs are not configured. Please add them to the .env file.',
@@ -50,95 +126,22 @@ export default function LoginScreen() {
             return;
         }
 
+        if (!request) {
+            Alert.alert('Please wait', 'Google sign-in is still initializing. Try again in a moment.');
+            return;
+        }
+
         setGoogleLoading(true);
 
         try {
-            // Build the Google OAuth URL
-            // - redirect_uri is the Expo proxy (HTTPS, accepted by Google)
-            // - The proxy will redirect to exp://IP:PORT which Chrome Custom Tabs intercepts
-            const params = new URLSearchParams({
-                client_id: GOOGLE_WEB_CLIENT_ID,
-                redirect_uri: PROXY_REDIRECT_URI,
-                response_type: 'token',
-                scope: 'openid email profile',
-                prompt: 'select_account',
-            });
-            const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-
-            console.log('Opening Google OAuth...');
-
-            // Open the browser — listen for the exp:// return (NOT the proxy URL)
-            // Flow: Google → auth.expo.io (proxy) → exp://IP:PORT (intercepted by Chrome Custom Tabs)
-            const result = await WebBrowser.openAuthSessionAsync(authUrl, appReturnUrl);
-
-            console.log('Browser result type:', result.type);
-
-            if (result.type === 'success' && 'url' in result) {
-                console.log('Received redirect URL');
-
-                // Parse the access_token from the URL fragment (#access_token=...)
-                const url = result.url;
-                const fragment = url.split('#')[1] || '';
-                const queryPart = url.split('?')[1] || '';
-                const combined = fragment || queryPart;
-
-                // Try to get access_token from fragment (implicit flow) or query params
-                let accessToken: string | null = null;
-
-                if (combined) {
-                    const params = new URLSearchParams(combined);
-                    accessToken = params.get('access_token');
-                }
-
-                if (!accessToken) {
-                    console.log('No access token found in URL:', url);
-                    Alert.alert('Auth Error', 'Could not retrieve your Google account details. Please try again.');
-                    return;
-                }
-
-                console.log('Got access token, fetching user info...');
-
-                // Fetch user info from Google
-                const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                    headers: { Authorization: `Bearer ${accessToken}` },
-                });
-
-                if (!userInfoRes.ok) {
-                    throw new Error('Failed to fetch user info from Google');
-                }
-
-                const userInfo = await userInfoRes.json();
-                console.log('Google user:', { email: userInfo.email, name: userInfo.name });
-
-                // Send to our backend
-                const backendResult = await apiService.mobileOAuth(
-                    'google',
-                    accessToken,
-                    userInfo.email,
-                    userInfo.name || userInfo.given_name,
-                    userInfo.picture,
-                );
-
-                if (backendResult?.token) {
-                    console.log('Login successful!');
-                    router.replace('/(drawer)/(tabs)');
-                } else {
-                    Alert.alert('Error', 'Login succeeded but no session was created.');
-                }
-            } else if (result.type === 'cancel' || result.type === 'dismiss') {
-                // User cancelled — don't show an error
-                console.log('User cancelled sign-in');
-            } else {
-                console.log('Unexpected result:', result);
+            const result = await promptAsync();
+            if (result.type !== 'success') {
+                setGoogleLoading(false);
             }
-        } catch (error: any) {
-            console.error('Google login error:', error);
-            Alert.alert(
-                'Sign-In Failed',
-                'Could not complete sign-in. Please check your internet connection and try again.',
-            );
-        } finally {
+        } catch (error) {
+            console.error('Failed to open Google sign-in:', error);
             setGoogleLoading(false);
+            Alert.alert('Sign-In Failed', 'Could not open Google sign-in. Please try again.');
         }
     };
 
@@ -214,9 +217,9 @@ export default function LoginScreen() {
                 </View>
 
                 <TouchableOpacity
-                    style={[styles.socialButton, { opacity: googleLoading ? 0.7 : 1 }]}
+                    style={[styles.socialButton, { opacity: googleLoading || !request ? 0.7 : 1 }]}
                     onPress={handleGoogleLogin}
-                    disabled={googleLoading}
+                    disabled={googleLoading || !request}
                 >
                     {googleLoading ? (
                         <ActivityIndicator color="#FFFFFF" />
@@ -237,13 +240,13 @@ export default function LoginScreen() {
                     </Text>
                 </TouchableOpacity>
 
-                {/* Debug info - only visible during development */}
                 {__DEV__ && (
                     <View style={styles.debugInfo}>
                         <Text style={[styles.debugText, { fontWeight: 'bold', color: colors.text }]}>Debug Info:</Text>
-                        <Text style={styles.debugText}>Google redirect: {PROXY_REDIRECT_URI}</Text>
-                        <Text style={styles.debugText}>App return URL: {appReturnUrl}</Text>
-                        <Text style={styles.debugText}>Client ID: {GOOGLE_WEB_CLIENT_ID ? '✓ Set' : '✗ Missing'}</Text>
+                        <Text style={styles.debugText}>Redirect URI: {request?.redirectUri || 'loading...'}</Text>
+                        <Text style={styles.debugText}>Android Client ID: {isConfigured(GOOGLE_ANDROID_CLIENT_ID) ? '✓ Set' : '✗ Missing'}</Text>
+                        <Text style={styles.debugText}>iOS Client ID: {isConfigured(GOOGLE_IOS_CLIENT_ID) ? '✓ Set' : '✗ Missing'}</Text>
+                        <Text style={styles.debugText}>Web Client ID: {isConfigured(GOOGLE_WEB_CLIENT_ID) ? '✓ Set' : '✗ Missing'}</Text>
                     </View>
                 )}
             </View>

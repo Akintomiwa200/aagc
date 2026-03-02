@@ -72,11 +72,23 @@ export class AuthService {
             throw new UnauthorizedException('Invalid Google token');
           }
           const idTokenData = await idTokenResponse.json();
+          const emailVerified = idTokenData.email_verified === true || idTokenData.email_verified === 'true';
+
+          if (!idTokenData.email || !emailVerified) {
+            throw new UnauthorizedException('Google account email is not verified');
+          }
+
           data.email = idTokenData.email;
           data.name = idTokenData.name;
           data.picture = idTokenData.picture;
         } else {
           const userData = await response.json();
+          const emailVerified = userData.email_verified !== false;
+
+          if (!userData.email || !emailVerified) {
+            throw new UnauthorizedException('Google account email is not verified');
+          }
+
           data.email = userData.email;
           data.name = userData.name || userData.given_name;
           data.picture = userData.picture;
