@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { User, Mail, Phone, MapPin, FileText, Camera } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { apiService } from '../../services/apiService';
+import { toast } from 'sonner-native';
 
 export default function EditProfileScreen() {
     const { theme } = useTheme();
@@ -35,7 +36,7 @@ export default function EditProfileScreen() {
                     avatar: data.avatar || '',
                 });
             } catch (error) {
-                Alert.alert('Error', 'Failed to fetch profile data.');
+                toast.error('Failed to fetch profile data.');
                 console.error(error);
                 router.back();
             } finally {
@@ -49,10 +50,10 @@ export default function EditProfileScreen() {
         setSaving(true);
         try {
             await apiService.updateUserProfile(userData.id, formData);
-            Alert.alert('Success', 'Profile updated successfully!');
+            toast.success('Profile updated successfully!');
             router.back();
         } catch (error) {
-            Alert.alert('Error', 'Failed to update profile.');
+            toast.error('Failed to update profile.');
             console.error(error);
         } finally {
             setSaving(false);

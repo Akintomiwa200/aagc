@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import { useTheme } from '../context/ThemeContext';
 import { apiService } from '../services/apiService';
+import { toast } from 'sonner-native';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -51,7 +52,7 @@ export default function LoginScreen() {
 
             if (response.type === 'error') {
                 console.error('Google auth response error:', response.error);
-                Alert.alert('Sign-In Failed', 'Google authentication failed. Please try again.');
+                toast.error('Google authentication failed. Please try again.');
                 setGoogleLoading(false);
                 return;
             }
@@ -67,7 +68,7 @@ export default function LoginScreen() {
                 const oauthToken = idToken || accessToken;
 
                 if (!oauthToken) {
-                    Alert.alert('Auth Error', 'Could not retrieve a valid Google token. Please try again.');
+                    toast.error('Could not retrieve a valid Google token. Please try again.');
                     return;
                 }
 
@@ -95,13 +96,10 @@ export default function LoginScreen() {
                     return;
                 }
 
-                Alert.alert('Error', 'Login succeeded but no session was created.');
+                toast.error('Login succeeded but no session was created.');
             } catch (error) {
                 console.error('Google login error:', error);
-                Alert.alert(
-                    'Sign-In Failed',
-                    'Could not complete sign-in. Please check your internet connection and try again.',
-                );
+                toast.error('Could not complete sign-in. Please check your internet connection and try again.');
             } finally {
                 setGoogleLoading(false);
             }
@@ -119,15 +117,12 @@ export default function LoginScreen() {
 
     const handleGoogleLogin = async () => {
         if (!isConfigured(GOOGLE_WEB_CLIENT_ID) && !isConfigured(GOOGLE_ANDROID_CLIENT_ID) && !isConfigured(GOOGLE_IOS_CLIENT_ID)) {
-            Alert.alert(
-                'Configuration Required',
-                'Google Client IDs are not configured. Please add them to the .env file.',
-            );
+            toast.error('Google Client IDs are not configured. Please add them to the .env file.');
             return;
         }
 
         if (!request) {
-            Alert.alert('Please wait', 'Google sign-in is still initializing. Try again in a moment.');
+            toast('Google sign-in is still initializing. Try again in a moment.');
             return;
         }
 
@@ -141,7 +136,7 @@ export default function LoginScreen() {
         } catch (error) {
             console.error('Failed to open Google sign-in:', error);
             setGoogleLoading(false);
-            Alert.alert('Sign-In Failed', 'Could not open Google sign-in. Please try again.');
+            toast.error('Could not open Google sign-in. Please try again.');
         }
     };
 

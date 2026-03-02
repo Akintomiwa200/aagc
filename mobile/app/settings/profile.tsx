@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Image } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { apiService } from '@/services/apiService';
 import { User, Mail, Phone, MapPin, CheckCircle, Camera, Edit2 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { toast } from 'sonner-native';
 
 export default function ProfileSettings() {
     const { colors, theme } = useTheme();
@@ -37,9 +38,9 @@ export default function ProfileSettings() {
 
             const updatedUser = { ...user, ...(updatedProfile.user || updatedProfile) };
             updateUser(updatedUser);
-            Alert.alert('Success', 'Profile updated successfully');
+            toast.success('Profile updated successfully');
         } catch (error: any) {
-            Alert.alert('Error', error.message || 'Failed to update profile');
+            toast.error(error.message || 'Failed to update profile');
         } finally {
             setSaving(false);
         }

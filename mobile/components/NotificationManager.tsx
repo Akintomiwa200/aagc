@@ -1,11 +1,12 @@
 import React, { useEffect, useRef } from 'react';
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { apiService } from '../services/apiService';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
+import { toast } from 'sonner-native';
 
 // expo-notifications remote push is not supported in Expo Go (SDK 53+).
 // We detect Expo Go via Constants.appOwnership and skip push registration.
@@ -45,19 +46,21 @@ export const NotificationManager: React.FC = () => {
         if (socket) {
             socket.on('new-notification', (data: any) => {
                 console.log('Real-time notification via socket:', data);
-                Alert.alert(
-                    data.title || 'New Notification',
-                    data.message || 'You have a new update from Apostolic Army Global.',
-                    [{ text: 'Dismiss' }, { text: 'View', onPress: () => { } }]
-                );
+                toast(data.title || 'New Notification', {
+                    description: data.message || 'You have a new update from Apostolic Army Global.',
+                });
             });
 
             socket.on('friend-request', (data: any) => {
-                Alert.alert('New Friend Request', `${data.senderName} wants to connect with you.`);
+                toast.info('New Friend Request', {
+                    description: `${data.senderName} wants to connect with you.`,
+                });
             });
 
             socket.on('live-update', (data: any) => {
-                Alert.alert('Live Now', data.message || 'A live session has started!');
+                toast.info('Live Now', {
+                    description: data.message || 'A live session has started!',
+                });
             });
         }
 

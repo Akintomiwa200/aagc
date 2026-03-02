@@ -10,13 +10,14 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  ActivityIndicator, Alert, StyleSheet, Modal,
+  ActivityIndicator, StyleSheet, Modal,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { ArrowLeft, Copy, Check, X } from 'lucide-react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { apiService } from '@/services/apiService';
 import { useSocket } from '@/context/SocketContext';
+import { toast } from 'sonner-native';
 import {
   PAYSTACK_PUBLIC_KEY,
   USSD,
@@ -307,8 +308,8 @@ export default function GivingScreen() {
 
   // ── MAIN GIVE HANDLER ──────────────────────────────────────────────────────
   const handleGive = async () => {
-    if (!user)           { Alert.alert('Sign In Required', 'Please sign in to give.'); return; }
-    if (finalAmount <= 0){ Alert.alert('Invalid Amount', 'Please select or enter a valid amount.'); return; }
+    if (!user)           { toast.error('Please sign in to give.'); return; }
+    if (finalAmount <= 0){ toast.error('Please select or enter a valid amount.'); return; }
 
     const action    = paymentObj?.action ?? '';
     const bankId    = action.startsWith('deeplink_') ? action.replace('deeplink_', '') : undefined;
@@ -337,9 +338,9 @@ export default function GivingScreen() {
           await recordDonation();
           setScreen(SCREEN.SUCCESS);
         } else if (result === 'cancelled') {
-          Alert.alert('Cancelled', 'Payment was cancelled. You can try again anytime.');
+          toast('Payment was cancelled. You can try again anytime.');
         } else {
-          Alert.alert('Payment Failed', 'Something went wrong. Please try again or choose another payment method.');
+          toast.error('Payment failed. Please try again or choose another payment method.');
         }
         return;
       }
@@ -390,10 +391,10 @@ export default function GivingScreen() {
         return;
       }
 
-      Alert.alert('Coming Soon', 'This payment method will be available soon.');
+      toast('This payment method will be available soon.');
 
     } catch {
-      Alert.alert('Error', 'Could not initiate payment. Please try again.');
+      toast.error('Could not initiate payment. Please try again.');
     } finally {
       setProcessing(false);
     }
@@ -401,14 +402,18 @@ export default function GivingScreen() {
 
   /** After user returns from an external app, confirm + record */
   const confirmAfterExternalApp = (appName: string) => {
-    Alert.alert(
-      `Complete in ${appName}`,
-      `Once you finish the payment in ${appName}, tap "Done" below to confirm your giving.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Done — Payment Sent', onPress: async () => { await recordDonation(); setScreen(SCREEN.SUCCESS); } },
-      ],
-    );
+    toast(`Complete in ${appName}`, {
+      description: `Once you finish the payment in ${appName}, tap "Done" to confirm your giving.`,
+      action: {
+        label: 'Done',
+        onClick: async () => {
+          await recordDonation();
+          setScreen(SCREEN.SUCCESS);
+        },
+      },
+      cancel: { label: 'Cancel', onClick: () => { } },
+      duration: 8000,
+    });
   };
 
   const reset = () => {

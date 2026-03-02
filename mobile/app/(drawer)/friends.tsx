@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput,
-    ActivityIndicator, RefreshControl, Alert,
+    ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { Search, UserPlus, MessageSquare, WifiOff, RefreshCw, Users } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
 import { apiService } from '@/services/apiService';
 import { useSocket } from '@/context/SocketContext';
+import { toast } from 'sonner-native';
 
 export default function FriendsScreen() {
     const { colors, isDark } = useTheme();
@@ -63,9 +64,9 @@ export default function FriendsScreen() {
         try {
             await apiService.sendFriendRequest(itemId);
             setSuggestions(prev => prev.filter(s => (s._id || s.id) !== itemId));
-            Alert.alert('Request Sent', `Friend request sent to ${item.name}!`);
+            toast.success(`Friend request sent to ${item.name}!`);
         } catch {
-            Alert.alert('Oops', 'Could not send the friend request right now. Please try again later.');
+            toast.error('Could not send the friend request right now. Please try again later.');
         } finally {
             setSendingId(null);
         }

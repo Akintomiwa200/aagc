@@ -12,8 +12,9 @@
  *           (both are already available in Expo managed — just import)
  */
 
-import { Linking, Alert, Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
+import { toast } from 'sonner-native';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIG — replace these with your real values before going live
@@ -180,15 +181,12 @@ export async function openNigerianBankApp(bankId: string): Promise<boolean> {
   const storeUrl = Platform.OS === 'ios' ? STORE[bankId]?.ios : STORE[bankId]?.android;
   const ussd     = USSD[bankId];
 
-  Alert.alert(
-    'App Not Installed',
-    `${bankId.charAt(0).toUpperCase() + bankId.slice(1)} app is not installed on this device.`,
-    [
-      storeUrl ? { text: 'Download App', onPress: () => Linking.openURL(storeUrl) } : undefined,
-      ussd     ? { text: `Dial ${ussd}`, onPress: () => dialUSSD(ussd) }             : undefined,
-      { text: 'Use Account Details Below', style: 'cancel' },
-    ].filter(Boolean) as any,
-  );
+  toast.warning('App Not Installed', {
+    description: `${bankId.charAt(0).toUpperCase() + bankId.slice(1)} app is not installed on this device.`,
+    action: storeUrl ? { label: 'Download App', onClick: () => Linking.openURL(storeUrl) } : undefined,
+    cancel: ussd ? { label: `Dial ${ussd}`, onClick: () => dialUSSD(ussd) } : undefined,
+    duration: 7000,
+  });
   return false;
 }
 
@@ -203,7 +201,7 @@ export async function dialUSSD(code: string): Promise<void> {
     const can = await Linking.canOpenURL(telUrl);
     if (can) { await Linking.openURL(telUrl); return; }
   } catch { /**/ }
-  Alert.alert('Dial Manually', `Please dial ${code} on your phone keypad to complete the transfer.`);
+  toast('Dial Manually', { description: `Please dial ${code} on your phone keypad to complete the transfer.` });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -255,14 +253,11 @@ export async function openCashApp(amount: number, note: string) {
 
 export async function openZelle(amount: number) {
   // Zelle has no public deep-link API — show details in alert
-  Alert.alert(
-    'Send via Zelle',
-    `Send $${amount.toLocaleString()} to:\n\n📧  giving@gracechurch.org\n📱  +1 (555) 000-0000\n\nMemo: Church Giving`,
-    [
-      { text: 'Open Zelle App', onPress: () => tryLink('zelle://', 'https://www.zellepay.com') },
-      { text: 'OK' },
-    ],
-  );
+  toast('Send via Zelle', {
+    description: `Send $${amount.toLocaleString()} to: giving@gracechurch.org | +1 (555) 000-0000 | Memo: Church Giving`,
+    action: { label: 'Open Zelle App', onClick: () => tryLink('zelle://', 'https://www.zellepay.com') },
+    duration: 8000,
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

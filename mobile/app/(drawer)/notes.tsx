@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Modal, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Modal, ScrollView } from 'react-native';
 import { Plus, Trash2, Save, X, ExternalLink } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
 import { apiService } from '@/services/apiService';
 import { useSocket } from '@/context/SocketContext';
 import { useAuth } from '@/context/AuthContext';
+import { toast } from 'sonner-native';
 
 export default function NotesScreen() {
     const { theme, colors } = useTheme();
@@ -82,7 +83,7 @@ export default function NotesScreen() {
 
     const handleSaveNote = async () => {
         if (!noteTitle.trim()) {
-            Alert.alert('Title Required', 'Please give your note a title.');
+            toast.error('Please give your note a title.');
             return;
         }
 
@@ -93,7 +94,7 @@ export default function NotesScreen() {
             } else {
                 // Create
                 if (!user) {
-                    Alert.alert('Sign In Required', 'Please sign in to create notes.');
+                    toast.error('Please sign in to create notes.');
                     return;
                 }
                 await apiService.createNote({ title: noteTitle, content: noteContent, userId: user.id });
@@ -101,26 +102,28 @@ export default function NotesScreen() {
             fetchNotes(); // Refresh list
             setModalVisible(false);
         } catch (error) {
-            Alert.alert('Oops', 'Could not save your note. Please try again.');
+            toast.error('Could not save your note. Please try again.');
         }
     };
 
     const handleDeleteNote = async (id: string) => {
-        Alert.alert('Delete Note', 'Are you sure?', [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Delete',
-                style: 'destructive',
-                onPress: async () => {
+        toast.warning('Delete this note?', {
+            description: 'This action cannot be undone.',
+            action: {
+                label: 'Delete',
+                onClick: async () => {
                     try {
                         await apiService.deleteNote(id);
                         setNotes(prev => prev.filter(n => getNoteId(n) !== id));
-                    } catch (error) {
-                        Alert.alert('Oops', 'Could not delete this note. Please try again.');
+                        toast.success('Note deleted.');
+                    } catch {
+                        toast.error('Could not delete this note. Please try again.');
                     }
-                }
-            }
-        ]);
+                },
+            },
+            cancel: { label: 'Cancel', onClick: () => { } },
+            duration: 7000,
+        });
     };
 
     const renderNoteContent = (content: string) => {

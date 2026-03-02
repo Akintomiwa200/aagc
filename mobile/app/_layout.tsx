@@ -14,6 +14,7 @@ import { AuthProvider } from '../context/AuthContext';
 import { SettingsProvider } from '../context/SettingsContext';
 import { Sparkles } from 'lucide-react-native';
 import GlobalAIModal from '../components/GlobalAIModal';
+import { Toaster } from 'sonner-native';
 
 // Prevent native splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -164,6 +165,7 @@ export default function RootLayout() {
                     <SocketProvider>
                         <NotificationManager />
                         <RootLayoutNav />
+                        <Toaster />
                     </SocketProvider>
                 </SettingsProvider>
             </AuthProvider>

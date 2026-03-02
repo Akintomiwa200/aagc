@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity,
-    ActivityIndicator, Alert, RefreshControl,
+    ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { Check, X, WifiOff, RefreshCw, UserCheck, Inbox } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { apiService } from '../services/apiService';
+import { toast } from 'sonner-native';
 
 export default function FriendRequestsScreen() {
     const { colors, isDark } = useTheme();
@@ -37,14 +38,13 @@ export default function FriendRequestsScreen() {
         try {
             await apiService.respondToFriendRequest(id, status);
             setRequests(prev => prev.filter(req => (req._id || req.id) !== id));
-            Alert.alert(
-                status === 'accepted' ? 'Friend Added!' : 'Request Declined',
+            toast.success(
                 status === 'accepted'
                     ? `You and ${name} are now friends.`
                     : `You declined ${name}'s request.`,
             );
         } catch {
-            Alert.alert('Oops', 'Could not process this request right now. Please try again.');
+            toast.error('Could not process this request right now. Please try again.');
         } finally {
             setRespondingId(null);
         }

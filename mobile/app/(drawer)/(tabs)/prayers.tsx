@@ -9,12 +9,12 @@ import {
     Modal,
     TextInput,
     ActivityIndicator,
-    Alert,
 } from 'react-native';
 import { Plus, X, Send } from 'lucide-react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { apiService } from '@/services/apiService';
 import { useSocket } from '@/context/SocketContext';
+import { toast } from 'sonner-native';
 
 export default function PrayersScreen() {
     const { theme } = useTheme();
@@ -86,7 +86,7 @@ export default function PrayersScreen() {
 
     const handleCreatePrayer = async () => {
         if (!newPrayer.name.trim() || !newPrayer.request.trim()) {
-            Alert.alert('Fields Required', 'Please fill in both your name and prayer request.');
+            toast.error('Please fill in both your name and prayer request.');
             return;
         }
 
@@ -99,9 +99,9 @@ export default function PrayersScreen() {
             });
             setNewPrayer({ name: '', request: '' });
             setModalVisible(false);
-            Alert.alert('Success', 'Your prayer request has been submitted.');
+            toast.success('Your prayer request has been submitted.');
         } catch {
-            Alert.alert('Oops', 'Could not submit your prayer right now. Please try again.');
+            toast.error('Could not submit your prayer right now. Please try again.');
         } finally {
             setSubmitting(false);
         }

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Bell } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { apiService } from '../services/apiService';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
+import { toast } from 'sonner-native';
 
 export default function NotificationsScreen() {
     const { theme } = useTheme();
@@ -57,7 +58,7 @@ export default function NotificationsScreen() {
             setNotifications(prev => prev.map(n => (n.id === id || n._id === id) ? { ...n, isRead: true } : n));
         } catch (error) {
             console.error('Failed to mark read', error);
-            Alert.alert('Network Error', error instanceof Error ? error.message : 'Could not update notification.');
+            toast.error(error instanceof Error ? error.message : 'Could not update notification.');
         }
     };
 

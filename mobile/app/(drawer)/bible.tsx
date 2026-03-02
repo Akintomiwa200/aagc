@@ -8,7 +8,6 @@ import {
     Modal,
     SafeAreaView,
     TextInput,
-    Alert,
     Dimensions,
     Animated,
     Share,
@@ -40,6 +39,7 @@ import { useSettings } from '@/context/SettingsContext';
 import { BIBLE_BOOKS } from '@/constants/BibleData';
 import { bibleService, BIBLE_VERSIONS } from '@/services/bibleService';
 import type { BibleVerse, Highlight, Bookmark as BookmarkType, Note } from '@/services/bibleService';
+import { toast } from 'sonner-native';
 
 const { width } = Dimensions.get('window');
 
@@ -419,9 +419,9 @@ export default function BibleScreen() {
         try {
             const bm = await bibleService.saveBookmark(selectedVerseForActions.id);
             setBookmarks(prev => [...prev, bm]);
-            Alert.alert('Bookmarked', 'Verse saved.');
+            toast.success('Verse saved.');
             hideVerseActions();
-        } catch { Alert.alert('Error', 'Could not bookmark verse.'); }
+        } catch { toast.error('Could not bookmark verse.'); }
     };
 
     const handleHighlight = async (color: string) => {
@@ -437,7 +437,7 @@ export default function BibleScreen() {
             const hl = await bibleService.saveHighlight({ verseId: selectedVerseForActions.id, color });
             setHighlights(prev => [...prev, hl]);
             // Don't close the sheet — user can keep changing color or tap other actions
-        } catch { Alert.alert('Error', 'Could not highlight verse.'); }
+        } catch { toast.error('Could not highlight verse.'); }
     };
 
     const handleAddNote = async () => {
@@ -448,8 +448,8 @@ export default function BibleScreen() {
             setNoteText('');
             setShowNoteModal(false);
             hideVerseActions();
-            Alert.alert('Note saved');
-        } catch { Alert.alert('Error', 'Could not save note.'); }
+            toast.success('Note saved');
+        } catch { toast.error('Could not save note.'); }
     };
 
     const handleShare = async () => {
@@ -459,7 +459,7 @@ export default function BibleScreen() {
                 message: `${selectedVerseForActions.book} ${selectedVerseForActions.chapter}:${selectedVerseForActions.verse}\n\n"${selectedVerseForActions.text}"\n\n— ${currentVersion.name}`,
             });
             hideVerseActions();
-        } catch { Alert.alert('Error', 'Could not share.'); }
+        } catch { toast.error('Could not share.'); }
     };
 
     // ── Search ─────────────────────────────────────────────────────────────
@@ -764,11 +764,11 @@ export default function BibleScreen() {
                                 },
                                 {
                                     label: 'Image',
-                                    action: () => Alert.alert('Image', 'Save verse as image — coming soon'),
+                                    action: () => toast('Image export is coming soon.'),
                                 },
                                 {
                                     label: 'Compare',
-                                    action: () => Alert.alert('Compare', `${selectedVerseForActions.book} ${selectedVerseForActions.chapter}:${selectedVerseForActions.verse} across versions — coming soon`),
+                                    action: () => toast(`${selectedVerseForActions.book} ${selectedVerseForActions.chapter}:${selectedVerseForActions.verse} compare view is coming soon.`),
                                 },
                                 {
                                     label: 'Note',
@@ -780,16 +780,19 @@ export default function BibleScreen() {
                                         try {
                                             const { setStringAsync } = await import('expo-clipboard');
                                             await setStringAsync(`${selectedVerseForActions.book} ${selectedVerseForActions.chapter}:${selectedVerseForActions.verse} — ${selectedVerseForActions.text}`);
-                                            Alert.alert('Copied', 'Verse copied to clipboard.');
+                                            toast.success('Verse copied to clipboard.');
                                         } catch {
-                                            Alert.alert('Copied', 'Verse copied.');
+                                            toast.success('Verse copied.');
                                         }
                                         hideVerseActions();
                                     },
                                 },
                                 {
                                     label: 'Pray',
-                                    action: () => Alert.alert('Pray', `Lord, help me understand ${selectedVerseForActions.book} ${selectedVerseForActions.chapter}:${selectedVerseForActions.verse} and apply it to my life. Amen.`),
+                                    action: () => toast('Prayer prompt', {
+                                        description: `Lord, help me understand ${selectedVerseForActions.book} ${selectedVerseForActions.chapter}:${selectedVerseForActions.verse} and apply it to my life. Amen.`,
+                                        duration: 7000,
+                                    }),
                                 },
                                 {
                                     label: 'Bookmark',
