@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { apiService } from '../services/apiService';
@@ -10,37 +9,63 @@ import { toast } from 'sonner-native';
 
 // expo-notifications remote push is not supported in Expo Go (SDK 53+).
 // We detect Expo Go via Constants.appOwnership and skip push registration.
-const IS_EXPO_GO = Constants.appOwnership === 'expo';
+const IS_EXPO_GO =
+    Constants.appOwnership === 'expo' ||
+    Constants.appOwnership === 'guest' ||
+    (Constants as any).executionEnvironment === 'storeClient';
 
-if (!IS_EXPO_GO) {
-    // Configure how notifications are handled when the app is foregrounded
-    // Only set this up in dev builds / standalone apps where it actually works
-    Notifications.setNotificationHandler({
-        handleNotification: async () => ({
-            shouldShowAlert: true,
-            shouldPlaySound: true,
-            shouldSetBadge: false,
-        }),
-    });
-}
+type NotificationsModule = typeof import('expo-notifications');
+let notificationsModule: NotificationsModule | null = null;
+
+const getNotificationsModule = async (): Promise<NotificationsModule | null> => {
+    if (IS_EXPO_GO) return null;
+    if (notificationsModule) return notificationsModule;
+    notificationsModule = await import('expo-notifications');
+    return notificationsModule;
+};
 
 export const NotificationManager: React.FC = () => {
     const { user } = useAuth();
-    const notificationListener = useRef<Notifications.Subscription | null>(null);
-    const responseListener = useRef<Notifications.Subscription | null>(null);
+    const notificationListener = useRef<{ remove: () => void } | null>(null);
+    const responseListener = useRef<{ remove: () => void } | null>(null);
     const { socket } = useSocket();
 
     useEffect(() => {
-        // Push token registration — skip entirely in Expo Go
-        if (!IS_EXPO_GO && user?.id) {
-            registerForPushNotificationsAsync().then(token => {
-                if (token) {
-                    apiService.updatePushToken(user.id, token).catch(err => {
-                        console.error('Failed to update push token in backend:', err);
-                    });
-                }
+        let cancelled = false;
+
+        const setupPushNotifications = async () => {
+            const Notifications = await getNotificationsModule();
+            if (!Notifications || cancelled) return;
+
+            Notifications.setNotificationHandler({
+                handleNotification: async () => ({
+                    shouldShowAlert: true,
+                    shouldPlaySound: true,
+                    shouldSetBadge: false,
+                }),
             });
-        }
+
+            if (user?.id) {
+                const token = await registerForPushNotificationsAsync(Notifications);
+                if (!token || cancelled) return;
+                apiService.updatePushToken(user.id, token).catch(err => {
+                    console.error('Failed to update push token in backend:', err);
+                });
+            }
+
+            notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
+                console.log('Notification Received:', notification);
+            });
+
+            responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+                console.log('Notification Response:', response);
+            });
+        };
+
+        // Push token registration — skip entirely in Expo Go
+        setupPushNotifications().catch(err => {
+            console.error('Push notification setup failed:', err);
+        });
 
         // --- REAL-TIME SOCKET LISTENERS (works in all environments) ---
         if (socket) {
@@ -64,18 +89,8 @@ export const NotificationManager: React.FC = () => {
             });
         }
 
-        // Push notification listeners — skip in Expo Go
-        if (!IS_EXPO_GO) {
-            notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-                console.log('Notification Received:', notification);
-            });
-
-            responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-                console.log('Notification Response:', response);
-            });
-        }
-
         return () => {
+            cancelled = true;
             if (notificationListener.current) {
                 notificationListener.current.remove();
             }
@@ -93,7 +108,7 @@ export const NotificationManager: React.FC = () => {
     return null;
 };
 
-async function registerForPushNotificationsAsync(): Promise<string | undefined> {
+async function registerForPushNotificationsAsync(Notifications: NotificationsModule): Promise<string | undefined> {
     let token: string | undefined;
 
     if (Platform.OS === 'android') {

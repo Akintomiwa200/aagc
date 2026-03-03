@@ -3,6 +3,8 @@ import {
     View,
     Text,
     FlatList,
+    ScrollView,
+    Image,
     TouchableOpacity,
     ActivityIndicator,
     Modal,
@@ -17,6 +19,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Speech from 'expo-speech';
+import { SvgXml } from 'react-native-svg';
 import {
     ChevronLeft,
     ChevronRight,
@@ -39,6 +42,7 @@ import { useSettings } from '@/context/SettingsContext';
 import { BIBLE_BOOKS } from '@/constants/BibleData';
 import { bibleService, BIBLE_VERSIONS } from '@/services/bibleService';
 import type { BibleVerse, Highlight, Bookmark as BookmarkType, Note } from '@/services/bibleService';
+import { generateChurchImage } from '@/services/geminiService';
 import { toast } from 'sonner-native';
 
 const { width } = Dimensions.get('window');
@@ -265,11 +269,20 @@ export default function BibleScreen() {
     const [showSearch, setShowSearch] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [showNoteModal, setShowNoteModal] = useState(false);
+    const [showCompareModal, setShowCompareModal] = useState(false);
+    const [showImageModal, setShowImageModal] = useState(false);
 
     // Search
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<BibleVerse[]>([]);
     const [searching, setSearching] = useState(false);
+    const [compareVersion, setCompareVersion] = useState(settings.bibleVersion);
+    const [compareVerseText, setCompareVerseText] = useState('');
+    const [compareLoading, setCompareLoading] = useState(false);
+    const [generatingVerseImage, setGeneratingVerseImage] = useState(false);
+    const [downloadingVerseImage, setDownloadingVerseImage] = useState(false);
+    const [verseImageError, setVerseImageError] = useState(false);
+    const [generatedVerseImage, setGeneratedVerseImage] = useState<string | null>(null);
 
     // Note
     const [noteText, setNoteText] = useState('');
@@ -277,6 +290,8 @@ export default function BibleScreen() {
 
     // TTS
     const [isSpeaking, setIsSpeaking] = useState(false);
+    const speechQueueRef = useRef<string[]>([]);
+    const speechSessionRef = useRef(0);
 
     // Reading settings (opened via ···)
     const [fontSize, setFontSize] = useState(30);
@@ -301,23 +316,54 @@ export default function BibleScreen() {
 
     // ── TTS ────────────────────────────────────────────────────────────────
     const stopSpeech = useCallback(async () => {
+        speechSessionRef.current += 1;
+        speechQueueRef.current = [];
         await Speech.stop();
         setIsSpeaking(false);
     }, []);
 
+    const splitForSpeech = (text: string, maxLen = 3500) => {
+        const chunks: string[] = [];
+        let rest = text.trim();
+        while (rest.length > maxLen) {
+            let splitIdx = rest.lastIndexOf('.', maxLen);
+            if (splitIdx < maxLen * 0.5) splitIdx = rest.lastIndexOf(' ', maxLen);
+            if (splitIdx < 1) splitIdx = maxLen;
+            chunks.push(rest.slice(0, splitIdx).trim());
+            rest = rest.slice(splitIdx).trim();
+        }
+        if (rest.length) chunks.push(rest);
+        return chunks;
+    };
+
     const startSpeech = useCallback(async () => {
         if (!verses.length) return;
+        speechSessionRef.current += 1;
+        const sessionId = speechSessionRef.current;
         await Speech.stop();
         const fullText = verses.map(v => `Verse ${v.verse}. ${v.text}`).join(' ');
+        const chunks = splitForSpeech(fullText);
+        speechQueueRef.current = chunks;
+        if (!chunks.length) return;
         setIsSpeaking(true);
-        Speech.speak(fullText, {
-            language: 'en-US',
-            pitch: 1.0,
-            rate: 0.85,
-            onDone: () => setIsSpeaking(false),
-            onStopped: () => setIsSpeaking(false),
-            onError: () => setIsSpeaking(false),
-        });
+
+        const speakChunk = (index: number) => {
+            if (speechSessionRef.current !== sessionId) return;
+            if (index >= chunks.length) {
+                setIsSpeaking(false);
+                return;
+            }
+            Speech.speak(chunks[index], {
+                language: 'en-US',
+                pitch: 1.0,
+                rate: 0.85,
+                onDone: () => speakChunk(index + 1),
+                onStopped: () => setIsSpeaking(false),
+                onError: () => setIsSpeaking(false),
+            });
+        };
+
+        speakChunk(0);
     }, [verses]);
 
     const toggleSpeech = useCallback(async () => {
@@ -388,17 +434,7 @@ export default function BibleScreen() {
     };
 
     // ── Verse selection ────────────────────────────────────────────────────
-    const handleVersePress = (verse: BibleVerse) => {
-        const ns = new Set(selectedVerses);
-        if (ns.has(verse.verse)) { ns.delete(verse.verse); if (ns.size === 0) setShowVerseActions(false); }
-        else { ns.add(verse.verse); setShowVerseActions(true); }
-        setSelectedVerses(ns);
-        setSelectedVerseForActions(verse);
-    };
-
-    const handleLongPress = (verse: BibleVerse) => {
-        setSelectedVerseForActions(verse);
-        setSelectedVerses(new Set([verse.verse]));
+    const openVerseActions = () => {
         setShowVerseActions(true);
         Animated.parallel([
             Animated.spring(slideAnim, { toValue: 1, useNativeDriver: true }),
@@ -406,11 +442,37 @@ export default function BibleScreen() {
         ]).start();
     };
 
+    const handleVersePress = (verse: BibleVerse) => {
+        const ns = new Set(selectedVerses);
+        if (ns.has(verse.verse)) {
+            ns.delete(verse.verse);
+            if (ns.size === 0) {
+                hideVerseActions();
+                return;
+            }
+        } else {
+            ns.add(verse.verse);
+            openVerseActions();
+        }
+        setSelectedVerses(ns);
+        setSelectedVerseForActions(verse);
+    };
+
+    const handleLongPress = (verse: BibleVerse) => {
+        setSelectedVerseForActions(verse);
+        setSelectedVerses(new Set([verse.verse]));
+        openVerseActions();
+    };
+
     const hideVerseActions = () => {
         Animated.parallel([
             Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true }),
             Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
-        ]).start(() => { setShowVerseActions(false); setSelectedVerses(new Set()); });
+        ]).start(() => {
+            setShowVerseActions(false);
+            setSelectedVerses(new Set());
+            setSelectedVerseForActions(null);
+        });
     };
 
     // ── Verse actions ──────────────────────────────────────────────────────
@@ -473,6 +535,74 @@ export default function BibleScreen() {
         finally { setSearching(false); }
     };
 
+    const loadComparedVerse = useCallback(async () => {
+        if (!selectedVerseForActions || !showCompareModal) return;
+        setCompareLoading(true);
+        try {
+            const chapterVerses = await bibleService.getChapter(
+                selectedVerseForActions.book,
+                selectedVerseForActions.chapter,
+                compareVersion
+            );
+            const match = chapterVerses.find(v => v.verse === selectedVerseForActions.verse);
+            setCompareVerseText(match?.text || 'Verse not available in this version.');
+        } catch {
+            setCompareVerseText('Could not load this version right now.');
+        } finally {
+            setCompareLoading(false);
+        }
+    }, [selectedVerseForActions, compareVersion, showCompareModal]);
+
+    useEffect(() => {
+        loadComparedVerse();
+    }, [loadComparedVerse]);
+
+    const handleGenerateVerseImage = async () => {
+        if (!selectedVerseForActions) return;
+        setGeneratingVerseImage(true);
+        setVerseImageError(false);
+        try {
+            const prompt = `Create a reverent Christian artwork inspired by ${selectedVerseForActions.book} ${selectedVerseForActions.chapter}:${selectedVerseForActions.verse}. Verse text: "${selectedVerseForActions.text}"`;
+            const img = await generateChurchImage(prompt);
+            if (!img) {
+                toast.error('Could not generate image. Try again.');
+                return;
+            }
+            setGeneratedVerseImage(img);
+            toast.success('Image ready');
+        } catch {
+            toast.error('Image generation failed.');
+        } finally {
+            setGeneratingVerseImage(false);
+        }
+    };
+
+    const handleDownloadVerseImage = async () => {
+        if (!generatedVerseImage || downloadingVerseImage) return;
+        setDownloadingVerseImage(true);
+        try {
+            const FileSystem = await import('expo-file-system/legacy');
+            let fileUri = '';
+            if (generatedVerseImage.startsWith('data:image/svg+xml;utf8,')) {
+                const encoded = generatedVerseImage.split(',')[1] || '';
+                const svg = decodeURIComponent(encoded);
+                fileUri = `${FileSystem.documentDirectory}verse-${Date.now()}.svg`;
+                await FileSystem.writeAsStringAsync(fileUri, svg, {
+                    encoding: (FileSystem as any).EncodingType?.UTF8 || 'utf8',
+                });
+            } else {
+                fileUri = `${FileSystem.documentDirectory}verse-${Date.now()}.jpg`;
+                await FileSystem.downloadAsync(generatedVerseImage, fileUri);
+            }
+            await Share.share({ message: fileUri, url: fileUri });
+            toast.success('Image downloaded. Choose Save from the share options.');
+        } catch {
+            toast.error('Could not download image.');
+        } finally {
+            setDownloadingVerseImage(false);
+        }
+    };
+
     // ── Helpers ────────────────────────────────────────────────────────────
     const getHighlight = (id: string) => highlights.find(h => h.verseId === id);
     const getNote = (id: string) => notes.find(n => n.verseId === id);
@@ -510,42 +640,65 @@ export default function BibleScreen() {
         // 2. Saved highlight color → that color at 60% opacity
         // 3. Nothing
         let bgColor: string = 'transparent';
-        if (isSelected) {
-            bgColor = '#4CAF50'; // vivid green matching screenshot
-        } else if (highlight) {
+        if (highlight) {
             bgColor = highlight.color + '99'; // 60% opacity
         }
 
-        // Text color: white on green selected bg, normal otherwise
-        const textColor = isSelected ? '#FFFFFF' : C.verseWhite;
-        const numColor = isSelected ? 'rgba(255,255,255,0.7)' : C.verseMuted;
+        const textColor = C.verseWhite;
+        const numColor = C.verseMuted;
 
         return (
             <TouchableOpacity
                 onPress={() => handleVersePress(item)}
                 onLongPress={() => handleLongPress(item)}
                 activeOpacity={0.85}
-                style={{ paddingHorizontal: 20, paddingVertical: 6, backgroundColor: bgColor }}
+                style={{
+                    paddingHorizontal: 20,
+                    paddingVertical: 6,
+                    backgroundColor: bgColor,
+                    borderLeftWidth: isSelected ? 2 : 0,
+                    borderLeftColor: isSelected ? '#4CAF50' : 'transparent',
+                    paddingLeft: isSelected ? 18 : 20,
+                }}
             >
-                <Text style={{ fontSize, lineHeight, fontFamily, letterSpacing: 0.2, color: textColor }}>
+                <Text
+                    style={{
+                        fontSize,
+                        lineHeight,
+                        fontFamily,
+                        letterSpacing: 0.2,
+                        color: textColor,
+                    }}
+                >
                     <Text style={{ fontSize: Math.max(11, fontSize * 0.43), color: numColor }}>
                         {item.verse}{' '}
                     </Text>
                     {segments.map((seg, i) => (
                         <Text
                             key={i}
-                            style={isSelected ? undefined : seg.isJesus ? { color: '#E53030' } : undefined}
+                            style={seg.isJesus ? { color: '#E53030' } : undefined}
                         >
                             {seg.text}
                         </Text>
                     ))}
                 </Text>
                 {note && (
-                    <Text style={{ color: isSelected ? 'rgba(255,255,255,0.8)' : '#7A8A9A', fontSize: 12, fontStyle: 'italic', marginTop: 4 }}>
+                    <Text style={{ color: '#7A8A9A', fontSize: 12, fontStyle: 'italic', marginTop: 4 }}>
                         📝 {note.text}
                     </Text>
                 )}
-                {bm && <BookmarkCheck size={13} color={isSelected ? '#FFFFFF' : '#FFD700'} style={{ marginTop: 2 }} />}
+                {bm && <BookmarkCheck size={13} color={'#FFD700'} style={{ marginTop: 2 }} />}
+                {isSelected && (
+                    <View
+                        style={{
+                            marginTop: 6,
+                            height: 2,
+                            width: '100%',
+                            backgroundColor: '#4CAF50',
+                            borderRadius: 1,
+                        }}
+                    />
+                )}
             </TouchableOpacity>
         );
     };
@@ -756,7 +909,11 @@ export default function BibleScreen() {
                         </Text>
 
                         {/* Action pills — horizontally scrollable */}
-                        <View style={{ flexDirection: 'row', paddingHorizontal: 16, gap: 10, marginBottom: 16 }}>
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={{ paddingHorizontal: 16, gap: 10, marginBottom: 16 }}
+                        >
                             {[
                                 {
                                     label: 'Share',
@@ -764,11 +921,18 @@ export default function BibleScreen() {
                                 },
                                 {
                                     label: 'Image',
-                                    action: () => toast('Image export is coming soon.'),
+                                    action: () => {
+                                        setGeneratedVerseImage(null);
+                                        setVerseImageError(false);
+                                        setShowImageModal(true);
+                                    },
                                 },
                                 {
                                     label: 'Compare',
-                                    action: () => toast(`${selectedVerseForActions.book} ${selectedVerseForActions.chapter}:${selectedVerseForActions.verse} compare view is coming soon.`),
+                                    action: () => {
+                                        setCompareVersion(settings.bibleVersion);
+                                        setShowCompareModal(true);
+                                    },
                                 },
                                 {
                                     label: 'Note',
@@ -813,7 +977,7 @@ export default function BibleScreen() {
                                     <Text style={{ fontSize: 14, fontWeight: '600', color: '#222' }}>{label}</Text>
                                 </TouchableOpacity>
                             ))}
-                        </View>
+                        </ScrollView>
 
                         {/* Divider */}
                         <View style={{ height: 1, backgroundColor: '#EEEEEE', marginHorizontal: 16, marginBottom: 16 }} />
@@ -828,13 +992,17 @@ export default function BibleScreen() {
                             {/* Remove / clear highlight */}
                             <TouchableOpacity
                                 onPress={async () => {
-                                    // Remove existing highlight for this verse
-                                    const existing = highlights.find(h => h.verseId === selectedVerseForActions.id);
-                                    if (existing) {
-                                        await bibleService.removeHighlight(existing.id);
-                                        setHighlights(prev => prev.filter(h => h.id !== existing.id));
+                                    try {
+                                        // Remove existing highlight for this verse
+                                        const existing = highlights.find(h => h.verseId === selectedVerseForActions.id);
+                                        if (existing) {
+                                            await bibleService.removeHighlight(existing.id);
+                                            setHighlights(prev => prev.filter(h => h.id !== existing.id));
+                                        }
+                                        hideVerseActions();
+                                    } catch {
+                                        toast.error('Could not remove highlight.');
                                     }
-                                    hideVerseActions();
                                 }}
                                 style={{
                                     width: 40, height: 40, borderRadius: 20,
@@ -1005,6 +1173,122 @@ export default function BibleScreen() {
                                 <Text style={{ color: C.verseWhite, fontSize: 15, fontWeight: '600' }}>Save Note</Text>
                             </TouchableOpacity>
                         </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* ── Compare Version Modal ── */}
+            <Modal visible={showCompareModal} transparent animationType="slide" onRequestClose={() => setShowCompareModal(false)}>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+                    <View style={{ backgroundColor: C.modalBg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 32 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                            <Text style={{ color: C.verseWhite, fontSize: 17, fontWeight: '700' }}>Compare Versions</Text>
+                            <TouchableOpacity onPress={() => setShowCompareModal(false)}>
+                                <X size={22} color={C.iconGrey} />
+                            </TouchableOpacity>
+                        </View>
+                        {selectedVerseForActions && (
+                            <Text style={{ color: '#7EB8F7', marginBottom: 12, fontWeight: '700' }}>
+                                {selectedVerseForActions.book} {selectedVerseForActions.chapter}:{selectedVerseForActions.verse}
+                            </Text>
+                        )}
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 12 }}>
+                            {BIBLE_VERSIONS.map(v => (
+                                <TouchableOpacity
+                                    key={v.code}
+                                    onPress={() => setCompareVersion(v.code)}
+                                    style={{
+                                        paddingHorizontal: 12,
+                                        paddingVertical: 8,
+                                        borderRadius: 16,
+                                        backgroundColor: compareVersion === v.code ? C.accent : C.inputBg,
+                                    }}
+                                >
+                                    <Text style={{ color: C.verseWhite, fontSize: 12, fontWeight: '700' }}>{v.code.toUpperCase()}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                        <View style={{ backgroundColor: C.inputBg, borderRadius: 14, padding: 14, minHeight: 120 }}>
+                            {compareLoading ? (
+                                <ActivityIndicator color={C.verseWhite} />
+                            ) : (
+                                <Text style={{ color: C.verseWhite, fontSize: 15, lineHeight: 23 }}>
+                                    {compareVerseText || 'Select a version to compare this verse.'}
+                                </Text>
+                            )}
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* ── AI Verse Image Modal ── */}
+            <Modal visible={showImageModal} transparent animationType="slide" onRequestClose={() => setShowImageModal(false)}>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+                    <View style={{ backgroundColor: C.modalBg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 32 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                            <Text style={{ color: C.verseWhite, fontSize: 17, fontWeight: '700' }}>AI Verse Image</Text>
+                            <TouchableOpacity onPress={() => setShowImageModal(false)}>
+                                <X size={22} color={C.iconGrey} />
+                            </TouchableOpacity>
+                        </View>
+                        {selectedVerseForActions && (
+                            <Text style={{ color: '#7EB8F7', marginBottom: 10, fontWeight: '700' }}>
+                                {selectedVerseForActions.book} {selectedVerseForActions.chapter}:{selectedVerseForActions.verse}
+                            </Text>
+                        )}
+                        <TouchableOpacity
+                            onPress={handleGenerateVerseImage}
+                            disabled={generatingVerseImage}
+                            style={{ backgroundColor: C.accent, borderRadius: 12, paddingVertical: 12, alignItems: 'center', marginBottom: 14, opacity: generatingVerseImage ? 0.7 : 1 }}
+                        >
+                            <Text style={{ color: C.verseWhite, fontWeight: '700' }}>
+                                {generatingVerseImage ? 'Generating...' : 'Generate Image'}
+                            </Text>
+                        </TouchableOpacity>
+                        <View style={{ backgroundColor: C.inputBg, borderRadius: 14, minHeight: 180, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                            {generatedVerseImage ? (
+                                generatedVerseImage.startsWith('data:image/svg+xml;utf8,') ? (
+                                    <SvgXml
+                                        xml={decodeURIComponent(generatedVerseImage.split(',')[1] || '')}
+                                        width="100%"
+                                        height={260}
+                                    />
+                                ) : (
+                                    <Image
+                                        source={{ uri: generatedVerseImage }}
+                                        style={{ width: '100%', height: 260 }}
+                                        resizeMode="cover"
+                                        onError={() => {
+                                            setVerseImageError(true);
+                                            toast.error('Image provider failed. Tap Generate again.');
+                                        }}
+                                    />
+                                )
+                            ) : (
+                                <Text style={{ color: C.verseMuted, padding: 16, textAlign: 'center' }}>
+                                    Tap "Generate Image" to create AI artwork inspired by this verse.
+                                </Text>
+                            )}
+                        </View>
+                        {generatedVerseImage && !verseImageError && (
+                            <TouchableOpacity
+                                onPress={handleDownloadVerseImage}
+                                disabled={downloadingVerseImage}
+                                style={{
+                                    alignSelf: 'flex-end',
+                                    marginTop: 10,
+                                    backgroundColor: '#2A3444',
+                                    borderRadius: 10,
+                                    paddingHorizontal: 12,
+                                    paddingVertical: 7,
+                                    opacity: downloadingVerseImage ? 0.7 : 1,
+                                }}
+                            >
+                                <Text style={{ color: C.verseWhite, fontSize: 12, fontWeight: '700' }}>
+                                    {downloadingVerseImage ? 'Saving...' : 'Download'}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 </View>
             </Modal>

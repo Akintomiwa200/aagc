@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
@@ -12,13 +12,18 @@ interface SocketContextType {
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
 
-// Get socket URL from app.json config (same pattern as apiService.ts)
+// Get socket URL from app config and normalize for socket.io root endpoint.
 const getSocketUrl = () => {
-  const configUrl =
+  const rawConfigUrl =
     Constants.expoConfig?.extra?.socketUrl ||
     Constants.expoConfig?.extra?.apiUrl;
 
-  if (configUrl) {
+  if (rawConfigUrl) {
+    let configUrl = rawConfigUrl.trim().replace(/\/$/, '');
+    if (configUrl.endsWith('/api')) {
+      configUrl = configUrl.slice(0, -4);
+    }
+
     if (Platform.OS === 'android' && configUrl.includes('localhost')) {
       return configUrl.replace('localhost', '10.0.2.2');
     }
@@ -31,8 +36,6 @@ const getSocketUrl = () => {
   }
   return 'http://localhost:3001';
 };
-
-const SOCKET_URL = getSocketUrl();
 
 export function SocketProvider({ children }: { children: ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -52,24 +55,30 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     };
   }, [user]);
 
+  const socketUrl = useMemo(() => getSocketUrl(), []);
+
   useEffect(() => {
+    let consecutiveErrors = 0;
     const options: any = {
-      transports: ['websocket', 'polling'],
+      // Keep polling first for mobile/proxy compatibility; socket.io can still upgrade.
+      transports: ['polling', 'websocket'],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 10000,
       reconnectionAttempts: 20,
       timeout: 15000,
+      withCredentials: true,
     };
 
     if (token) {
       options.auth = { token };
     }
 
-    const newSocket = io(SOCKET_URL, options);
+    const newSocket = io(socketUrl, options);
 
     newSocket.on('connect', () => {
-      console.log('Socket connected:', newSocket.id);
+      consecutiveErrors = 0;
+      console.log('Socket connected:', newSocket.id, 'URL:', socketUrl);
       setIsConnected(true);
     });
 
@@ -79,7 +88,13 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     });
 
     newSocket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
+      consecutiveErrors += 1;
+      const message = (error as any)?.message || String(error);
+      if (consecutiveErrors <= 2) {
+        console.warn('Socket transient error:', message, 'URL:', socketUrl);
+      } else {
+        console.error('Socket connection error:', error, 'URL:', socketUrl);
+      }
       setIsConnected(false);
     });
 
@@ -90,7 +105,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       setSocket(null);
       setIsConnected(false);
     };
-  }, [token]);
+  }, [token, socketUrl]);
 
   const value = {
     socket,

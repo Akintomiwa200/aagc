@@ -70,7 +70,7 @@ function RootLayoutNav() {
     }
 
     return (
-        <GestureHandlerRootView style={{ flex: 1 }}>
+        <>
             <StatusBar style={isDark ? 'light' : 'dark'} />
             <Stack
                 screenOptions={{
@@ -153,22 +153,24 @@ function RootLayoutNav() {
             {showCustomSplash && (
                 <CustomSplashScreen onAnimationComplete={handleSplashAnimationComplete} />
             )}
-        </GestureHandlerRootView>
+        </>
     );
 }
 
 export default function RootLayout() {
     return (
-        <ThemeProvider>
-            <AuthProvider>
-                <SettingsProvider>
-                    <SocketProvider>
-                        <NotificationManager />
-                        <RootLayoutNav />
-                        <Toaster />
-                    </SocketProvider>
-                </SettingsProvider>
-            </AuthProvider>
-        </ThemeProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <ThemeProvider>
+                <AuthProvider>
+                    <SettingsProvider>
+                        <SocketProvider>
+                            <NotificationManager />
+                            <RootLayoutNav />
+                            <Toaster />
+                        </SocketProvider>
+                    </SettingsProvider>
+                </AuthProvider>
+            </ThemeProvider>
+        </GestureHandlerRootView>
     );
 }

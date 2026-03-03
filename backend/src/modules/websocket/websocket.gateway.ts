@@ -17,7 +17,8 @@ import { DevotionalsService } from '../devotionals/devotionals.service';
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    // Reflect request origin to support web + Expo/React-Native clients.
+    origin: true,
     credentials: true,
   },
   namespace: '/',
