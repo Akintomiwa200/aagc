@@ -5,42 +5,39 @@ import { Heart, ShieldCheck, ArrowRight } from "lucide-react";
 
 const GivingSection: FC = () => {
   return (
-    <section className="relative bg-gradient-to-br from-gray-50 via-background to-gray-100 dark:from-gray-900 dark:via-background dark:to-gray-800 py-20 px-6 lg:px-16 overflow-hidden">
-      {/* Decorative Background */}
-      <div className="absolute inset-0 opacity-10 dark:opacity-5">
-        <div className="absolute top-0 left-0 w-96 h-96 bg-green-500 dark:bg-emerald-500 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-emerald-500 dark:bg-green-500 rounded-full blur-3xl"></div>
-      </div>
-
+    <section className="relative py-[80px] px-6 lg:px-16 overflow-hidden bg-[#f7f7f4]">
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Main Giving Card */}
-        <div className="bg-white dark:bg-gray-800/30 rounded-3xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-700">
+        <div className="bg-white rounded-[12px] shadow-none border border-[#e6e5e0] overflow-hidden">
           {/* Header Section with Image */}
-          <div className="relative h-64 lg:h-80 overflow-hidden bg-gradient-to-br from-green-600 to-emerald-700 dark:from-emerald-800 dark:to-green-900">
+          <div className="relative h-64 lg:h-80 overflow-hidden bg-[#26251e]">
             <img
               src="https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=1200&q=80"
               alt="Giving"
-              className="w-full h-full object-cover opacity-20 dark:opacity-10"
+              className="w-full h-full object-cover opacity-30"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-[#26251e]/60 via-transparent to-transparent"></div>
 
             {/* Centered Content */}
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
-              <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center mb-6">
-                <Heart className="w-8 h-8 text-white fill-white" />
+              <div className="w-16 h-16 bg-[#f54e00]/20 backdrop-blur-md rounded-full flex items-center justify-center mb-6">
+                <Heart className="w-8 h-8 text-[#f54e00] fill-[#f54e00]" />
               </div>
 
-              <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-4 py-2 rounded-full border border-white/30 mb-4">
-                <div className="w-2 h-2 bg-green-300 dark:bg-emerald-300 rounded-full"></div>
-                <span className="text-sm font-medium tracking-wide text-white uppercase">
+              <div className="inline-flex items-center gap-2 bg-[#f54e00]/10 backdrop-blur-md px-4 py-2 rounded-full border border-[#f54e00]/20 mb-4">
+                <div className="w-2 h-2 bg-[#f54e00] rounded-full"></div>
+                <span className="text-sm font-medium tracking-wide text-white uppercase" style={{ letterSpacing: '0.88px' }}>
                   Generosity
                 </span>
               </div>
 
-              <h2 className="text-4xl lg:text-5xl font-bold text-white mb-4">
+              <h2
+                className="text-[36px] font-normal text-white mb-4"
+                style={{ letterSpacing: '-0.72px', fontFamily: "'Inter', system-ui, sans-serif" }}
+              >
                 Support God's Work
               </h2>
-              <p className="text-lg text-white/90 max-w-2xl">
+              <p className="text-lg text-white/90 max-w-2xl" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
                 Your giving enables ministry, transforms lives, and advances the Kingdom.
               </p>
             </div>
@@ -50,7 +47,7 @@ const GivingSection: FC = () => {
           <div className="p-8 lg:p-12 space-y-8">
             {/* Description */}
             <div className="text-center space-y-4">
-              <p className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed max-w-3xl mx-auto">
+              <p className="text-lg text-[#5a5852] leading-relaxed max-w-3xl mx-auto" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
                 Every gift makes a difference. Whether you're contributing to tithes and
                 offerings, supporting missions, or helping families in need, your
                 generosity impacts lives and spreads hope throughout our community and
@@ -59,42 +56,42 @@ const GivingSection: FC = () => {
             </div>
 
             {/* Security Notice */}
-            <div className="flex items-center justify-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              <ShieldCheck className="h-5 w-5 text-green-600 dark:text-emerald-500" />
+            <div className="flex items-center justify-center gap-2 text-sm text-[#5a5852]">
+              <ShieldCheck className="h-5 w-5 text-[#f54e00]" />
               <span>All transactions are secured with 256-bit SSL encryption</span>
             </div>
 
             {/* Main CTA Button */}
             <div className="flex flex-col items-center gap-4">
-              <button className="group relative inline-flex items-center gap-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 dark:from-emerald-600 dark:to-green-600 dark:hover:from-emerald-700 dark:hover:to-green-700 text-white px-12 py-5 rounded-full font-bold text-lg shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
-                <Heart className="h-6 w-6" />
+              <button className="group inline-flex items-center gap-3 bg-[#f54e00] hover:bg-[#d04200] text-white px-[18px] py-[10px] rounded-[8px] font-medium transition" style={{ fontSize: '14px', lineHeight: '1.0' }}>
+                <Heart className="h-4 w-4" />
                 Give Now
-                <ArrowRight className="h-6 w-6 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </button>
 
-              <p className="text-sm text-gray-500 dark:text-gray-400">One-time or recurring donations available</p>
+              <p className="text-sm text-[#5a5852]">One-time or recurring donations available</p>
             </div>
 
             {/* Bible Verse */}
             <div className="text-center pt-6">
-              <div className="inline-block bg-green-50 dark:bg-gray-800/50 px-6 py-4 rounded-2xl border border-green-100 dark:border-gray-700">
-                <p className="text-gray-700 dark:text-gray-300 italic mb-2">
+              <div className="inline-block bg-[#f7f7f4] px-6 py-4 rounded-[12px] border border-[#e6e5e0]">
+                <p className="text-[#5a5852] italic mb-2" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
                   "Each of you should give what you have decided in your heart to give,
                   not reluctantly or under compulsion, for God loves a cheerful giver."
                 </p>
-                <p className="text-sm font-semibold text-green-700 dark:text-emerald-400">2 Corinthians 9:7</p>
+                <p className="text-sm font-semibold text-[#f54e00]">2 Corinthians 9:7</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Bottom Note */}
-        <div className="text-center mt-8 text-gray-600 dark:text-gray-400 text-sm">
+        <div className="text-center mt-8 text-[#5a5852] text-sm" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
           <p>
             Questions about giving? Contact our finance team at{" "}
             <a
               href="mailto:giving@aagc.com"
-              className="text-green-600 dark:text-emerald-400 hover:text-green-700 dark:hover:text-emerald-300 font-medium"
+              className="text-[#f54e00] hover:text-[#d04200] font-medium"
             >
               giving@aagc.com
             </a>

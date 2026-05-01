@@ -419,6 +419,55 @@ class ApiService {
     async getReports() {
         return this.request<any[]>('/reports');
     }
+
+    // Friends/Social
+    async getFriends(userId: string) {
+        return this.request<any[]>(`/friends?userId=${userId}`);
+    }
+
+    async getFriendRequests(userId: string) {
+        return this.request<any[]>(`/friends/requests?userId=${userId}`);
+    }
+
+    async sendFriendRequest(userId: string, friendId: string) {
+        return this.request<any>('/friends/request', {
+            method: 'POST',
+            body: JSON.stringify({ userId: friendId }),
+            headers: { 'user-id': userId },
+        });
+    }
+
+    async respondToFriendRequest(requestId: string, status: 'accepted' | 'rejected') {
+        return this.request<any>(`/friends/requests/${requestId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ status }),
+        });
+    }
+
+    // Notes
+    async getNotes(userId: string) {
+        return this.request<any[]>(`/notes?userId=${userId}`);
+    }
+
+    async createNote(data: any) {
+        return this.request<any>('/notes', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    }
+
+    async updateNote(id: string, data: any) {
+        return this.request<any>(`/notes/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        });
+    }
+
+    async deleteNote(id: string) {
+        return this.request<any>(`/notes/${id}`, {
+            method: 'DELETE',
+        });
+    }
 }
 
 export const apiService = new ApiService();

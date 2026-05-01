@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useMemo, ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 interface SocketContextType {
@@ -8,6 +8,9 @@ interface SocketContextType {
   isConnected: boolean;
   joinRoom: (room: string) => void;
   leaveRoom: (room: string) => void;
+  joinLivestream: (streamId: string) => void;
+  leaveLivestream: (streamId: string) => void;
+  sendLivestreamChat: (streamId: string, message: string, userName: string) => void;
 }
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
@@ -17,20 +20,38 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001'
 export function SocketProvider({ children }: { children: ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
-    const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+    if (typeof window !== 'undefined') {
+      const adminToken = localStorage.getItem('admin_token');
+      const userToken = localStorage.getItem('auth_token');
+      setToken(adminToken || userToken);
+    }
+  }, []);
 
-    // Initialize socket connection
-    const newSocket = io(SOCKET_URL, {
-      transports: ['websocket', 'polling'],
+  const socketUrl = useMemo(() => SOCKET_URL, []);
+
+  useEffect(() => {
+    let consecutiveErrors = 0;
+    const options: any = {
+      transports: ['polling', 'websocket'],
       reconnection: true,
       reconnectionDelay: 1000,
-      reconnectionAttempts: 5,
-      ...(adminToken ? { auth: { token: adminToken } } : {}),
-    } as any);
+      reconnectionDelayMax: 10000,
+      reconnectionAttempts: 20,
+      timeout: 15000,
+      withCredentials: true,
+    };
+
+    if (token) {
+      options.auth = { token };
+    }
+
+    const newSocket = io(socketUrl, options);
 
     newSocket.on('connect', () => {
+      consecutiveErrors = 0;
       console.log('Socket connected:', newSocket.id);
       setIsConnected(true);
     });
@@ -41,7 +62,12 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     });
 
     newSocket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
+      consecutiveErrors += 1;
+      if (consecutiveErrors <= 2) {
+        console.warn('Socket transient error:', error.message);
+      } else {
+        console.error('Socket connection error:', error);
+      }
       setIsConnected(false);
     });
 
@@ -52,7 +78,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       setSocket(null);
       setIsConnected(false);
     };
-  }, []);
+  }, [token, socketUrl]);
 
   const joinRoom = (room: string) => {
     if (socket && isConnected) {
@@ -66,11 +92,32 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const joinLivestream = (streamId: string) => {
+    if (socket && isConnected) {
+      socket.emit('livestream-join', { streamId });
+    }
+  };
+
+  const leaveLivestream = (streamId: string) => {
+    if (socket && isConnected) {
+      socket.emit('livestream-leave', { streamId });
+    }
+  };
+
+  const sendLivestreamChat = (streamId: string, message: string, userName: string) => {
+    if (socket && isConnected) {
+      socket.emit('livestream-chat', { streamId, message, userName });
+    }
+  };
+
   const value = {
     socket,
     isConnected,
     joinRoom,
     leaveRoom,
+    joinLivestream,
+    leaveLivestream,
+    sendLivestreamChat,
   };
 
   return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;

@@ -1,6 +1,6 @@
 'use client';
 
-import { Play, Download, Share2, Calendar, User, Clock, Loader2 } from "lucide-react";
+import { Play, Download, Share2, Calendar, Clock, User, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { apiService } from "@/lib/api";
@@ -12,22 +12,13 @@ interface Sermon {
   title: string;
   preacher: string;
   date: string;
-  series: string; // Relaxed type
+  series: string;
   duration: string;
   description: string;
   plays: string;
   image: string;
-  videoUrl?: string; // Optional
+  videoUrl?: string;
 }
-
-const seriesColors: Record<string, string> = {
-  // Relaxed mapping with fallback
-  "Unshakable Foundation": "bg-orange-500/20 text-orange-300 border-orange-500/30",
-  "Daily Bread": "bg-blue-500/20 text-blue-300 border-blue-500/30",
-  "Kingdom Builders": "bg-purple-500/20 text-purple-300 border-purple-500/30",
-  "Divine Encounters": "bg-green-500/20 text-green-300 border-green-500/30",
-  "default": "bg-gray-500/20 text-gray-300 border-gray-500/30"
-};
 
 export default function SermonsSection() {
   const [sermons, setSermons] = useState<Sermon[]>([]);
@@ -73,33 +64,28 @@ export default function SermonsSection() {
   }, [socket]);
 
   return (
-    <section className="relative py-20 px-6 lg:px-16 overflow-hidden">
-      {/* Decorative Background */}
-      <div className="absolute inset-0 opacity-10 dark:opacity-5 dot-grid"></div>
-
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute top-20 right-0 w-96 h-96 bg-purple-500 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 left-0 w-96 h-96 bg-orange-500 rounded-full blur-3xl"></div>
-      </div>
-
+    <section className="relative py-[80px] px-6 lg:px-16 overflow-hidden" style={{ backgroundColor: 'var(--color-canvas)' }}>
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Header */}
         <div className="text-center mb-16 space-y-4">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200">
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span className="text-sm font-medium tracking-wide uppercase">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full" style={{ border: '1px solid var(--color-hairline)' }}>
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--color-primary)' }}></div>
+            <span className="text-sm font-medium tracking-wide uppercase" style={{ color: 'var(--color-muted)', letterSpacing: '0.88px' }}>
               Teaching & Preaching
             </span>
           </div>
 
-          <h2 className="text-4xl lg:text-5xl font-bold text-gray-900">
+          <h2
+            className="text-[36px] font-normal text-[#26251e] dark:text-[#f7f7f4]"
+            style={{ letterSpacing: '-0.72px', fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 400 }}
+          >
             Recent Messages & Sermons
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="text-lg max-w-2xl mx-auto" style={{ color: 'var(--color-body)', fontFamily: "'Inter', system-ui, sans-serif" }}>
             Access our library of biblical teaching to grow in your faith journey.
           </p>
 
-          <Link href="/sermons" className="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-6 py-3 rounded-full font-medium transition mt-4">
+          <Link href="/sermons" className="inline-flex items-center gap-2 text-white px-[18px] py-[10px] rounded-md font-medium transition hover:opacity-90" style={{ backgroundColor: 'var(--color-primary)', fontSize: '14px', lineHeight: '1.0' }}>
             Browse Sermon Library
           </Link>
         </div>
@@ -107,36 +93,37 @@ export default function SermonsSection() {
         {/* Sermons Grid */}
         {loading ? (
           <div className="flex justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+            <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--color-primary)' }} />
           </div>
         ) : sermons.length === 0 ? (
-          <div className="text-center py-12 bg-white/50 rounded-3xl">
-            <p className="text-gray-500">No sermons available.</p>
+          <div className="text-center py-12 rounded-lg" style={{ backgroundColor: 'var(--color-surface-card)', border: '1px solid var(--color-hairline)' }}>
+            <p style={{ color: 'var(--color-muted)' }}>No sermons available.</p>
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2">
             {sermons.map((sermon, idx) => (
               <div
                 key={getSermonId(sermon) || idx}
-                className="group rounded-3xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 bg-white"
+                className="group overflow-hidden transition-all duration-300 hover:-translate-y-2"
                 style={{
-                  animation: `fadeInUp 0.6s ease-out ${idx * 0.1}s both`,
+                  backgroundColor: 'var(--color-surface-card)',
+                  borderRadius: '12px',
+                  border: '1px solid var(--color-hairline)',
+                  animation: `fadeInUp 0.6s ease-out ${idx * 0.1}s both`
                 }}
               >
                 {/* Sermon Image/Thumbnail */}
-                <div className="relative h-56 overflow-hidden bg-gradient-to-br from-gray-800 to-gray-900">
+                <div className="relative h-56 overflow-hidden">
                   <img
                     src={sermon.image || "https://images.unsplash.com/photo-1438232992991-995b7058bbb3?w=800&q=80"}
                     alt={sermon.title}
-                    className="w-full h-full object-cover opacity-60 group-hover:scale-110 group-hover:opacity-80 transition-all duration-500"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
 
                   {/* Series Badge */}
                   <div className="absolute top-4 left-4">
-                    <span
-                      className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold backdrop-blur-md border ${seriesColors[sermon.series] || seriesColors.default}`}
-                    >
+                    <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold" style={{ backgroundColor: 'rgba(245, 78, 0, 0.1)', color: 'var(--color-primary)', border: '1px solid rgba(245, 78, 0, 0.2)' }}>
                       {sermon.series || 'Sermon'}
                     </span>
                   </div>
@@ -144,7 +131,7 @@ export default function SermonsSection() {
                   {/* Play Button Overlay */}
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     <Link href={`/sermons/${getSermonId(sermon)}`} className="bg-white/90 backdrop-blur-sm rounded-full p-4 group-hover:scale-110 transition-transform">
-                      <Play className="h-8 w-8 text-gray-900 fill-gray-900" />
+                      <Play className="h-8 w-8" style={{ color: 'var(--color-ink)', fill: 'var(--color-ink)' }} />
                     </Link>
                   </div>
 
@@ -165,35 +152,35 @@ export default function SermonsSection() {
 
                 {/* Sermon Content */}
                 <div className="p-6 space-y-4">
-                  <h3 className="text-2xl font-bold text-gray-900 group-hover:text-green-600 transition-colors line-clamp-1">
+                  <h3 className="text-lg font-semibold line-clamp-1" style={{ color: 'var(--color-ink)', fontFamily: "'Inter', system-ui, sans-serif" }}>
                     {sermon.title}
                   </h3>
 
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                  <div className="flex items-center gap-4 text-sm" style={{ color: 'var(--color-body)' }}>
                     <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-green-600" />
+                      <User className="h-4 w-4" style={{ color: 'var(--color-primary)' }} />
                       <span className="font-medium line-clamp-1">{sermon.preacher}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-green-600" />
+                      <Calendar className="h-4 w-4" style={{ color: 'var(--color-primary)' }} />
                       <span>{sermon.date}</span>
                     </div>
                   </div>
 
-                  <p className="text-gray-600 text-sm leading-relaxed line-clamp-2">
+                  <p className="text-sm leading-relaxed line-clamp-2" style={{ color: 'var(--color-body)' }}>
                     {sermon.description}
                   </p>
 
-                  <div className="flex items-center gap-2 pt-4 border-t border-gray-200">
-                    <Link href={`/sermons/${getSermonId(sermon)}`} className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-medium transition-all">
+                  <div className="flex items-center gap-2 pt-4" style={{ borderTop: '1px solid var(--color-hairline)' }}>
+                    <Link href={`/sermons/${getSermonId(sermon)}`} className="flex-1 flex items-center justify-center gap-2 text-white py-3 rounded-lg font-medium transition hover:opacity-90" style={{ backgroundColor: 'var(--color-primary)', fontSize: '14px', lineHeight: '1.0' }}>
                       <Play className="h-4 w-4" />
                       Play Now
                     </Link>
-                    <button className="flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-700 p-3 rounded-xl transition-all">
-                      <Download className="h-5 w-5" />
+                    <button className="flex items-center justify-center p-3 rounded-lg transition" style={{ backgroundColor: 'var(--color-surface-strong)' }}>
+                      <Download className="h-5 w-5" style={{ color: 'var(--color-ink)' }} />
                     </button>
-                    <button className="flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-700 p-3 rounded-xl transition-all">
-                      <Share2 className="h-5 w-5" />
+                    <button className="flex items-center justify-center p-3 rounded-lg transition" style={{ backgroundColor: 'var(--color-surface-strong)' }}>
+                      <Share2 className="h-5 w-5" style={{ color: 'var(--color-ink)' }} />
                     </button>
                   </div>
                 </div>

@@ -90,28 +90,28 @@ export default function EventsSection() {
   };
 
   return (
-    <section className="relative py-20 px-6 lg:px-16 overflow-hidden dark-bg">
-      {/* Decorative Background - Uses CSS variables */}
-      <div className="absolute inset-0 opacity-10 dark:opacity-5 dot-grid"></div>
-
+    <section className="relative py-[80px] px-6 lg:px-16 overflow-hidden" style={{ backgroundColor: 'var(--color-canvas)' }}>
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Header */}
         <div className="text-center mb-16 space-y-4">
-          <div className="inline-flex items-center gap-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm">
-            <div className="w-2 h-2 bg-green-500 dark:bg-emerald-400 rounded-full"></div>
-            <span className="text-sm font-medium tracking-wide text-gray-500 dark:text-gray-400 uppercase">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border" style={{ borderColor: 'var(--color-hairline)' }}>
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--color-primary)' }}></div>
+            <span className="text-sm font-medium tracking-wide uppercase" style={{ color: 'var(--color-muted)', letterSpacing: '0.88px' }}>
               Church Calendar
             </span>
           </div>
 
-          <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-gray-100">
+          <h2
+            className="text-[36px] font-normal text-[#26251e] dark:text-[#f7f7f4]"
+            style={{ letterSpacing: '-0.72px', fontFamily: "'Inter', system-ui, sans-serif" }}
+          >
             Upcoming Events & Gatherings
           </h2>
-          <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+          <p className="text-lg max-w-2xl mx-auto" style={{ color: 'var(--color-body)', fontFamily: "'Inter', system-ui, sans-serif" }}>
             Join us for worship, fellowship, and service as we grow together in Christ.
           </p>
 
-          <Link href="/events" className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white px-6 py-3 rounded-full font-medium transition mt-4">
+          <Link href="/events" className="inline-flex items-center gap-2 text-white px-[18px] py-[10px] rounded-md font-medium transition mt-4 hover:opacity-90" style={{ backgroundColor: 'var(--color-primary)', fontSize: '14px', lineHeight: '1.0' }}>
             View Full Calendar
             <Calendar className="h-4 w-4" />
           </Link>
@@ -120,27 +120,26 @@ export default function EventsSection() {
         {/* Events Grid */}
         {loading ? (
           <div className="flex justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+            <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--color-primary)' }} />
           </div>
         ) : events.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-3xl">
-            <p className="text-gray-500">No upcoming events scheduled at the moment.</p>
+          <div className="text-center py-12 rounded-lg" style={{ backgroundColor: 'var(--color-surface-card)', border: '1px solid var(--color-hairline)' }}>
+            <p style={{ color: 'var(--color-muted)' }}>No upcoming events scheduled at the moment.</p>
           </div>
         ) : (
           <div className="grid gap-6 lg:grid-cols-3">
             {events.map((event, idx) => (
               <div
                 key={getEventId(event) || idx}
-                className="group card dark:card rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2"
+                className="group overflow-hidden transition-all duration-300 hover:-translate-y-2"
+                style={{
+                  backgroundColor: 'var(--color-surface-card)',
+                  borderRadius: '12px',
+                  border: '1px solid var(--color-hairline)',
+                  animation: `fadeInUp 0.6s ease-out ${idx * 0.1}s both`
+                }}
                 onMouseEnter={() => setActiveIndex(idx)}
                 onMouseLeave={() => setActiveIndex(null)}
-                style={{
-                  animation: `fadeInUp 0.6s ease-out ${idx * 0.1}s both`,
-                  transform: activeIndex === idx ? 'translateY(-8px)' : 'none',
-                  boxShadow: activeIndex === idx
-                    ? '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
-                    : '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
-                }}
               >
                 {/* Event Image */}
                 <div className="relative h-48 overflow-hidden">
@@ -153,42 +152,36 @@ export default function EventsSection() {
 
                   {/* Category Badge */}
                   <div className="absolute top-4 left-4">
-                    <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold backdrop-blur-md border ${getCategoryColor(event.category || 'default').light + ' dark:' + getCategoryColor(event.category || 'default').dark
-                      }`}>
+                    <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold backdrop-blur-md" style={{ backgroundColor: 'rgba(245, 78, 0, 0.1)', color: 'var(--color-primary)', border: '1px solid rgba(245, 78, 0, 0.2)' }}>
                       {event.category || 'Event'}
                     </span>
-                  </div>
-
-                  {/* Calendar Icon */}
-                  <div className="absolute top-4 right-4 glass p-2 rounded-lg">
-                    <Calendar className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                   </div>
                 </div>
 
                 {/* Event Content */}
                 <div className="p-6 space-y-4">
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 group-hover:text-green-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-1">
+                  <h3 className="text-lg font-semibold line-clamp-1" style={{ color: 'var(--color-ink)', fontFamily: "'Inter', system-ui, sans-serif" }}>
                     {event.title}
                   </h3>
 
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                      <Clock className="h-4 w-4 text-green-600 dark:text-emerald-400" />
+                    <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--color-body)' }}>
+                      <Clock className="h-4 w-4" style={{ color: 'var(--color-primary)' }} />
                       <span>{event.date} • {event.time}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                      <MapPin className="h-4 w-4 text-green-600 dark:text-emerald-400" />
+                    <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--color-body)' }}>
+                      <MapPin className="h-4 w-4" style={{ color: 'var(--color-primary)' }} />
                       <span className="line-clamp-1">{event.location}</span>
                     </div>
                   </div>
 
-                  <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed line-clamp-2">
+                  <p className="text-sm leading-relaxed line-clamp-2" style={{ color: 'var(--color-body)' }}>
                     {event.detail}
                   </p>
 
-                  <Link href={`/events/${getEventId(event)}`} className="w-full flex items-center justify-center gap-2 bg-gray-100 dark:bg-gray-700 hover:bg-green-600 dark:hover:bg-emerald-600 text-gray-700 dark:text-gray-300 hover:text-white py-3 rounded-xl font-medium transition-all group/btn">
+                  <Link href={`/events/${getEventId(event)}`} className="w-full flex items-center justify-center gap-2 text-white py-3 rounded-lg font-medium transition-all hover:opacity-90" style={{ backgroundColor: 'var(--color-primary)', fontSize: '14px', lineHeight: '1.0' }}>
                     Event Details
-                    <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
+                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                   </Link>
                 </div>
               </div>
@@ -198,7 +191,7 @@ export default function EventsSection() {
 
         {/* View All Events */}
         <div className="text-center mt-12">
-          <Link href="/events" className="inline-flex items-center gap-2 px-8 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-green-600 dark:hover:border-emerald-500 hover:text-green-700 dark:hover:text-emerald-400 rounded-full font-medium transition-all">
+          <Link href="/events" className="inline-flex items-center gap-2 px-8 py-3 rounded-full font-medium transition-all" style={{ border: '2px solid var(--color-hairline-strong)', color: 'var(--color-ink)', fontSize: '14px', lineHeight: '1.4' }}>
             View All Events
             <ArrowRight className="h-4 w-4" />
           </Link>
